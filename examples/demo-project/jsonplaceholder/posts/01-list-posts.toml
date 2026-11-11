@@ -1,0 +1,19 @@
+name = "List posts"
+method = "GET"
+url = "{{base_url}}/posts"
+
+[query]
+userId = "{{user_id}}"
+
+[scripts]
+tests = '''
+pm.test("Status is 200", () => pm.response.to.be.ok);
+pm.test("Content-Type is JSON", () => pm.response.to.have.header("Content-Type"));
+const posts = pm.response.json();
+pm.test("Every post belongs to the user", () => {
+  posts.forEach(p => pm.expect(p.userId).to.eql(Number(pm.variables.get("user_id"))));
+});
+// Used by "Get post" below.
+pm.environment.set("post_id", String(posts[0].id));
+console.log("post_id =", posts[0].id);
+'''

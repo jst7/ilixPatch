@@ -1,0 +1,178 @@
+{
+  "info": {
+    "_postman_id": "11111111-2222-3333-4444-555555555555",
+    "name": "Shop API",
+    "description": "The shop API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set(\"ts\", Date.now());"] } }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "https://shop.example.com" },
+    { "key": "apiKey", "value": "abc123" },
+    { "key": "old", "value": "x", "disabled": true }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "description": "User endpoints",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test(\"ok\", () => pm.response.to.have.status(200));"] } }
+      ],
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Debug", "value": "1", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10", "disabled": true }
+              ]
+            }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test(\"list\", () => {});"] } }
+          ]
+        },
+        {
+          "name": "Get user",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/:id/:format",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":id", ":format"],
+              "variable": [{ "key": "id", "value": "{{userId}}" }, { "key": "format", "value": "" }]
+            }
+          }
+        },
+        {
+          "name": "Admin",
+          "auth": {
+            "type": "basic",
+            "basic": [
+              { "key": "username", "value": "admin" },
+              { "key": "password", "value": "s3cret" }
+            ]
+          },
+          "item": [
+            {
+              "name": "Delete user",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/users/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", ":id"],
+                  "variable": [{ "key": "id", "value": "42" }]
+                }
+              }
+            },
+            {
+              "name": "Public ping",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "GET",
+                "url": "{{base_url}}/ping"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          { "key": "username", "value": "{{user}}" },
+          { "key": "password", "value": "{{pass}}" }
+        ]
+      },
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{user}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload avatar",
+      "request": {
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            { "key": "key", "value": "api_key" },
+            { "key": "value", "value": "{{apiKey}}" },
+            { "key": "in", "value": "query" }
+          ]
+        },
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Ann", "type": "text" },
+            { "key": "avatar", "type": "file", "src": "/tmp/a.png" }
+          ]
+        },
+        "url": "{{base_url}}/avatar"
+      }
+    },
+    {
+      "name": "GraphQL",
+      "request": {
+        "auth": { "type": "oauth2", "oauth2": [] },
+        "method": "POST",
+        "body": {
+          "mode": "graphql",
+          "graphql": { "query": "query($id: ID!) { user(id: $id) { name } }", "variables": "{\"id\": 1}" }
+        },
+        "url": "{{base_url}}/graphql"
+      }
+    },
+    {
+      "name": "Form login",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "user", "value": "ann" },
+            { "key": "debug", "value": "1", "disabled": true }
+          ]
+        },
+        "url": "{{base_url}}/form"
+      }
+    },
+    {
+      "name": "Notes",
+      "request": {
+        "method": "PUT",
+        "body": { "mode": "raw", "raw": "plain text" },
+        "url": "{{base_url}}/notes"
+      }
+    }
+  ]
+}

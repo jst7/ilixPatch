@@ -1,0 +1,34 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/engine", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "app/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Jorge Segovia Tormo"]
+repository = "https://github.com/jst7/ilixPatch"
+
+[workspace.dependencies]
+ilixpatch-core = { path = "crates/core" }
+ilixpatch-engine = { path = "crates/engine" }
+ilixpatch-scripting = { path = "crates/scripting" }
+ilixpatch-runner = { path = "crates/runner" }
+ilixpatch-git = { path = "crates/git" }
+ilixpatch-importer = { path = "crates/importer" }
+ilixpatch-history = { path = "crates/history" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2"
+toml = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "gzip", "brotli", "charset"] }
+
+# See https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

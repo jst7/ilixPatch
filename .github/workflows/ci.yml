@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install Tauri system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Build frontend (needed by tauri::generate_context!)
+        working-directory: app
+        run: npm ci && npm run build
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: tests
+        run: cargo test --workspace
+      - name: THIRD_PARTY_LICENSES is up to date
+        if: runner.os == 'Linux'
+        run: node scripts/third-party-licenses.mjs --check
+
+  frontend:
+    name: Frontend (svelte-check + self-tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - working-directory: app
+        run: npm ci
+      - name: svelte-check
+        working-directory: app
+        run: npm run check
+      - name: Algorithm self-tests (merge, import, search)
+        working-directory: app
+        run: |
+          node src/lib/merge/selftest.mjs
+          node src/lib/import/selftest.mjs
+          node src/lib/search/selftest.mjs
+
+  cli-e2e:
+    name: CLI end-to-end (demo project)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run the demo collection with Newman-style reporters
+        run: |
+          cargo run -q -p ilixpatch-cli -- run examples/demo-project --env dev \
+            -r cli,junit --reporter-junit-export target/junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-junit
+          path: target/junit.xml

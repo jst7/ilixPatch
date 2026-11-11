@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- App icon: a duck wearing rain boots. Source of all generated icon sizes
+       (regenerate with: cd app && npx tauri icon src-tauri/icons/icon.svg). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1fc98f"/>
+      <stop offset="1" stop-color="#0b8a5c"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#fcc419"/>
+    </linearGradient>
+    <linearGradient id="boot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff6b6b"/>
+      <stop offset="1" stop-color="#e03131"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background tile -->
+  <rect x="64" y="64" width="896" height="896" rx="208" fill="url(#bg)"/>
+  <!-- ground shadow -->
+  <ellipse cx="500" cy="868" rx="250" ry="26" fill="#063f2a" opacity="0.28"/>
+
+  <!-- legs -->
+  <rect x="404" y="700" width="34" height="90" rx="14" fill="#f08c00"/>
+  <rect x="552" y="700" width="34" height="90" rx="14" fill="#f08c00"/>
+
+  <!-- body + tail -->
+  <path d="M250 548 C 200 470 210 420 236 392 C 262 420 300 448 352 460
+           C 420 400 560 392 660 440 C 760 490 790 600 730 670
+           C 670 740 530 760 420 736 C 320 714 270 640 250 548 Z" fill="url(#body)"/>
+  <!-- wing -->
+  <path d="M370 560 C 420 500 540 500 600 552 C 560 620 450 640 370 560 Z" fill="#f59f00" opacity="0.85"/>
+  <path d="M400 566 C 450 540 520 540 560 560" stroke="#e67700" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- head -->
+  <circle cx="650" cy="350" r="132" fill="url(#body)"/>
+  <!-- cheek -->
+  <ellipse cx="700" cy="392" rx="30" ry="18" fill="#ff8787" opacity="0.55"/>
+  <!-- beak -->
+  <path d="M752 330 C 812 316 872 330 896 352 C 872 380 812 392 752 380 Z" fill="#ff922b"/>
+  <path d="M760 356 C 812 360 860 358 890 354" stroke="#e8590c" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- eye -->
+  <circle cx="690" cy="312" r="24" fill="#1b1b1f"/>
+  <circle cx="699" cy="303" r="8" fill="#ffffff"/>
+  <!-- tuft -->
+  <path d="M628 222 C 620 190 640 172 662 170 C 650 186 652 204 664 222" fill="#fcc419"/>
+
+  <!-- left boot -->
+  <g>
+    <path d="M384 760 L 456 760 L 456 832 C 456 832 500 834 516 852 C 524 862 520 876 506 876
+             L 384 876 Z" fill="url(#boot)"/>
+    <rect x="376" y="748" width="88" height="26" rx="10" fill="#c92a2a"/>
+    <rect x="380" y="864" width="140" height="18" rx="9" fill="#2b2b33"/>
+    <rect x="398" y="786" width="14" height="52" rx="7" fill="#ffffff" opacity="0.35"/>
+  </g>
+  <!-- right boot -->
+  <g>
+    <path d="M532 760 L 604 760 L 604 832 C 604 832 648 834 664 852 C 672 862 668 876 654 876
+             L 532 876 Z" fill="url(#boot)"/>
+    <rect x="524" y="748" width="88" height="26" rx="10" fill="#c92a2a"/>
+    <rect x="528" y="864" width="140" height="18" rx="9" fill="#2b2b33"/>
+    <rect x="546" y="786" width="14" height="52" rx="7" fill="#ffffff" opacity="0.35"/>
+  </g>
+</svg>

@@ -1,0 +1,4 @@
+/target/
+.DS_Store
+# Local secrets for environments are never committed
+*.secret.toml

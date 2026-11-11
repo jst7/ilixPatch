@@ -1,0 +1,4 @@
+version = 1
+name = "Demo project"
+# Where collections live, relative to the project root (default ".").
+collections_dir = "."

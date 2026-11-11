@@ -1,0 +1,27 @@
+[package]
+name = "ilixpatch-cli"
+description = "Run ilixPatch collections from the terminal and CI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "ilixpatch"
+path = "src/main.rs"
+
+[dependencies]
+ilixpatch-core.workspace = true
+ilixpatch-engine.workspace = true
+ilixpatch-runner.workspace = true
+ilixpatch-importer.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+# Same config dir as the desktop app (Tauri: <config_dir>/<identifier>).
+dirs = "6"
+
+[dev-dependencies]
+tempfile = "3"

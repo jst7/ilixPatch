@@ -1,0 +1,19 @@
+name = "Get user"
+method = "GET"
+url = "{{base_url}}/users/{{user_id}}"
+
+[scripts]
+tests = '''
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Returns the requested user", () => {
+  // user_id comes from the environment, or from the data file (-d data/users.csv).
+  const expected = Number(pm.variables.get("user_id"));
+  pm.expect(pm.response.json().id).to.eql(expected);
+});
+if (pm.iterationData.has("expected_name")) {
+  pm.test("Name matches the data file", () => {
+    pm.expect(pm.response.json().name).to.eql(pm.iterationData.get("expected_name"));
+  });
+}
+pm.test("Has an email", () => pm.expect(pm.response.json().email).to.include("@"));
+'''

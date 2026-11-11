@@ -1,0 +1,26 @@
+name = "Create post"
+method = "POST"
+url = "{{base_url}}/posts"
+
+[body]
+type = "json"
+content = '''
+{
+  "title": "{{title}}",
+  "body": "Written in Rust",
+  "userId": {{user_id}}
+}
+'''
+
+[scripts]
+pre_request = '''
+// Local variable, only for this run: used in the body as {{title}}.
+pm.variables.set("title", "Hello from ilixPatch #" + (pm.info.iteration + 1));
+'''
+tests = '''
+pm.test("Status is 201 Created", () => pm.response.to.have.status(201));
+pm.test("Echoes the title", () => {
+  // Local variables set by the pre-request script are visible here too.
+  pm.expect(pm.response.json().title).to.eql(pm.variables.get("title"));
+});
+'''

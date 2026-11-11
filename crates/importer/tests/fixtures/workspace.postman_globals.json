@@ -1,0 +1,9 @@
+{
+  "id": "bbbb",
+  "values": [
+    { "key": "tenant", "value": "acme", "enabled": true },
+    { "key": "global_token", "value": "gt", "enabled": true }
+  ],
+  "name": "My Workspace Globals",
+  "_postman_variable_scope": "globals"
+}

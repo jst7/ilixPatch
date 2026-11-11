@@ -1,0 +1,6 @@
+name = "List open todos"
+method = "GET"
+url = "{{base_url}}/todos"
+
+[query]
+completed = "false"

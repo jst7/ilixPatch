@@ -1,0 +1,19 @@
+[package]
+name = "ilixpatch-git"
+description = "Git integration for ilixPatch: repo discovery and reads with gix, writes and network via the git CLI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Reads only (refs, commits, trees, blobs, rev walks). Status and every write
+# or network operation go through the system `git` binary, see README.md.
+gix = { version = "0.90", default-features = false, features = ["sha1", "revision"] }
+serde.workspace = true
+thiserror.workspace = true
+toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+
+[dev-dependencies]
+tempfile = "3"
+serde_json.workspace = true

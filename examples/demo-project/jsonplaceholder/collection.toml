@@ -1,0 +1,7 @@
+version = 1
+name = "JSONPlaceholder"
+
+[variables]
+base_url = "https://jsonplaceholder.typicode.com"
+# Default; environments (environments/dev.toml) and data files (-d) override it.
+user_id = "1"

@@ -1,0 +1,15 @@
+name = "List users"
+method = "GET"
+url = "{{base_url}}/users"
+
+[headers]
+Accept = "application/json"
+
+[scripts]
+tests = '''
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Returns 10 users", () => {
+  const users = pm.response.json();
+  pm.expect(users).to.be.an("array").with.lengthOf(10);
+});
+'''

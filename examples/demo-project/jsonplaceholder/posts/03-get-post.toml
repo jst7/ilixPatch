@@ -1,0 +1,11 @@
+name = "Get post"
+method = "GET"
+url = "{{base_url}}/posts/{{post_id}}"
+
+[scripts]
+tests = '''
+pm.test("Status is 200", () => pm.response.to.have.status(200));
+pm.test("Is the post saved by List posts", () => {
+  pm.expect(pm.response.json().id).to.eql(Number(pm.environment.get("post_id")));
+});
+'''
