@@ -3159,7 +3159,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ilixpatch-core",
  "ilixpatch-engine",
@@ -3182,7 +3182,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3199,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "indexmap 2.14.2",
  "serde",
@@ -3210,7 +3210,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "ilixpatch-core",
@@ -3232,7 +3232,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-git"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gix",
  "serde",
@@ -3244,7 +3244,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-history"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ilixpatch-core",
  "miniz_oxide 0.8.9",
@@ -3258,7 +3258,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-importer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ilixpatch-core",
  "indexmap 2.14.2",
@@ -3273,7 +3273,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-runner"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "csv",
  "hdrhistogram",
@@ -3292,7 +3292,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-scripting"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ilixpatch-core",
  "indexmap 2.14.2",
