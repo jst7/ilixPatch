@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Compare tag with Cargo.toml and tauri.conf.json
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -61,14 +61,14 @@ jobs:
             targets: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.targets }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -125,7 +125,7 @@ jobs:
           else
             echo "::notice::No Apple signing secrets: building an UNSIGNED macOS app (users must right-click > Open the first time)."
           fi
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -154,7 +154,7 @@ jobs:
           - { os: windows-latest, target: x86_64-pc-windows-msvc, ext: ".exe" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -176,7 +176,7 @@ jobs:
           else
             tar czf "$name.tar.gz" "$name"
           fi
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: cli-${{ matrix.target }}
           path: |
@@ -185,7 +185,7 @@ jobs:
           if-no-files-found: error
       - name: Attach to the draft release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           draft: true
