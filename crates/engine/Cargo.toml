@@ -20,7 +20,7 @@ base64 = "0.22"
 sha2 = "0.10"
 x509-parser = "0.18"
 p12-keystore = "0.4"
-pkcs8 = { version = "0.10", features = ["encryption", "std"] }
+pkcs8 = { version = "0.11", features = ["encryption", "std"] }
 # Same version as reqwest's, to classify TLS errors (D36).
 rustls = { version = "0.23", default-features = false }
 
