@@ -1139,4 +1139,6 @@ export const api = {
     invoke<void>("response_save", { id, path, pretty }),
   /** Free the body now (temp file deleted). Also done automatically on resend / tab close / LRU. */
   responseRelease: (id: string) => invoke<void>("response_release", { id }),
+  /** D44: open the body with the system app (copied to a temp file with extension `ext`). */
+  responseOpen: (id: string, ext: string) => invoke<void>("response_open", { id, ext }),
 };

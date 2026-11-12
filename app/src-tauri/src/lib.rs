@@ -586,6 +586,7 @@ pub fn run() {
             response_commands::response_search,
             response_commands::response_save,
             response_commands::response_release,
+            response_commands::response_open,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

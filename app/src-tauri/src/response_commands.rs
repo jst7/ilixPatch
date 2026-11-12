@@ -114,3 +114,35 @@ pub fn response_save(
 pub fn response_release(store: State<'_, ResponseStore>, id: String) {
     store.release(&id);
 }
+
+/// D44: copy the body to `<bodies>/ilixpatch-body-open-<id>.<ext>` and open it
+/// with the system app (fallback when the webview can't preview it, e.g. PDF on
+/// Linux). The file is removed at the next startup (the app may still use it).
+#[tauri::command(async)]
+pub fn response_open(
+    app: tauri::AppHandle,
+    store: State<'_, ResponseStore>,
+    id: String,
+    ext: String,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let ext: String = ext
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .take(8)
+        .collect();
+    let ext = if ext.is_empty() {
+        "bin".to_string()
+    } else {
+        ext
+    };
+    let id_safe: String = id.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    let path = store.dir().join(format!(
+        "{}open-{id_safe}.{ext}",
+        ilixpatch_engine::bodystore::TEMP_PREFIX
+    ));
+    store.save(&id, &path, false)?;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string())
+}

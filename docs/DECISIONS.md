@@ -347,6 +347,22 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D44 · Vista previa de imágenes, PDF, audio, vídeo y HTML en la respuesta ✅ (v0.3.3)
+- **Qué se previsualiza** (`lib/preview/kind.ts`):
+  - imágenes PNG, JPEG, GIF, WebP, AVIF, BMP, ICO y SVG; PDF; audio MP3, WAV, OGG/Opus, AAC/M4A y FLAC; vídeo MP4, WebM, OGV y MOV; y HTML.
+- **Cómo se detecta:** por `Content-Type`. Si es genérico (`application/octet-stream` o falta), por los primeros bytes del archivo (PNG, JPEG, `%PDF-`, `ftyp`, `OggS`…).
+- **Selector "Vista previa | Binario"** (o "| Código" si el body es texto) en la pestaña Body. Se mantiene la vista hex o de texto.
+  - Por defecto se abren renderizados los medios. El HTML se abre como código, que es lo que suele querer un cliente de APIs.
+- **Cómo se muestra** (`MediaPreview`): el body se lee del `ResponseStore` en trozos de 4 MB y se pasa a una URL `blob:`, que se libera al cambiar de respuesta.
+  - Imagen sobre fondo de cuadros, con "Ajustar / Tamaño real" y las dimensiones. PDF en `iframe` con el visor del webview. Audio y vídeo con los controles nativos.
+  - **HTML en un `iframe` con `sandbox` vacío:** sin scripts, formularios ni acceso al origen de la app.
+  - Hasta **150 MB**. Por encima no se carga en el webview.
+- **"Abrir con la app del sistema"** (comando `response_open`): copia el body a `<app_cache_dir>/bodies/ilixpatch-body-open-<id>.<ext>` y lo abre con `tauri-plugin-opener`.
+  - Sirve cuando el webview no sabe mostrarlo (por ejemplo, PDF en WebKitGTK de Linux) o el archivo es muy grande.
+  - El archivo se borra en el siguiente arranque, porque la otra app puede seguir usándolo.
+- Si el body se cortó en `max_body_mb`, se avisa de que la vista previa puede salir rota.
+- 🗓️ **Más adelante:** CSV como tabla, Markdown renderizado, fuentes y ZIP (listar el contenido).
+
 ## D43 · Barra de URL coloreada y edición de variables al pasar el ratón ✅ (v0.3.2)
 - **Colores con significado:** la URL se divide en partes (`lib/url/tokens.ts`) y cada una lleva un color del tema (`--syntax-*`):
   - esquema atenuado, host, puerto, `/` y separadores, `:parámetros` de ruta, claves y valores del query, y `#fragmento`;

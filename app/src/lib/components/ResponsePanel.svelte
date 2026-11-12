@@ -8,6 +8,10 @@
   import RequestErrorView from "./RequestErrorView.svelte";
   import LargeBodyViewer from "./largebody/LargeBodyViewer.svelte";
   import BinaryBodyView from "./largebody/BinaryBodyView.svelte";
+  import MediaPreview from "./MediaPreview.svelte";
+  import { api } from "$lib/api";
+  import { isGenericMime, previewFromMime, sniffPreview, type PreviewType } from "$lib/preview/kind";
+  import { base64ToBytes } from "$lib/largebody/format";
 
   interface Props {
     path: string;
@@ -68,6 +72,32 @@
     result ? (bodyMode === "editor" ? pretty(result) : { text: "", language: "text" as const }) : null,
   );
 
+  // D44: rendered preview (image, PDF, audio, video, HTML) besides the binary/text view.
+  let sniffed = $state<PreviewType | null>(null);
+  const preview = $derived(handle ? (previewFromMime(handle.content_type) ?? sniffed) : null);
+  let bodyView = $state<"preview" | "raw">("preview");
+  let lastHandleId: string | null = null;
+  $effect.pre(() => {
+    const h = handle;
+    if ((h?.id ?? null) === lastHandleId) return;
+    lastHandleId = h?.id ?? null;
+    sniffed = null;
+    // HTML opens as code (what an API client usually wants); media opens rendered.
+    bodyView = previewFromMime(h?.content_type)?.kind === "html" ? "raw" : "preview";
+    if (h && h.size > 0 && !previewFromMime(h.content_type) && isGenericMime(h.content_type)) {
+      const id = h.id;
+      api
+        .responseRead(id, 0, 512)
+        .then((c) => {
+          if (lastHandleId !== id) return;
+          const bytes = c.encoding === "base64" ? base64ToBytes(c.data) : new TextEncoder().encode(c.data);
+          sniffed = sniffPreview(bytes);
+        })
+        .catch(() => {});
+    }
+  });
+  const showPreview = $derived(tab === "body" && !!handle && !!preview && bodyView === "preview");
+
   function formatSize(n: number): string {
     if (n < 1024) return `${n} B`;
     if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -126,7 +156,15 @@
       <button class:active={tab === "console"} onclick={() => (tab = "console")}>
         {t("response.tab.console")}{#if logs.length}<span class="count">{logs.length}</span>{/if}
       </button>
-      {#if tab === "body" && bodyMode === "editor"}
+      {#if tab === "body" && preview}
+        <div class="viewtoggle" role="group" aria-label={t("preview.view")}>
+          <button class:active={bodyView === "preview"} onclick={() => (bodyView = "preview")}>{t("preview.preview")}</button>
+          <button class:active={bodyView === "raw"} onclick={() => (bodyView = "raw")}>
+            {handle?.is_text ? t("preview.code") : t("preview.binary")}
+          </button>
+        </div>
+      {/if}
+      {#if tab === "body" && bodyMode === "editor" && !showPreview}
         <div class="tools">
           {#if body.language === "json"}
             <button class="ghost small" onclick={() => editor?.foldAll()}>{t("response.collapseAll")}</button>
@@ -137,7 +175,9 @@
       {/if}
     </div>
     <div class="content">
-      {#if tab === "body" && handle && bodyMode === "large"}
+      {#if showPreview && handle && preview}
+        {#key handle.id}<MediaPreview {handle} type={preview} />{/key}
+      {:else if tab === "body" && handle && bodyMode === "large"}
         {#key handle.id}<LargeBodyViewer {handle} />{/key}
       {:else if tab === "body" && handle && bodyMode === "binary"}
         {#key handle.id}<BinaryBodyView {handle} />{/key}
@@ -426,5 +466,28 @@
   .cancel-link:hover {
     background: var(--err);
     color: var(--accent-text);
+  }
+  .viewtoggle {
+    display: flex;
+    margin-left: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    align-self: center;
+  }
+  .viewtoggle + .tools {
+    margin-left: 8px;
+  }
+  .viewtoggle button {
+    border: none;
+    border-radius: 0;
+    background: none;
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .viewtoggle button.active {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
   }
 </style>
