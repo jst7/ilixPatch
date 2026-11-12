@@ -347,6 +347,19 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D43 · Barra de URL coloreada y edición de variables al pasar el ratón ✅ (v0.3.2)
+- **Colores con significado:** la URL se divide en partes (`lib/url/tokens.ts`) y cada una lleva un color del tema (`--syntax-*`):
+  - esquema atenuado, host, puerto, `/` y separadores, `:parámetros` de ruta, claves y valores del query, y `#fragmento`;
+  - **variables:** definida en color de acento, **sin definir en rojo con subrayado ondulado** y dinámica (`{{$guid}}`…) en otro color.
+- **Cómo se pinta:** detrás del `textarea` hay una copia coloreada con la misma fuente, padding y salto de línea, y el `textarea` tiene el texto transparente. La edición, el pegado de cURL y Enter funcionan igual que antes. Las variables no llevan padding ni borde para que el texto no se descuadre.
+- **Al pasar el ratón por una variable** (350 ms) se abre una ventana (`VarPopover`) con:
+  - de dónde sale el valor (Entorno, Colección o Globales), si es un valor de sesión fijado por un script, y en qué otros ámbitos está definida pero no se usa;
+  - un campo para **cambiar el valor** y un selector **"Guardar en"** para elegir el ámbito. Si se cambia de ámbito, por defecto **se mueve** (se quita del ámbito anterior). Se puede desmarcar para copiarla.
+  - Para una variable sin definir, sirve para crearla.
+- **Guardado** (`lib/vars/edit.ts`): escribe en el archivo del ámbito (globales, `collection.toml` o el entorno de proyecto o global), conserva `secret` y el resto de variables, borra el valor de sesión de los ámbitos tocados para que se aplique el guardado, y recarga el proyecto o los globales.
+  - Los entornos antiguos de colección no se editan desde aquí.
+- La ventana se mantiene abierta mientras tiene el foco y se cierra con Esc, Cancelar, Guardar o un clic fuera.
+
 ## D42 · Actualizaciones de dependencias (Dependabot) 🗓️ (después de v0.3.0)
 - **Grupos de Dependabot** (`.github/dependabot.yml`), para que lo que debe ir junto llegue en un solo PR:
   - **RustCrypto** (sha2, pkcs8, rsa, p256…) siempre juntas, también en versiones mayores, porque comparten traits y subir solo una duplica dependencias;

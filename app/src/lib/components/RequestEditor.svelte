@@ -15,6 +15,7 @@
   import { unexportedAuth } from "$lib/curl";
   import MethodSelect from "./MethodSelect.svelte";
   import EnvSelect from "./EnvSelect.svelte";
+  import UrlInput from "./UrlInput.svelte";
 
   interface Props {
     /** The request file being edited. Optional: history tabs edit an in-memory draft instead. */
@@ -214,20 +215,6 @@
     { mode: "text", label: () => t("request.body.text") },
   ];
 
-  /** Svelte action: grow a textarea with its content (re-measured when `value` changes). */
-  function autogrow(node: HTMLTextAreaElement, _value: string) {
-    const resize = () => {
-      node.style.height = "auto";
-      node.style.height = `${node.scrollHeight + 2}px`;
-    };
-    resize();
-    const ro = new ResizeObserver(resize); // re-wrap when the bar width changes
-    ro.observe(node);
-    return {
-      update: () => queueMicrotask(resize),
-      destroy: () => ro.disconnect(),
-    };
-  }
 </script>
 
 {#if draft}
@@ -269,15 +256,11 @@
       <MethodSelect bind:value={draft.method} label={t("request.method")} />
       <!-- Multi-line URL: wraps long URLs and grows up to ~6 lines. A URL has no newlines,
            so Enter sends and pasted line breaks are removed. -->
-      <textarea
-        class="url mono"
-        rows="1"
+      <UrlInput
         bind:value={draft.url}
-        use:autogrow={draft.url}
+        {collection}
         placeholder={t("request.urlPlaceholder")}
-        aria-label={t("request.url")}
-        spellcheck="false"
-        autocomplete="off"
+        ariaLabel={t("request.url")}
         onpaste={(e) => {
           // Pasting a curl command fills in the whole request, like Postman.
           const text = e.clipboardData?.getData("text/plain") ?? "";
@@ -302,7 +285,7 @@
             queueMicrotask(() => el.setSelectionRange(before, before));
           }
         }}
-      ></textarea>
+      />
       {#if annotating && blame}
         {@const info = blame.url}
         {#if info && !isUncommitted(info)}
@@ -540,18 +523,6 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-  }
-  .url {
-    flex: 1;
-    min-width: 0;
-    resize: none;
-    overflow-y: auto;
-    max-height: calc(6 * 1.45em + 18px);
-    line-height: 1.45;
-    white-space: pre-wrap;
-    word-break: break-all;
-    font-family: ui-monospace, monospace;
-    font-size: 13px;
   }
   .send {
     flex: none;
