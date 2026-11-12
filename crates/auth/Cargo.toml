@@ -16,7 +16,7 @@ base64 = "0.22"
 url = "2"
 percent-encoding = "2"
 sha1 = { version = "0.10", features = ["oid"] }
-sha2 = { version = "0.10", features = ["oid"] }
+sha2 = { version = "0.11", features = ["oid"] }
 md-5 = "0.10"
 md4 = "0.10"
 hmac = "0.12"
