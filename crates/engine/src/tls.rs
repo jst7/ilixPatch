@@ -189,7 +189,7 @@ pub fn identity_pem_from_files(
             let pass = passphrase.ok_or_else(|| {
                 format!("{key_src}: the key is encrypted; a passphrase is required")
             })?;
-            let info = pkcs8::EncryptedPrivateKeyInfo::try_from(key.der.as_slice())
+            let info = pkcs8::EncryptedPrivateKeyInfoRef::try_from(key.der.as_slice())
                 .map_err(|e| format!("{key_src}: {e}"))?;
             let doc = info.decrypt(pass).map_err(|_| {
                 format!("{key_src}: wrong passphrase or unsupported key encryption")

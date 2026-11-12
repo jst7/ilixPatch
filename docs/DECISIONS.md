@@ -376,16 +376,22 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - Los entornos antiguos de colección no se editan desde aquí.
 - La ventana se mantiene abierta mientras tiene el foco y se cierra con Esc, Cancelar, Guardar o un clic fuera.
 
-## D42 · Actualizaciones de dependencias (Dependabot) 🗓️ (después de v0.3.0)
+## D42 · Actualizaciones de dependencias (Dependabot) ✅ (v0.3.1 y v0.3.5; TypeScript 7 en espera)
 - **Grupos de Dependabot** (`.github/dependabot.yml`), para que lo que debe ir junto llegue en un solo PR:
   - **RustCrypto** (sha2, pkcs8, rsa, p256…) siempre juntas, también en versiones mayores, porque comparten traits y subir solo una duplica dependencias;
   - **Tauri** (crates y paquetes `@tauri-apps/*`);
   - **Svelte/SvelteKit/Vite**, **CodeMirror** y las acciones de GitHub.
 - **Primeros PRs de Dependabot:** no se fusionan tal cual, porque están hechos sobre un `main` antiguo y chocarían con Authorization. Se aplican a mano por grupos, con la verificación completa en cada uno:
-  1. `base64` 0.23, `miniz_oxide` 0.9 y `toml` 1.x. Los tests de ida y vuelta comprueban que el formato de los archivos no cambia.
-  2. SvelteKit 3 y adapter-static 4.
-  3. TypeScript 7.
-- **En espera:** `sha2` 0.11 y `pkcs8` 0.11, hasta que `rsa`, `p256` y el resto de la familia RustCrypto estén en las versiones compatibles.
+  1. ✅ v0.3.1: `base64` 0.23, `miniz_oxide` 0.9 y `toml` 1.x. Los tests de ida y vuelta comprueban que el formato de los archivos no cambia.
+  2. ✅ v0.3.5: **SvelteKit 3 y adapter-static 4.**
+     - La configuración pasa de `svelte.config.js` (que se elimina) a `sveltekit({ preprocess, adapter, alias })` en `vite.config.js`.
+     - SvelteKit 3 sustituye `$lib` por `#lib`. Se mantiene `$lib` con `alias: { $lib: "src/lib" }`, la vía que ofrece SvelteKit, en vez de reescribir 304 imports en 83 archivos.
+  3. ✅ v0.3.5: **familia RustCrypto entera**: sha1/sha2/md-5/md4 0.11, hmac 0.13, rand_core 0.10, p256/p384/p521 0.14, pkcs8 0.11 y **rsa 0.10**.
+     - El PR de Dependabot no compilaba porque no subía `rsa`, y mezclaba `digest` 0.10 y 0.11.
+     - Cambios: `rsa` necesita la feature `pkcs1v15`; `RsaPrivateKey` pasa a `PrivateKey`; `pss::BlindedSigningKey` pasa a `pss::SigningKey` (ahora siempre aplica blinding); `Mac::new_from_slice` pasa a `KeyInit::new_from_slice`; el RNG propio implementa `TryRng<Error = Infallible>` y `TryCryptoRng` (rand_core 0.10); para claves PKCS#8 cifradas se usa `pkcs8::EncryptedPrivateKeyInfoRef`.
+     - Lo validan los tests con vectores conocidos: JWT (RFC 7515), NTLM (MS-NLMP), OAuth1 (RFC 5849), PKCE (RFC 7636), firmas RS/PS/ES y claves PEM/PKCS#8 cifradas.
+     - Solo `tauri-codegen` (macro de compilación) sigue usando `sha2` 0.10.
+  4. 🗓️ **TypeScript 7:** en espera hasta que SvelteKit y svelte-check lo soporten oficialmente. Hoy exige tener instalados TS 7 y TS 6 a la vez y activar el modo experimental `--tsgo`.
 
 ## D41 · Respuestas grandes: streaming, archivos temporales y lectura por fragmentos ✅ (v0.3.0)
 > Completa D09 ("los datos grandes se quedan en Rust"), que estaba pendiente: hasta ahora el body entero se leía a un `Vec<u8>` y viajaba completo a la interfaz.

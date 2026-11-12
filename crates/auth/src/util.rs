@@ -123,7 +123,7 @@ pub(crate) fn hash(alg: HashAlg, data: &[u8]) -> Vec<u8> {
 
 pub(crate) fn hmac(alg: HashAlg, key: &[u8], data: &[u8]) -> Vec<u8> {
     fn run<M: Mac + hmac::digest::KeyInit>(key: &[u8], data: &[u8]) -> Vec<u8> {
-        let mut m = <M as Mac>::new_from_slice(key).expect("HMAC accepts any key length");
+        let mut m = <M as hmac::KeyInit>::new_from_slice(key).expect("HMAC accepts any key length");
         m.update(data);
         m.finalize().into_bytes().to_vec()
     }
@@ -136,7 +136,8 @@ pub(crate) fn hmac(alg: HashAlg, key: &[u8], data: &[u8]) -> Vec<u8> {
 }
 
 pub(crate) fn hmac_md5(key: &[u8], data: &[u8]) -> Vec<u8> {
-    let mut m = <Hmac<md5::Md5> as Mac>::new_from_slice(key).expect("HMAC accepts any key length");
+    let mut m = <Hmac<md5::Md5> as hmac::KeyInit>::new_from_slice(key)
+        .expect("HMAC accepts any key length");
     m.update(data);
     m.finalize().into_bytes().to_vec()
 }
@@ -201,27 +202,28 @@ pub(crate) fn uuid_v4(env: &mut AuthEnv) -> String {
 /// `rand_core` adapter over `AuthEnv.random` (RSA blinding, PSS salts).
 pub(crate) struct EnvRng<'e, 'a>(pub &'e mut AuthEnv<'a>);
 
-impl rand_core::RngCore for EnvRng<'_, '_> {
-    fn next_u32(&mut self) -> u32 {
+// rand_core 0.10: implement the fallible `TryRng` with `Infallible`; `Rng` and
+// `CryptoRng` come from blanket impls.
+impl rand_core::TryRng for EnvRng<'_, '_> {
+    type Error = core::convert::Infallible;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
         let mut b = [0u8; 4];
         (self.0.random)(&mut b);
-        u32::from_le_bytes(b)
+        Ok(u32::from_le_bytes(b))
     }
-    fn next_u64(&mut self) -> u64 {
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
         let mut b = [0u8; 8];
         (self.0.random)(&mut b);
-        u64::from_le_bytes(b)
+        Ok(u64::from_le_bytes(b))
     }
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        (self.0.random)(dest)
-    }
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Self::Error> {
         (self.0.random)(dest);
         Ok(())
     }
 }
 
-impl rand_core::CryptoRng for EnvRng<'_, '_> {}
+impl rand_core::TryCryptoRng for EnvRng<'_, '_> {}
 
 // ---------------------------------------------------------------- requests
 
@@ -276,7 +278,7 @@ pub(crate) fn non_empty(s: &Option<String>) -> Option<&str> {
 // ---------------------------------------------------------------- PEM keys
 
 pub(crate) enum PrivateKey {
-    Rsa(Box<rsa::RsaPrivateKey>),
+    Rsa(Box<rsa::PrivateKey>),
     P256(p256::SecretKey),
     P384(p384::SecretKey),
     P521(p521::SecretKey),
@@ -309,7 +311,7 @@ pub(crate) fn parse_private_key(pem: &str, field: &str) -> Result<PrivateKey, Au
         )
     };
     match label.as_str() {
-        "RSA PRIVATE KEY" => rsa::RsaPrivateKey::from_pkcs1_pem(&block)
+        "RSA PRIVATE KEY" => rsa::PrivateKey::from_pkcs1_pem(&block)
             .map(|k| PrivateKey::Rsa(Box::new(k)))
             .map_err(|_| bad("RSA (PKCS#1)")),
         "EC PRIVATE KEY" => {
@@ -325,7 +327,7 @@ pub(crate) fn parse_private_key(pem: &str, field: &str) -> Result<PrivateKey, Au
             Err(bad("EC (SEC1, P-256/P-384/P-521)"))
         }
         "PRIVATE KEY" => {
-            if let Ok(k) = rsa::RsaPrivateKey::from_pkcs8_pem(&block) {
+            if let Ok(k) = rsa::PrivateKey::from_pkcs8_pem(&block) {
                 return Ok(PrivateKey::Rsa(Box::new(k)));
             }
             if let Ok(k) = p256::SecretKey::from_pkcs8_pem(&block) {
@@ -370,7 +372,7 @@ fn find_private_key_block(text: &str) -> Option<(String, String)> {
 /// RSASSA-PKCS1-v1_5 with RSA blinding (randomness from `AuthEnv.random`). The signature itself
 /// is deterministic; blinding only protects the private-key operation against timing attacks.
 pub(crate) fn rsa_pkcs1v15_sign(
-    key: &rsa::RsaPrivateKey,
+    key: &rsa::PrivateKey,
     alg: HashAlg,
     msg: &[u8],
     env: &mut AuthEnv,
@@ -398,26 +400,26 @@ pub(crate) fn rsa_pkcs1v15_sign(
 /// RSASSA-PSS with blinding; `AuthEnv.random` provides the salt (salt length = hash length)
 /// and the blinding factor.
 pub(crate) fn rsa_pss_sign(
-    key: &rsa::RsaPrivateKey,
+    key: &rsa::PrivateKey,
     alg: HashAlg,
     msg: &[u8],
     env: &mut AuthEnv,
 ) -> Vec<u8> {
-    use rsa::pss::BlindedSigningKey;
+    use rsa::pss::SigningKey as PssSigningKey;
     use rsa::signature::{RandomizedSigner, SignatureEncoding};
     let mut rng = EnvRng(env);
     let k = key.clone();
     match alg {
-        HashAlg::Sha1 => BlindedSigningKey::<Sha1>::new(k)
+        HashAlg::Sha1 => PssSigningKey::<Sha1>::new(k)
             .sign_with_rng(&mut rng, msg)
             .to_vec(),
-        HashAlg::Sha256 => BlindedSigningKey::<Sha256>::new(k)
+        HashAlg::Sha256 => PssSigningKey::<Sha256>::new(k)
             .sign_with_rng(&mut rng, msg)
             .to_vec(),
-        HashAlg::Sha384 => BlindedSigningKey::<Sha384>::new(k)
+        HashAlg::Sha384 => PssSigningKey::<Sha384>::new(k)
             .sign_with_rng(&mut rng, msg)
             .to_vec(),
-        HashAlg::Sha512 => BlindedSigningKey::<Sha512>::new(k)
+        HashAlg::Sha512 => PssSigningKey::<Sha512>::new(k)
             .sign_with_rng(&mut rng, msg)
             .to_vec(),
     }

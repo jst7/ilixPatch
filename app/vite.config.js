@@ -1,12 +1,27 @@
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
+// Tauri doesn't have a Node.js server to do proper SSR, so adapter-static with a
+// fallback to index.html puts the site in SPA mode.
+// See: https://svelte.dev/docs/kit/single-page-apps and https://v2.tauri.app/start/frontend/sveltekit/
+// SvelteKit 3: the configuration lives here (svelte.config.js is no longer read).
+import adapter from "@sveltejs/adapter-static";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [sveltekit()],
+  plugins: [
+    sveltekit({
+      preprocess: vitePreprocess(),
+      // SvelteKit 3 replaced `$lib` with `#lib`; keep `$lib` (used everywhere) via an alias.
+      alias: { $lib: "src/lib" },
+      adapter: adapter({
+        fallback: "index.html",
+      }),
+    }),
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
