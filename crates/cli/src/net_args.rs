@@ -181,16 +181,23 @@ mod tests {
     fn newman_cert_list() {
         let dir = tempfile::tempdir().unwrap();
         let list = dir.path().join("certs.json");
+        // An absolute path on this OS ("/abs" has no drive on Windows, so it is not absolute there).
+        let abs_cert = if cfg!(windows) {
+            "C:/abs/client.crt"
+        } else {
+            "/abs/client.crt"
+        };
         std::fs::write(
             &list,
             r#"[{"name":"a","matches":["https://api.example.com/*","https://*.corp.com/*"],
-                 "key":{"src":"./client.key"},"cert":{"src":"/abs/client.crt"},"passphrase":"x"},
-                {"name":"b","matches":"https://p12.example.com/*","cert":"bundle.p12"}]"#,
+                 "key":{"src":"./client.key"},"cert":{"src":"ABS_CERT"},"passphrase":"x"},
+                {"name":"b","matches":"https://p12.example.com/*","cert":"bundle.p12"}]"#
+                .replace("ABS_CERT", abs_cert),
         )
         .unwrap();
         let certs = parse_cert_list(&list).unwrap();
         assert_eq!(certs.len(), 3);
-        assert_eq!(certs[0].cert_path.as_deref(), Some("/abs/client.crt"));
+        assert_eq!(certs[0].cert_path.as_deref(), Some(abs_cert));
         assert!(
             certs[0]
                 .key_path
