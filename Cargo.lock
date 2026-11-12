@@ -3378,7 +3378,7 @@ name = "ilixpatch-history"
 version = "0.3.0"
 dependencies = [
  "ilixpatch-core",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "rusqlite",
  "serde",
  "serde_json",
