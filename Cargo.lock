@@ -3272,7 +3272,7 @@ dependencies = [
 name = "ilixpatch-auth"
 version = "0.3.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "hmac 0.12.1",
  "ilixpatch-core",
  "indexmap 2.14.2",
@@ -3296,7 +3296,7 @@ dependencies = [
 name = "ilixpatch-bodystore"
 version = "0.3.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "indexmap 2.14.2",
  "regex",
  "serde",
@@ -3338,7 +3338,7 @@ dependencies = [
 name = "ilixpatch-engine"
 version = "0.3.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "getrandom 0.3.4",
  "ilixpatch-auth",
  "ilixpatch-bodystore",

@@ -11,7 +11,7 @@ serde.workspace = true
 indexmap.workspace = true
 tempfile = "3"
 regex = "1"
-base64 = "0.22"
+base64 = "0.23"
 
 [dev-dependencies]
 serde_json.workspace = true
