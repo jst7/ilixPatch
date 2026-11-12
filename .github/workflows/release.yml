@@ -30,6 +30,8 @@ jobs:
       - name: Compare tag with Cargo.toml and tauri.conf.json
         run: |
           tag="${GITHUB_REF_NAME#v}"
+          # A trailing letter (v0.3.3b) is a rebuild of the same app version (0.3.3).
+          if [[ "$tag" =~ ^([0-9]+\.[0-9]+\.[0-9]+)[a-z]$ ]]; then tag="${BASH_REMATCH[1]}"; fi
           cargo_v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           tauri_v=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
           echo "tag=$tag cargo=$cargo_v tauri=$tauri_v"
