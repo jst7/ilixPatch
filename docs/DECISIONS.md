@@ -347,7 +347,18 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
-## D41 · Respuestas grandes: streaming, archivos temporales y lectura por fragmentos 🗓️ (v0.3.0, después de D39)
+## D42 · Actualizaciones de dependencias (Dependabot) 🗓️ (después de v0.3.0)
+- **Grupos de Dependabot** (`.github/dependabot.yml`), para que lo que debe ir junto llegue en un solo PR:
+  - **RustCrypto** (sha2, pkcs8, rsa, p256…) siempre juntas, también en versiones mayores, porque comparten traits y subir solo una duplica dependencias;
+  - **Tauri** (crates y paquetes `@tauri-apps/*`);
+  - **Svelte/SvelteKit/Vite**, **CodeMirror** y las acciones de GitHub.
+- **Primeros PRs de Dependabot:** no se fusionan tal cual, porque están hechos sobre un `main` antiguo y chocarían con Authorization. Se aplican a mano por grupos, con la verificación completa en cada uno:
+  1. `base64` 0.23, `miniz_oxide` 0.9 y `toml` 1.x. Los tests de ida y vuelta comprueban que el formato de los archivos no cambia.
+  2. SvelteKit 3 y adapter-static 4.
+  3. TypeScript 7.
+- **En espera:** `sha2` 0.11 y `pkcs8` 0.11, hasta que `rsa`, `p256` y el resto de la familia RustCrypto estén en las versiones compatibles.
+
+## D41 · Respuestas grandes: streaming, archivos temporales y lectura por fragmentos ✅ (v0.3.0)
 > Completa D09 ("los datos grandes se quedan en Rust"), que estaba pendiente: hasta ahora el body entero se leía a un `Vec<u8>` y viajaba completo a la interfaz.
 - **Streaming real** con `reqwest::Response::bytes_stream()`. Nunca se carga el body entero en memoria por defecto.
   - **Memoria hasta un umbral** (por defecto ~1 MB). Si se supera, se **vuelca a un archivo temporal** (`tempfile`, en la caché de la app) mientras se va recibiendo.
@@ -364,6 +375,12 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
 - **Scripts y tests:** `pm.response.text()` y `json()` cargan el body solo si hace falta, hasta un límite. Por encima, el script recibe un aviso y el body truncado.
 - **Runner y pruebas de carga:** por defecto **descartan el body** (solo cuentan bytes), salvo que haya scripts de test que lo necesiten. Así una prueba de carga no acumula memoria.
 - **Historial:** guarda como máximo `max_body_kb` (D22), leído del temporal.
+- **Detalles de implementación (app):**
+  - Los temporales van a `<app_cache_dir>/bodies` (prefijo `ilixpatch-body-`). Se borran los huérfanos al arrancar y todo el almacén en `RunEvent::Exit`.
+  - `ResponseStore` (crate `bodystore`) con LRU: **4 GB** de archivos o **64** bodies como máximo. El body recién añadido nunca se expulsa.
+  - `SendResult.body` lleva el body entero si cabe en `inline_body_kb`; si no, una **vista previa de 64 KB** cortada en un límite UTF-8, y `body_handle.preview_truncated = true`.
+  - El historial lee el body fuera del runtime async (`spawn_blocking`) y solo hasta `max_body_kb`, nunca el temporal entero.
+  - Tests de extremo a extremo en `crates/engine/src/large_body_tests.rs`: 50 MB a temporal, corte en `max_body_mb`, descarte y cancelación a mitad (cierra la conexión y no deja temporal).
 
 ## D40 · Releases sin firma, y firma opcional ✅
 - **No hacen falta claves de desarrollador** para publicar. Sin secretos, la release genera apps **sin firmar**:

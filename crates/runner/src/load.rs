@@ -283,6 +283,8 @@ async fn virtual_user(
                 timeout,
                 run_scripts,
                 oauth2: oauth2.as_ref().map(|h| &*h.0),
+                // Count bytes only, unless a tests script needs the body.
+                keep_body: false,
             };
             let start = Instant::now();
             let store = &mut stores[li.target];

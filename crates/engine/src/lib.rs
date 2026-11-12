@@ -25,6 +25,7 @@ use thiserror::Error;
 
 pub use challenge::{ChallengeAuth, body_bytes, full_url, with_auth_env};
 pub use error::{ErrorContext, RequestError, RequestErrorKind, classify, detail_chain};
+pub use ilixpatch_bodystore::{self as bodystore, Body as ResponseBody, BodySink, SinkConfig};
 pub use proxy::{Bypass, HostPattern};
 pub use reqwest::Url;
 pub use settings::{
@@ -52,6 +53,9 @@ pub enum EngineError {
     /// Authorization could not be computed (D39); names the auth type and field.
     #[error("{0}")]
     Auth(String),
+    /// The body could not be stored (temp file I/O, D41).
+    #[error("could not store the response body: {0}")]
+    Body(Box<std::io::Error>),
 }
 
 /// `Display` of an error and its sources, without repetitions.
@@ -102,19 +106,30 @@ pub struct Response {
     pub status: u16,
     pub status_text: String,
     pub headers: Vec<(String, String)>,
+    /// D41: in memory up to `inline_body_kb`, else a temp file (deleted
+    /// with the last clone). Empty when the body was discarded.
     #[serde(skip)]
-    pub body: Vec<u8>,
+    pub body: ResponseBody,
+    /// `false` when the download stopped at `max_body_mb`.
+    #[serde(skip)]
+    pub body_complete: bool,
     /// Time from sending the request until the full body was received
     /// (including every redirect hop).
     pub elapsed_ms: f64,
+    /// Bytes received (also when the body was discarded).
     pub size_bytes: usize,
     #[serde(skip)]
     pub network: NetworkInfo,
 }
 
 impl Response {
+    /// The whole body as text. Reads a spilled body completely: for small
+    /// bodies and tests; consumers use [`Body::text_limited`].
     pub fn body_text(&self) -> String {
-        String::from_utf8_lossy(&self.body).into_owned()
+        self.body
+            .text_limited(usize::MAX)
+            .map(|(t, _)| t)
+            .unwrap_or_default()
     }
 
     pub fn content_type(&self) -> Option<&str> {
@@ -136,6 +151,7 @@ pub(crate) struct ClientKey {
 }
 
 /// Resolved proxy configuration.
+#[derive(Clone)]
 enum ProxyPlan {
     System,
     None,
@@ -148,6 +164,17 @@ struct Inner {
     identities: Vec<(HostPattern, reqwest::Identity)>,
     proxy: ProxyPlan,
     clients: Mutex<HashMap<ClientKey, reqwest::Client>>,
+    /// D41: where large bodies are spilled (system temp when `None`).
+    spill_dir: Option<std::path::PathBuf>,
+}
+
+/// Per-send options.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SendOptions {
+    /// Default total timeout (the request's own `settings.timeout_ms` wins).
+    pub timeout: Option<Duration>,
+    /// Count the body bytes but don't keep them (load tests, runs without tests).
+    pub discard_body: bool,
 }
 
 /// Cheap to clone (shared client cache).
@@ -290,6 +317,7 @@ impl Engine {
                 identities,
                 proxy,
                 clients: Mutex::new(HashMap::new()),
+                spill_dir: None,
             }),
         };
         // Build the default client now so configuration errors surface early.
@@ -492,7 +520,15 @@ impl Engine {
         req: &Request,
         timeout: Option<Duration>,
     ) -> Result<Response, EngineError> {
-        self.send_inner(req, timeout, None).await
+        self.send_opts(
+            req,
+            SendOptions {
+                timeout,
+                ..Default::default()
+            },
+            None,
+        )
+        .await
     }
 
     /// Send with a challenge–response auth (Digest, NTLM); see [`ChallengeAuth`].
@@ -502,16 +538,67 @@ impl Engine {
         timeout: Option<Duration>,
         auth: &ChallengeAuth,
     ) -> Result<Response, EngineError> {
-        challenge::send(self, req, timeout, auth).await
+        self.send_opts(
+            req,
+            SendOptions {
+                timeout,
+                ..Default::default()
+            },
+            Some(auth),
+        )
+        .await
+    }
+
+    /// The general send: options plus an optional challenge–response auth.
+    /// The body is streamed: kept in memory up to `inline_body_kb`, then
+    /// spilled to a temp file, and cut at `max_body_mb`. Dropping the future
+    /// (cancel) closes the connection and deletes a partial temp file.
+    pub async fn send_opts(
+        &self,
+        req: &Request,
+        opts: SendOptions,
+        auth: Option<&ChallengeAuth>,
+    ) -> Result<Response, EngineError> {
+        match auth {
+            None => self.send_inner(req, opts, None).await,
+            Some(a) => challenge::send(self, req, opts, a).await,
+        }
+    }
+
+    /// Where large bodies of this engine are spilled.
+    pub fn with_spill_dir(self, dir: impl Into<std::path::PathBuf>) -> Self {
+        let mut inner = Arc::try_unwrap(self.inner).unwrap_or_else(|arc| Inner {
+            settings: arc.settings.clone(),
+            roots: arc.roots.clone(),
+            identities: arc.identities.clone(),
+            proxy: arc.proxy.clone(),
+            clients: Mutex::new(HashMap::new()),
+            spill_dir: arc.spill_dir.clone(),
+        });
+        inner.spill_dir = Some(dir.into());
+        Self {
+            inner: Arc::new(inner),
+        }
+    }
+
+    fn sink_config(&self, discard: bool) -> SinkConfig {
+        let s = &self.inner.settings;
+        SinkConfig {
+            inline_limit: (s.inline_body_kb.saturating_mul(1024)).min(usize::MAX as u64) as usize,
+            max_bytes: (s.max_body_mb > 0).then(|| s.max_body_mb.saturating_mul(1024 * 1024)),
+            dir: self.inner.spill_dir.clone(),
+            discard,
+        }
     }
 
     /// `dedicated`: per-exchange clients (NTLM) instead of the shared cache.
     pub(crate) async fn send_inner(
         &self,
         req: &Request,
-        timeout: Option<Duration>,
+        opts: SendOptions,
         dedicated: Option<&Mutex<HashMap<ClientKey, reqwest::Client>>>,
     ) -> Result<Response, EngineError> {
+        let timeout = opts.timeout;
         let eff = self.effective(req, timeout);
         let mut url =
             reqwest::Url::parse(&req.url).map_err(|_| EngineError::InvalidUrl(req.url.clone()))?;
@@ -680,15 +767,30 @@ impl Engine {
                 )
             })
             .collect();
-        let body = resp.bytes().await.map_err(map_err)?.to_vec();
+        // D41: stream the body chunk by chunk (decompressed by reqwest).
+        let mut resp = resp;
+        let mut sink = BodySink::new(self.sink_config(opts.discard_body));
+        while let Some(chunk) = resp.chunk().await.map_err(map_err)? {
+            if !sink
+                .push(&chunk)
+                .map_err(|e| EngineError::Body(Box::new(e)))?
+            {
+                break; // max_body_mb reached
+            }
+        }
+        // Closes the connection if the body was cut.
+        drop(resp);
+        let size = sink.len();
+        let (body, body_complete) = sink.finish().map_err(|e| EngineError::Body(Box::new(e)))?;
         let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
 
         Ok(Response {
             status: status.as_u16(),
             status_text: status.canonical_reason().unwrap_or_default().to_string(),
             headers,
-            size_bytes: body.len(),
+            size_bytes: size.min(usize::MAX as u64) as usize,
             body,
+            body_complete,
             elapsed_ms,
             network,
         })
@@ -700,3 +802,5 @@ mod tests;
 
 #[cfg(test)]
 mod auth_tests;
+#[cfg(test)]
+mod large_body_tests;

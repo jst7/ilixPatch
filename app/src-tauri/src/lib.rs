@@ -6,6 +6,7 @@ mod import_commands;
 mod network_commands;
 mod oauth2_commands;
 mod registry;
+mod response_commands;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,7 +40,10 @@ struct SendResult {
     headers: Vec<(String, String)>,
     elapsed_ms: f64,
     size_bytes: usize,
+    /// Whole body when small (≤ `inline_body_kb`), else a preview (D41).
     body: String,
+    /// D41: handle to the full body in the `ResponseStore`.
+    body_handle: Option<ilixpatch_engine::bodystore::BodyHandle>,
     tests: Vec<TestResult>,
     logs: Vec<String>,
     script_error: Option<String>,
@@ -150,7 +154,6 @@ struct ProjectEntry {
 /// stays in Rust; the UI only receives what it renders. A script error is
 /// reported in `script_error`; only a failed send (or unresolved variable,
 /// skip, cancel) is an `Err`, carrying a classified `RequestError` (D36).
-// TODO: for large bodies, keep them in Rust state and stream pages to the UI.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)] // Tauri injects state as arguments
 async fn send_request(
@@ -159,6 +162,7 @@ async fn send_request(
     history_store: State<'_, ilixpatch_history::HistoryStore>,
     in_flight: State<'_, InFlight>,
     oauth2: State<'_, oauth2_commands::OAuth2State>,
+    bodies: State<'_, ilixpatch_engine::bodystore::ResponseStore>,
     request: Request,
     variables: SendVariables,
     history: Option<ilixpatch_history::HistoryContext>,
@@ -209,7 +213,7 @@ async fn send_request(
             .as_ref()
             .map(|r| r.headers.clone())
             .unwrap_or_default(),
-        body: res.response.as_ref().map(|r| r.body_text()),
+        body: None, // filled off the async runtime (may be a large temp file)
         elapsed_ms: res.response.as_ref().map_or(0.0, |r| r.elapsed_ms),
         size_bytes: res.response.as_ref().map_or(0, |r| r.size_bytes as u64),
         error: res.error.clone(),
@@ -220,12 +224,24 @@ async fn send_request(
         context: history.unwrap_or_default(),
     };
     let history_store = history_store.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || match history_store.record(entry) {
-        Ok(Some(id)) => {
-            let _ = tauri::Emitter::emit(&app, "history://recorded", id);
+    let history_body = res.response.as_ref().map(|r| r.body.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        // D41: read at most what history keeps (plus a little, so it marks the cut).
+        let mut entry = entry;
+        let hs = history_store.settings();
+        if hs.save_response_body {
+            let max = usize::try_from(hs.max_body_kb.saturating_mul(1024)).unwrap_or(usize::MAX);
+            entry.body = history_body
+                .and_then(|b| b.text_limited(max.saturating_add(4)).ok())
+                .map(|(t, _)| t);
         }
-        Ok(None) => {}
-        Err(e) => eprintln!("history: record failed: {e}"),
+        match history_store.record(entry) {
+            Ok(Some(id)) => {
+                let _ = tauri::Emitter::emit(&app, "history://recorded", id);
+            }
+            Ok(None) => {}
+            Err(e) => eprintln!("history: record failed: {e}"),
+        }
     });
 
     // D36: a failed send rejects with a classified `RequestError`.
@@ -239,8 +255,10 @@ async fn send_request(
             res.error.clone().unwrap_or_else(|| "no response".into()),
         ))
     })?;
+    let (handle, body) = response_commands::keep(&bodies, &engine, &resp);
     Ok(SendResult {
-        body: resp.body_text(),
+        body,
+        body_handle: Some(handle),
         network: Some(resp.network),
         status: resp.status,
         status_text: resp.status_text,
@@ -483,6 +501,7 @@ pub fn run() {
             history_commands::init(app)?;
             network_commands::init(app)?;
             oauth2_commands::init(app)?;
+            response_commands::init(app)?;
             #[cfg(target_os = "macos")]
             app.set_menu(app_menu(app.handle())?)?;
             Ok(())
@@ -562,7 +581,20 @@ pub fn run() {
             auth_commands::save_collection_variables,
             network_commands::network_get_settings,
             network_commands::network_set_settings,
+            response_commands::response_read,
+            response_commands::response_lines,
+            response_commands::response_search,
+            response_commands::response_save,
+            response_commands::response_release,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // D41: delete the temp files of large bodies on exit.
+            if let tauri::RunEvent::Exit = event
+                && let Some(store) = app.try_state::<ilixpatch_engine::bodystore::ResponseStore>()
+            {
+                store.clear();
+            }
+        });
 }

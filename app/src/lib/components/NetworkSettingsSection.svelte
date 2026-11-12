@@ -450,6 +450,42 @@
         <option value="http2">HTTP/2</option>
       </select>
     </label>
+    <label class="row">
+      <span>{t("net.inlineBodyKb")}</span>
+      <span class="inline">
+        <input
+          class="num"
+          type="number"
+          min="16"
+          step="256"
+          value={s.inline_body_kb}
+          onchange={(e) => {
+            if (!s) return;
+            s.inline_body_kb = Math.max(16, nonNeg(e.currentTarget.value));
+            changed();
+          }}
+        />
+        <span class="muted small">{t("net.inlineBodyKbHint")}</span>
+      </span>
+    </label>
+    <label class="row">
+      <span>{t("net.maxBodyMb")}</span>
+      <span class="inline">
+        <input
+          class="num"
+          type="number"
+          min="0"
+          step="64"
+          value={s.max_body_mb}
+          onchange={(e) => {
+            if (!s) return;
+            s.max_body_mb = nonNeg(e.currentTarget.value);
+            changed();
+          }}
+        />
+        <span class="muted small">{t("net.maxBodyMbHint")}</span>
+      </span>
+    </label>
     <p class="muted note">{t("net.corsNote", { app: t("app.name") })}</p>
   {/if}
 </section>

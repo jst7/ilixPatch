@@ -15,6 +15,8 @@ use tauri::{Manager, State};
 pub struct SharedEngine {
     engine: RwLock<Engine>,
     file: PathBuf,
+    /// D41: where large bodies are spilled.
+    spill_dir: PathBuf,
 }
 
 impl SharedEngine {
@@ -29,6 +31,7 @@ impl SharedEngine {
 
 pub fn init(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let file = app.path().app_config_dir()?.join(SETTINGS_FILE);
+    let spill_dir = crate::response_commands::spill_dir(app)?;
     let engine = match load_settings(&file)
         .and_then(|s| Engine::with_settings(s).map_err(|e| e.to_string()))
     {
@@ -41,8 +44,9 @@ pub fn init(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     app.manage(SharedEngine {
-        engine: RwLock::new(engine),
+        engine: RwLock::new(engine.with_spill_dir(&spill_dir)),
         file,
+        spill_dir,
     });
     Ok(())
 }
@@ -59,7 +63,9 @@ pub fn network_set_settings(
     shared: State<'_, SharedEngine>,
     settings: NetworkSettings,
 ) -> Result<(), String> {
-    let engine = Engine::with_settings(settings.clone()).map_err(|e| e.to_string())?;
+    let engine = Engine::with_settings(settings.clone())
+        .map_err(|e| e.to_string())?
+        .with_spill_dir(&shared.spill_dir);
     save_settings(&shared.file, &settings)?;
     *shared.engine.write().unwrap_or_else(|e| e.into_inner()) = engine;
     Ok(())

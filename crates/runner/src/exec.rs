@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use ilixpatch_core::Request;
-use ilixpatch_engine::{Engine, RequestError, Response};
+use ilixpatch_engine::{Engine, RequestError, Response, SendOptions};
 use ilixpatch_scripting::{
     ResponseView, ScriptInput, ScriptKind, ScriptOutput, TestResult, VarUpdate, run_script,
 };
@@ -30,6 +30,10 @@ pub struct ExecContext<'a> {
     pub run_scripts: bool,
     /// Supplies OAuth 2.0 tokens when the auth has no literal `access_token`.
     pub oauth2: Option<&'a dyn OAuth2Provider>,
+    /// D41: keep the response body. When `false` it is still kept if the
+    /// request has a tests script (and scripts run); otherwise only its size
+    /// is counted.
+    pub keep_body: bool,
 }
 
 impl std::fmt::Debug for ExecContext<'_> {
@@ -53,6 +57,7 @@ impl Default for ExecContext<'_> {
             timeout: None,
             run_scripts: true,
             oauth2: None,
+            keep_body: true,
         }
     }
 }
@@ -199,10 +204,13 @@ pub async fn execute_request(
     };
 
     // 4. Send.
-    let sent = match &challenge {
-        None => engine.send_with_timeout(&resolved, ctx.timeout).await,
-        Some(ch) => engine.send_with_auth(&resolved, ctx.timeout, ch).await,
+    let needs_body =
+        ctx.keep_body || (ctx.run_scripts && has_code(&request.scripts.tests).is_some());
+    let opts = SendOptions {
+        timeout: ctx.timeout,
+        discard_body: !needs_body,
     };
+    let sent = engine.send_opts(&resolved, opts, challenge.as_ref()).await;
     let response = match sent {
         Ok(r) => r,
         Err(e) => {
@@ -222,7 +230,7 @@ pub async fn execute_request(
             status: response.status,
             status_text: response.status_text.clone(),
             headers: response.headers.clone(),
-            body: response.body_text(),
+            body: script_body(&response, &mut res.logs),
             elapsed_ms: response.elapsed_ms,
             size_bytes: response.size_bytes,
         };
@@ -253,4 +261,34 @@ pub fn error_chain(e: &dyn std::error::Error) -> String {
         src = inner.source();
     }
     s
+}
+
+/// Most bytes of a body given to `pm.response.text()/json()` (D41).
+pub const SCRIPT_BODY_LIMIT: usize = 64 * 1024 * 1024;
+
+/// The body for test scripts, read up to [`SCRIPT_BODY_LIMIT`] (with a log
+/// warning when cut).
+fn script_body(response: &Response, logs: &mut Vec<String>) -> String {
+    if !response.body_complete {
+        logs.push(format!(
+            "[warn] the response body was cut at {} bytes (max_body_mb)",
+            response.size_bytes
+        ));
+    }
+    match response.body.text_limited(SCRIPT_BODY_LIMIT) {
+        Ok((text, truncated)) => {
+            if truncated {
+                logs.push(format!(
+                    "[warn] pm.response sees only the first {} MB of a {} byte body",
+                    SCRIPT_BODY_LIMIT / (1024 * 1024),
+                    response.body.len()
+                ));
+            }
+            text
+        }
+        Err(e) => {
+            logs.push(format!("[warn] could not read the response body: {e}"));
+            String::new()
+        }
+    }
 }

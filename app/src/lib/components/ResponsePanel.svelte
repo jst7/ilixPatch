@@ -6,6 +6,8 @@
   import RuntimeVariables from "./RuntimeVariables.svelte";
   import NetworkInfo from "./NetworkInfo.svelte";
   import RequestErrorView from "./RequestErrorView.svelte";
+  import LargeBodyViewer from "./largebody/LargeBodyViewer.svelte";
+  import BinaryBodyView from "./largebody/BinaryBodyView.svelte";
 
   interface Props {
     path: string;
@@ -57,7 +59,14 @@
     return { text: r.body, language: "text" };
   }
 
-  const body = $derived(result ? pretty(result) : null);
+  /** D41: small text bodies use CodeEditor; large ones the virtualized viewer; binary ones a hex preview. */
+  const handle = $derived(result?.body_handle ?? null);
+  const bodyMode = $derived<"editor" | "large" | "binary">(
+    handle && !handle.is_text ? "binary" : handle?.preview_truncated ? "large" : "editor",
+  );
+  const body = $derived(
+    result ? (bodyMode === "editor" ? pretty(result) : { text: "", language: "text" as const }) : null,
+  );
 
   function formatSize(n: number): string {
     if (n < 1024) return `${n} B`;
@@ -117,7 +126,7 @@
       <button class:active={tab === "console"} onclick={() => (tab = "console")}>
         {t("response.tab.console")}{#if logs.length}<span class="count">{logs.length}</span>{/if}
       </button>
-      {#if tab === "body"}
+      {#if tab === "body" && bodyMode === "editor"}
         <div class="tools">
           {#if body.language === "json"}
             <button class="ghost small" onclick={() => editor?.foldAll()}>{t("response.collapseAll")}</button>
@@ -128,7 +137,11 @@
       {/if}
     </div>
     <div class="content">
-      {#if tab === "body"}
+      {#if tab === "body" && handle && bodyMode === "large"}
+        {#key handle.id}<LargeBodyViewer {handle} />{/key}
+      {:else if tab === "body" && handle && bodyMode === "binary"}
+        {#key handle.id}<BinaryBodyView {handle} />{/key}
+      {:else if tab === "body"}
         <div class="code">
           <CodeEditor
             bind:this={editor}

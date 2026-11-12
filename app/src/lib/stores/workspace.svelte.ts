@@ -333,11 +333,18 @@ function responseFromHistory(entry: HistoryEntry): ResponseState {
       script_error: null,
       variable_updates: [],
       network: null,
+      body_handle: null,
     },
   };
 }
 
 const LS_TABS = "ilixpatch.tabs";
+
+/** Free a response body kept by the backend (D41), unless `next` still uses the same body. */
+function releaseBody(old: SendResult | null | undefined, next: SendResult | null = null) {
+  const id = old?.body_handle?.id;
+  if (id && id !== next?.body_handle?.id) void api.responseRelease(id).catch(() => {});
+}
 
 // ---------- Workspace ----------
 
@@ -567,20 +574,32 @@ class Workspace {
     return tab.kind === "request" && this.isDirty(tab.path);
   }
 
+  /** Forget a response and free its body in the backend store (D41). */
+  private dropResponse(key: string) {
+    const r = this.responses[key];
+    if (!r) return;
+    if (r.loading && r.requestId) void api.cancelRequest(r.requestId).catch(() => {});
+    releaseBody(r.result);
+    delete this.responses[key];
+  }
+
   /** Remove tabs without asking; if the active one goes, activate its nearest remaining neighbour. */
   private dropTabs(keys: Set<string>) {
     if (keys.size === 0) return;
     const activeIndex = this.tabs.findIndex((t) => tabKey(t) === this.activeKey);
     const activeGoes = this.activeKey !== null && keys.has(this.activeKey);
     for (const tab of this.tabs) {
-      // Closing a request tab discards its draft (the caller already confirmed).
-      if (tab.kind === "request" && keys.has(tabKey(tab))) delete this.drafts[tab.path];
+      // Closing a request tab discards its draft (the caller already confirmed) and frees its body (D41).
+      if (tab.kind === "request" && keys.has(tabKey(tab))) {
+        delete this.drafts[tab.path];
+        this.dropResponse(tab.path);
+      }
       if (tab.kind === "environments" && keys.has(tabKey(tab))) dropEnvSession(tab.project);
       if (tab.kind === "container" && keys.has(tabKey(tab))) dropContainerSession(tab.path);
       if (tab.kind === "history" && keys.has(tabKey(tab))) {
         const key = historyKey(tab.id);
         delete this.drafts[key];
-        delete this.responses[key];
+        this.dropResponse(key);
         delete this.historyTabs[tab.id];
       }
     }
@@ -764,9 +783,11 @@ class Workspace {
       request.auth = cleanAuth(this.effectiveAuthFor(key).auth);
       const result = await api.sendRequest(request, variables, context, requestId);
       if (collection) this.applyVarUpdates(collection, result.variable_updates ?? []);
+      releaseBody(previous, result);
       this.responses[key] = { loading: false, result, error: null };
     } catch (e) {
       const err = toRequestError(e);
+      if (err.kind !== "cancelled") releaseBody(previous);
       this.responses[key] =
         err.kind === "cancelled"
           ? { loading: false, result: previous, error: null, cancelled: true }
@@ -911,7 +932,7 @@ class Workspace {
       else if (clean.has(p)) this.drafts[p] = draftFromRequest(loc.file.request);
     }
     for (const p of Object.keys(this.responses)) {
-      if (isWithin(p, projectPath) && !this.index.has(p)) delete this.responses[p];
+      if (isWithin(p, projectPath) && !this.index.has(p)) this.dropResponse(p);
     }
     this.pruneTabs(projectPath);
     void this.refreshRepos(projectPath);
@@ -937,7 +958,7 @@ class Workspace {
       await api.removeProject(path);
       this.entries = this.entries.filter((e) => e.path !== path);
       for (const p of Object.keys(this.drafts)) if (isWithin(p, path)) delete this.drafts[p];
-      for (const p of Object.keys(this.responses)) if (isWithin(p, path)) delete this.responses[p];
+      for (const p of Object.keys(this.responses)) if (isWithin(p, path)) this.dropResponse(p);
       this.pruneTabs(path);
       delete this.repos[path];
     } catch (e) {
@@ -1035,10 +1056,12 @@ class Workspace {
     try {
       const result = await api.sendRequest(request, variables, context, requestId);
       this.applyVarUpdates(loc.collection, result.variable_updates ?? []);
+      releaseBody(previous, result);
       this.responses[path] = { loading: false, result, error: null };
     } catch (e) {
       // A cancelled send keeps the previous response on screen and shows a notice.
       const err = toRequestError(e);
+      if (err.kind !== "cancelled") releaseBody(previous);
       this.responses[path] =
         err.kind === "cancelled"
           ? { loading: false, result: previous, error: null, cancelled: true }

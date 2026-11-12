@@ -284,6 +284,9 @@ pub fn classify(e: &EngineError, ctx: &ErrorContext<'_>) -> RequestError {
             return base(kind, format!("{m}."));
         }
         EngineError::Auth(m) => return base(K::Other, m.clone()),
+        EngineError::Body(_) => {
+            return base(K::Body, "The response body could not be stored.".into());
+        }
         EngineError::Http(_) => {}
     }
 

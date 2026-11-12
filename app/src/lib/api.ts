@@ -116,7 +116,11 @@ export interface SendResult {
   headers: [string, string][];
   elapsed_ms: number;
   size_bytes: number;
+  /** The whole body as text when it is small (≤ NetworkSettings.inline_body_kb), otherwise a
+   *  preview of its first bytes (see `body_handle.preview_truncated`). Never the full large body. */
   body: string;
+  /** D41: handle to the full body kept in Rust (memory or temp file). Read it in chunks. */
+  body_handle: BodyHandle | null;
   /** Results of pm.test(...) in the tests script. */
   tests: TestResult[];
   /** console.* output of both scripts, in order. */
@@ -555,6 +559,10 @@ export interface NetworkSettings {
   timeout_ms: number;
   min_tls_version: "1.2" | "1.3" | null;
   http_version: HttpVersionPref;
+  /** D41: bodies up to this size stay in memory and are sent whole to the UI (default 1024 KB). */
+  inline_body_kb: number;
+  /** D41: stop downloading after this many MB (body marked incomplete); 0 = unlimited (default 1024). */
+  max_body_mb: number;
 }
 
 export interface CertificateInfo {
@@ -867,6 +875,62 @@ export interface OAuth2StoredToken {
   raw: unknown;
 }
 
+// ---------- Large responses: streaming & chunked reads (D41) ----------
+
+export interface BodyHandle {
+  /** Opaque id of the body in the Rust ResponseStore. */
+  id: string;
+  /** Bytes received (after decompression). */
+  size: number;
+  /** "memory" for small bodies, "file" when spilled to a temp file. */
+  stored: "memory" | "file";
+  /** false when the download stopped early (max_body_mb reached or cancelled). */
+  complete: boolean;
+  content_type: string | null;
+  /** Looks like text (UTF-8 or declared text/json/xml charset). */
+  is_text: boolean;
+  /** Looks like JSON (content type or sniffed). */
+  is_json: boolean;
+  /** `SendResult.body` holds only the first bytes. */
+  preview_truncated: boolean;
+}
+
+export interface BodyChunk {
+  /** Text (UTF-8, lossy) when the body is text; base64 otherwise. */
+  data: string;
+  encoding: "utf8" | "base64";
+  offset: number;
+  /** Bytes covered (may be < requested at EOF; adjusted to UTF-8 boundaries for text). */
+  length: number;
+  eof: boolean;
+}
+
+export interface BodyLines {
+  start: number;
+  /** Line texts, each cut to at most `max_line_bytes` bytes (on a UTF-8 boundary). */
+  lines: string[];
+  /** Byte offset where each line starts in the selected (raw or pretty) view. */
+  offsets: number[];
+  /** Full byte length of each line (without the line break). `> bytes of lines[i]` ⇒ the line was cut. */
+  byte_lengths: number[];
+  /** Total lines of the (raw or pretty) view. */
+  total_lines: number;
+}
+
+export interface BodySearchMatch {
+  /** 0-based line in the selected view. */
+  line: number;
+  /** Character column and length within that line. */
+  column: number;
+  length: number;
+}
+
+export interface BodySearchResult {
+  matches: BodySearchMatch[];
+  /** Stopped at max_results. */
+  truncated: boolean;
+}
+
 export const api = {
   /** All projects registered in the app config, in insertion order. */
   listProjects: () => invoke<ProjectEntry[]>("list_projects"),
@@ -1056,4 +1120,23 @@ export const api = {
   oauth2DeleteTokens: (ids: string[]) => invoke<void>("oauth2_delete_tokens", { ids }),
   /** Mark which stored token is used for `tokenName` (default: the newest valid one). */
   oauth2SelectToken: (tokenName: string, id: string) => invoke<void>("oauth2_select_token", { tokenName, id }),
+
+  // Large responses (D41). `pretty` = JSON pretty-printed view (built in Rust, streaming; JSON bodies only).
+  /** Bytes [offset, offset+length) of the raw or pretty view (use with BodyLines.offsets to page through a huge line). */
+  responseRead: (id: string, offset: number, length: number, pretty = false) =>
+    invoke<BodyChunk>("response_read", { id, offset, length, pretty }),
+  /** Lines [start, start+count) of the raw or pretty view; builds a line index on first use.
+   *  Lines longer than `maxLineBytes` (default 64 KB) are cut — a minified 50 MB JSON line never crosses the bridge whole. */
+  responseLines: (id: string, start: number, count: number, pretty: boolean, maxLineBytes = 65536) =>
+    invoke<BodyLines>("response_lines", { id, start, count, pretty, maxLineBytes }),
+  responseSearch: (
+    id: string,
+    query: string,
+    options: { regex: boolean; case_sensitive: boolean; pretty: boolean; max_results: number },
+  ) => invoke<BodySearchResult>("response_search", { id, query, options }),
+  /** Copy the body to `path` (streamed from the temp file; never through the UI). */
+  responseSave: (id: string, path: string, pretty: boolean) =>
+    invoke<void>("response_save", { id, path, pretty }),
+  /** Free the body now (temp file deleted). Also done automatically on resend / tab close / LRU. */
+  responseRelease: (id: string) => invoke<void>("response_release", { id }),
 };

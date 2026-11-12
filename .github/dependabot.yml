@@ -4,14 +4,63 @@ updates:
     directory: /
     schedule: { interval: weekly }
     groups:
+      # RustCrypto crates share trait versions (digest, signature, pkcs8, der…):
+      # bumping one alone duplicates dependencies and breaks interop, so they move
+      # together in a single PR, including major versions.
+      rustcrypto:
+        patterns:
+          - "sha1"
+          - "sha2"
+          - "md-5"
+          - "md4"
+          - "hmac"
+          - "digest"
+          - "signature"
+          - "rsa"
+          - "p256"
+          - "p384"
+          - "p521"
+          - "ecdsa"
+          - "elliptic-curve"
+          - "pkcs1"
+          - "pkcs8"
+          - "pkcs12"
+          - "spki"
+          - "der"
+          - "rand_core"
+          - "x509-cert"
+          - "cms"
+      # Tauri crates must stay aligned with the @tauri-apps npm packages.
+      tauri:
+        patterns:
+          - "tauri"
+          - "tauri-*"
       rust-minor:
         update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /app
     schedule: { interval: weekly }
     groups:
+      # SvelteKit, its adapters and Vite plugins must be upgraded together.
+      svelte:
+        patterns:
+          - "svelte"
+          - "svelte-check"
+          - "@sveltejs/*"
+          - "vite"
+      codemirror:
+        patterns:
+          - "codemirror"
+          - "@codemirror/*"
+          - "@lezer/*"
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
       npm-minor:
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    groups:
+      actions:
+        patterns: ["*"]

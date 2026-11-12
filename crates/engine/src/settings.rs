@@ -74,6 +74,10 @@ pub struct NetworkSettings {
     pub timeout_ms: u64,
     pub min_tls_version: Option<TlsVersion>,
     pub http_version: HttpVersionPref,
+    /// D41: bodies up to this many KB stay in memory (and go whole to the UI).
+    pub inline_body_kb: u64,
+    /// D41: stop downloading after this many MB (body incomplete); 0 = unlimited.
+    pub max_body_mb: u64,
 }
 
 fn yes() -> bool {
@@ -93,6 +97,8 @@ impl Default for NetworkSettings {
             timeout_ms: 0,
             min_tls_version: None,
             http_version: HttpVersionPref::Auto,
+            inline_body_kb: 1024,
+            max_body_mb: 1024,
         }
     }
 }
@@ -156,6 +162,8 @@ mod tests {
                 "client_certificates",
                 "follow_redirects",
                 "http_version",
+                "inline_body_kb",
+                "max_body_mb",
                 "max_redirects",
                 "min_tls_version",
                 "proxy",

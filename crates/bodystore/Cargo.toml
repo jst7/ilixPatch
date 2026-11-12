@@ -1,0 +1,17 @@
+[package]
+name = "ilixpatch-bodystore"
+description = "Large response bodies for ilixPatch: spill to temp files, line index, search and streaming JSON pretty-printing (D41)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+indexmap.workspace = true
+tempfile = "3"
+regex = "1"
+base64 = "0.22"
+
+[dev-dependencies]
+serde_json.workspace = true

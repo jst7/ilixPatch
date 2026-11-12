@@ -1,9 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["crates/auth", "crates/core", "crates/engine", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "crates/oauth2", "app/src-tauri"]
+members = ["crates/auth", "crates/core", "crates/engine", "crates/bodystore", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "crates/oauth2", "app/src-tauri"]
 
 [workspace.package]
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["Jorge Segovia Tormo"]
@@ -15,6 +15,7 @@ dunce = "1"
 ilixpatch-core = { path = "crates/core" }
 ilixpatch-auth = { path = "crates/auth" }
 ilixpatch-engine = { path = "crates/engine" }
+ilixpatch-bodystore = { path = "crates/bodystore" }
 ilixpatch-scripting = { path = "crates/scripting" }
 ilixpatch-runner = { path = "crates/runner" }
 ilixpatch-git = { path = "crates/git" }

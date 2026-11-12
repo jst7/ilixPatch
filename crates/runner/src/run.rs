@@ -327,7 +327,13 @@ fn to_result(
             script_error: res.script_error.clone(),
             request_error: res.request_error.clone(),
             response_headers: resp.filter(|_| keep_bodies).map(|r| r.headers.clone()),
-            response_body: resp.filter(|_| keep_bodies).map(|r| r.body_text()),
+            // Reports keep at most 1 MB of each body (D41).
+            response_body: resp.filter(|_| keep_bodies).map(|r| {
+                r.body
+                    .text_limited(1024 * 1024)
+                    .map(|(t, _)| t)
+                    .unwrap_or_default()
+            }),
         },
         tests: res.tests,
         logs: res.logs,
@@ -405,6 +411,7 @@ where
             timeout: config.timeout,
             run_scripts: true,
             oauth2: config.oauth2.as_ref().map(|h| &*h.0),
+            keep_body: config.keep_bodies,
         };
 
         let mut pos = 0;

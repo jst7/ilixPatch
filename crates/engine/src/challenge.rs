@@ -3,13 +3,13 @@
 
 use std::collections::HashMap;
 use std::sync::Mutex;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ilixpatch_auth::{AuthEnv, AuthError, digest, ntlm};
 use ilixpatch_core::auth::{DigestAuth, NtlmAuth};
 use ilixpatch_core::{Body, Request};
 
-use crate::{Engine, EngineError, Response};
+use crate::{Engine, EngineError, Response, SendOptions};
 
 /// Auth types that need a server challenge before the real request.
 #[derive(Debug, Clone, PartialEq)]
@@ -109,9 +109,14 @@ fn request_uri(url: &str) -> String {
 pub(crate) async fn send(
     engine: &Engine,
     req: &Request,
-    timeout: Option<Duration>,
+    opts: SendOptions,
     auth: &ChallengeAuth,
 ) -> Result<Response, EngineError> {
+    // The challenge (401) responses are read fully but not kept.
+    let probe = SendOptions {
+        discard_body: true,
+        ..opts
+    };
     match auth {
         ChallengeAuth::Digest(cfg) => {
             let method = req.method.as_str();
@@ -122,10 +127,11 @@ pub(crate) async fn send(
             if let Some(h) = digest::preemptive(cfg, method, &uri, &body, &cnonce) {
                 let h = h.map_err(auth_err("Digest Auth"))?;
                 return engine
-                    .send_inner(&with_authorization(req, h), timeout, None)
+                    .send_inner(&with_authorization(req, h), opts, None)
                     .await;
             }
-            let first = engine.send_inner(req, timeout, None).await?;
+            // When no challenge comes, this is the real response.
+            let first = engine.send_inner(req, opts, None).await?;
             if first.status != 401 || cfg.disable_retry {
                 return Ok(first);
             }
@@ -135,7 +141,7 @@ pub(crate) async fn send(
             let h = digest::authorization(cfg, &ch, method, &uri, &body, 1, &cnonce)
                 .map_err(auth_err("Digest Auth"))?;
             engine
-                .send_inner(&with_authorization(req, h), timeout, None)
+                .send_inner(&with_authorization(req, h), opts, None)
                 .await
         }
         ChallengeAuth::Ntlm(cfg) => {
@@ -143,7 +149,7 @@ pub(crate) async fn send(
             let pool = Mutex::new(HashMap::new());
             let t1 = ntlm::negotiate(cfg).map_err(auth_err("NTLM"))?;
             let first = engine
-                .send_inner(&with_authorization(req, t1), timeout, Some(&pool))
+                .send_inner(&with_authorization(req, t1), probe, Some(&pool))
                 .await?;
             let www = www_authenticate(&first);
             let has_type2 = www.iter().any(|v| {
@@ -156,7 +162,7 @@ pub(crate) async fn send(
             let t3 = with_auth_env(|env| ntlm::authenticate(cfg, &www, env))
                 .map_err(auth_err("NTLM"))?;
             engine
-                .send_inner(&with_authorization(req, t3), timeout, Some(&pool))
+                .send_inner(&with_authorization(req, t3), opts, Some(&pool))
                 .await
         }
     }
