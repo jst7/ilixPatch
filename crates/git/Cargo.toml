@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+dunce.workspace = true
 # Reads only (refs, commits, trees, blobs, rev walks). Status and every write
 # or network operation go through the system `git` binary, see README.md.
 gix = { version = "0.90", default-features = false, features = ["sha1", "revision"] }

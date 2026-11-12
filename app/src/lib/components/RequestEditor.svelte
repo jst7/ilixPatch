@@ -1,14 +1,18 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { api, type BlameInfo, type Collection, type RequestBlame } from "$lib/api";
-  import { t } from "$lib/i18n/index.svelte";
-  import { ws, isWithin, type BodyMode, type RequestLocation } from "$lib/stores/workspace.svelte";
+  import { t, type MessageKey } from "$lib/i18n/index.svelte";
+  import { ws, isWithin, draftFromRequest, requestFromDraft, type BodyMode, type RequestLocation } from "$lib/stores/workspace.svelte";
+  import { looksLikeCurl, parseCurl, resolveRequest, toCurl } from "$lib/curl";
   import { git } from "$lib/stores/git.svelte";
   import { blameLabel, blameTooltip, isUncommitted } from "$lib/editor/blame";
   import CodeEditor from "./CodeEditor.svelte";
   import KeyValueTable from "./KeyValueTable.svelte";
   import ScriptsPanel from "./ScriptsPanel.svelte";
   import RequestSettingsPanel from "./RequestSettingsPanel.svelte";
+  import AuthEditor from "./auth/AuthEditor.svelte";
+  import { cleanAuth } from "$lib/auth";
+  import { unexportedAuth } from "$lib/curl";
   import MethodSelect from "./MethodSelect.svelte";
   import EnvSelect from "./EnvSelect.svelte";
 
@@ -38,7 +42,93 @@
     else ws.send(path);
   }
 
-  let tab = $state<"params" | "headers" | "body" | "scripts" | "settings">("params");
+  let tab = $state<"auth" | "params" | "headers" | "body" | "scripts" | "settings">("params");
+
+  /** What this request gets from its folders/collection when set to "inherit" (D39). */
+  const inheritedAuth = $derived(draft?.auth?.type === "inherit" ? ws.effectiveAuthFor(path) : null);
+
+  // ----- cURL import (paste/Enter in the URL bar) and export (D38) -----
+  let curlNotice = $state<{ kind: "ok" | "error"; text: string; details: string[] } | null>(null);
+  let curlNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  function showCurlNotice(n: typeof curlNotice, ms = 6000) {
+    curlNotice = n;
+    clearTimeout(curlNoticeTimer);
+    if (n && n.kind === "ok" && !n.details.length) curlNoticeTimer = setTimeout(() => (curlNotice = null), ms);
+  }
+
+  /** Replace the request (method, URL, params, headers, body, settings) with a pasted curl command. */
+  function applyCurl(text: string) {
+    try {
+      const { request, warnings } = parseCurl(text);
+      // Form bodies aren't editable in the UI: import them as an editable text body.
+      if (request.body?.type === "form") {
+        const fields = request.body.fields;
+        request.body = {
+          type: "text",
+          content: Object.entries(fields)
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+            .join("&"),
+        };
+        const headers = (request.headers ??= {});
+        if (!Object.keys(headers).some((k) => k.toLowerCase() === "content-type"))
+          headers["Content-Type"] = "application/x-www-form-urlencoded";
+      }
+      const next = draftFromRequest(request);
+      draft.method = next.method;
+      draft.url = next.url;
+      draft.query = next.query;
+      draft.headers = next.headers;
+      draft.bodyMode = next.bodyMode;
+      draft.bodyContent = next.bodyContent;
+      draft.formFields = next.formFields;
+      draft.settings = next.settings;
+      draft.auth = next.auth;
+      if (next.bodyMode !== "none") tab = "body";
+      else if (Object.keys(request.headers ?? {}).length) tab = "headers";
+      showCurlNotice({
+        kind: "ok",
+        text: warnings.length ? t("request.curlImportedNotes", { n: warnings.length }) : t("request.curlImported"),
+        details: warnings,
+      });
+    } catch (e) {
+      showCurlNotice({ kind: "error", text: t("request.curlError", { msg: (e as Error).message }), details: [] });
+    }
+  }
+
+  async function copyCurl(mode: "resolved" | "raw" | "oneline") {
+    let req = requestFromDraft(draft);
+    req.auth = cleanAuth(ws.effectiveAuthFor(path).auth);
+    if (mode !== "raw" && collection) req = resolveRequest(req, ws.variablesFor(collection));
+    const skipped = unexportedAuth(req.auth);
+    try {
+      await navigator.clipboard.writeText(toCurl(req, { multiline: mode !== "oneline" }));
+      showCurlNotice(
+        skipped
+          ? {
+              kind: "ok",
+              text: t("request.curlCopied"),
+              details: [t("request.curlAuthNotExported", { type: t(`auth.type.${skipped}` as MessageKey) })],
+            }
+          : { kind: "ok", text: t("request.curlCopied"), details: [] },
+        2500,
+      );
+    } catch (e) {
+      ws.fail(e);
+    }
+  }
+
+  function curlMenu(e: MouseEvent) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    ws.menu = {
+      x: r.left,
+      y: r.bottom + 2,
+      items: [
+        { label: t("request.curlCopy"), action: () => copyCurl("resolved") },
+        { label: t("request.curlCopyRaw"), action: () => copyCurl("raw") },
+        { label: t("request.curlCopyOneLine"), action: () => copyCurl("oneline") },
+      ],
+    };
+  }
 
   const filled = (rows: { key: string }[]) => rows.filter((r) => r.key.trim()).length;
 
@@ -188,15 +278,24 @@
         aria-label={t("request.url")}
         spellcheck="false"
         autocomplete="off"
+        onpaste={(e) => {
+          // Pasting a curl command fills in the whole request, like Postman.
+          const text = e.clipboardData?.getData("text/plain") ?? "";
+          if (looksLikeCurl(text)) {
+            e.preventDefault();
+            applyCurl(text);
+          }
+        }}
         onkeydown={(e) => {
           if (e.key === "Enter" && !e.isComposing && !(e.metaKey || e.ctrlKey)) {
             e.preventDefault();
-            if (!sending) send();
+            if (looksLikeCurl(draft.url)) applyCurl(draft.url);
+            else if (!sending) send();
           }
         }}
         oninput={(e) => {
           const el = e.currentTarget;
-          if (/[\r\n]/.test(el.value)) {
+          if (/[\r\n]/.test(el.value) && !looksLikeCurl(el.value)) {
             const pos = el.selectionStart;
             const before = el.value.slice(0, pos).replace(/\s*[\r\n]+\s*/g, "").length;
             draft.url = el.value.replace(/\s*[\r\n]+\s*/g, "");
@@ -233,6 +332,9 @@
     </div>
 
     <div class="tabs">
+      <button class:active={tab === "auth"} onclick={() => (tab = "auth")}>
+        {t("request.tab.auth")}{#if draft.auth.type !== "inherit" && draft.auth.type !== "no_auth"}<span class="count">•</span>{/if}
+      </button>
       <button class:active={tab === "params"} onclick={() => (tab = "params")}>
         {t("request.tab.params")}{#if filled(draft.query)}<span class="count">{filled(draft.query)}</span>{/if}
       </button>
@@ -276,10 +378,46 @@
           {t("blame.annotate")}
         </button>
       {/if}
+      <button
+        class="curl-btn"
+        class:push={!filePath}
+        title={t("request.curlHint")}
+        aria-haspopup="menu"
+        onclick={curlMenu}
+      >
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"
+          ><path
+            d="M5 4 1.5 8 5 12M11 4l3.5 4L11 12M9.5 2.5l-3 11"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg
+        >
+        cURL
+      </button>
     </div>
+    {#if curlNotice}
+      <div class="curl-notice" class:error={curlNotice.kind === "error"} role="status">
+        <span>{curlNotice.text}</span>
+        {#if curlNotice.details.length}
+          <ul>{#each curlNotice.details as d}<li>{d}</li>{/each}</ul>
+        {/if}
+        <button class="close" aria-label={t("settings.close")} onclick={() => (curlNotice = null)}>✕</button>
+      </div>
+    {/if}
 
     <div class="content">
-      {#if tab === "params"}
+      {#if tab === "auth"}
+        <AuthEditor
+          bind:auth={draft.auth}
+          scope="request"
+          inherited={inheritedAuth}
+          collection={collection ?? null}
+          projectPath={loc?.projectPath ?? null}
+        />
+      {:else if tab === "params"}
         <div class="scroll">
           <KeyValueTable
             bind:rows={draft.query}
@@ -512,5 +650,52 @@
   .send.cancel:hover {
     background: var(--err);
     color: var(--accent-text);
+  }
+  .curl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .curl-btn.push {
+    margin-left: auto;
+  }
+  .curl-btn:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  .curl-notice {
+    position: relative;
+    margin: 6px 0 0;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--ok);
+    border-radius: 6px;
+    background: var(--surface-2);
+    font-size: 12px;
+  }
+  .curl-notice.error {
+    border-left-color: var(--err);
+    color: var(--err);
+  }
+  .curl-notice ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    color: var(--muted);
+  }
+  .curl-notice .close {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
   }
 </style>

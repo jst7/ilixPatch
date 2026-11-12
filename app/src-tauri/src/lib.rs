@@ -1,8 +1,10 @@
+mod auth_commands;
 mod env_commands;
 mod git_commands;
 mod history_commands;
 mod import_commands;
 mod network_commands;
+mod oauth2_commands;
 mod registry;
 
 use std::fs;
@@ -156,6 +158,7 @@ async fn send_request(
     engine: State<'_, SharedEngine>,
     history_store: State<'_, ilixpatch_history::HistoryStore>,
     in_flight: State<'_, InFlight>,
+    oauth2: State<'_, oauth2_commands::OAuth2State>,
     request: Request,
     variables: SendVariables,
     history: Option<ilixpatch_history::HistoryContext>,
@@ -175,7 +178,10 @@ async fn send_request(
     let _guard = request_id
         .as_deref()
         .map(|id| InFlightGuard::register(&in_flight, id, token.clone()));
-    let ctx = ExecContext::default();
+    let ctx = ExecContext {
+        oauth2: Some(&*oauth2.provider),
+        ..Default::default()
+    };
     let res = tokio::select! {
         res = execute_request(&engine, &request, &mut store, &ctx) => res,
         _ = token.cancelled() => return Err(Box::new(RequestError::cancelled())),
@@ -256,6 +262,7 @@ async fn run_collection(
     engine: State<'_, SharedEngine>,
     registry: State<'_, Registry>,
     jobs: State<'_, Jobs>,
+    oauth2: State<'_, oauth2_commands::OAuth2State>,
     options: RunOptions,
     on_event: Channel<RunEvent>,
 ) -> CmdResult<RunSummary> {
@@ -264,7 +271,8 @@ async fn run_collection(
     // The data file is user-chosen and may live anywhere; it is only read.
     // Global environments and globals.toml come from the app config dir (D28).
     let config_dir = env_commands::config_dir(&app)?;
-    let config = RunConfig::from_options_in(&options, Some(&config_dir)).map_err(err)?;
+    let mut config = RunConfig::from_options_in(&options, Some(&config_dir)).map_err(err)?;
+    config.oauth2 = Some(oauth2.handle());
     let targets = resolve_target(&target).map_err(err)?;
     let engine = engine.get();
     let report = ilixpatch_runner::run_collection(&engine, &targets, &config, &cancel, |e| {
@@ -288,13 +296,15 @@ async fn start_load_test(
     engine: State<'_, SharedEngine>,
     registry: State<'_, Registry>,
     jobs: State<'_, Jobs>,
+    oauth2: State<'_, oauth2_commands::OAuth2State>,
     options: LoadOptions,
     on_snapshot: Channel<LoadSnapshot>,
 ) -> CmdResult<LoadSnapshot> {
     let target = inside_project(&registry, &options.target)?;
     let (_guard, stop) = JobGuard::acquire(&jobs.load)?;
     let config_dir = env_commands::config_dir(&app)?;
-    let config = LoadConfig::from_options_in(&options, Some(&config_dir)).map_err(err)?;
+    let mut config = LoadConfig::from_options_in(&options, Some(&config_dir)).map_err(err)?;
+    config.oauth2 = Some(oauth2.handle());
     let targets = resolve_target(&target).map_err(err)?;
     let engine = engine.get();
     run_load_test(&engine, &targets, &config, &stop, |s| {
@@ -472,6 +482,7 @@ pub fn run() {
             app.manage(Registry::new(dir.join("projects.toml")));
             history_commands::init(app)?;
             network_commands::init(app)?;
+            oauth2_commands::init(app)?;
             #[cfg(target_os = "macos")]
             app.set_menu(app_menu(app.handle())?)?;
             Ok(())
@@ -527,6 +538,12 @@ pub fn run() {
             git_commands::git_checkout_commit,
             import_commands::import_postman_preview,
             import_commands::import_postman_apply,
+            oauth2_commands::oauth2_get_token,
+            oauth2_commands::oauth2_cancel_flow,
+            oauth2_commands::oauth2_refresh_token,
+            oauth2_commands::oauth2_list_tokens,
+            oauth2_commands::oauth2_delete_tokens,
+            oauth2_commands::oauth2_select_token,
             history_commands::history_list,
             history_commands::history_get,
             history_commands::history_delete,
@@ -540,6 +557,9 @@ pub fn run() {
             env_commands::env_copy,
             env_commands::globals_get,
             env_commands::globals_save,
+            auth_commands::save_collection_auth,
+            auth_commands::save_folder_auth,
+            auth_commands::save_collection_variables,
             network_commands::network_get_settings,
             network_commands::network_set_settings,
         ])

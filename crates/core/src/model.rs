@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+use crate::auth::Auth;
+
 /// Current version of the on-disk format. Bump when making breaking changes.
 pub const FORMAT_VERSION: u32 = 1;
 
@@ -60,6 +62,9 @@ pub struct Request {
     /// Per-request network overrides (D29), `[settings]` in the file.
     #[serde(default, skip_serializing_if = "crate::RequestSettings::is_empty")]
     pub settings: crate::RequestSettings,
+    /// Authorization (D39), `[auth]` in the file. `Inherit` (the default) is omitted.
+    #[serde(default, skip_serializing_if = "Auth::is_inherit")]
+    pub auth: Auth,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -102,6 +107,9 @@ pub struct Folder {
     pub name: String,
     /// Absolute directory path.
     pub path: PathBuf,
+    /// Folder auth from `folder.toml` (D39); `Inherit` when absent. Root folder: unused (see Collection.auth).
+    #[serde(default)]
+    pub auth: Auth,
     pub requests: Vec<RequestFile>,
     pub folders: Vec<Folder>,
 }
@@ -115,6 +123,9 @@ pub struct Collection {
     pub path: PathBuf,
     /// Collection-level variables (lowest priority).
     pub variables: IndexMap<String, String>,
+    /// Collection auth from `collection.toml` `[auth]` (D39); `Inherit` here means "no auth".
+    #[serde(default)]
+    pub auth: Auth,
     pub environments: Vec<Environment>,
     /// Top-level folder; `root.path == path`.
     pub root: Folder,

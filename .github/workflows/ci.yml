@@ -83,6 +83,7 @@ jobs:
           node src/lib/merge/selftest.mjs
           node src/lib/import/selftest.mjs
           node src/lib/search/selftest.mjs
+          node src/lib/curl.selftest.mjs
 
   cli-e2e:
     name: CLI end-to-end (demo project)

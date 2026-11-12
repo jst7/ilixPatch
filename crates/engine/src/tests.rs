@@ -24,6 +24,7 @@ fn req(url: &str) -> Request {
         body: None,
         scripts: Default::default(),
         settings: Default::default(),
+        auth: Default::default(),
     }
 }
 

@@ -8,6 +8,8 @@ authors.workspace = true
 
 [dependencies]
 ilixpatch-core.workspace = true
+ilixpatch-auth.workspace = true
+getrandom = "0.3"
 # Extra features on top of the workspace set: OS root certificates, SOCKS
 # proxies and the macOS system proxy configuration.
 reqwest = { workspace = true, features = ["rustls-tls-native-roots", "socks", "macos-system-configuration"] }
@@ -26,5 +28,6 @@ rustls = { version = "0.23", default-features = false }
 tokio = { workspace = true, features = ["net", "io-util", "time"] }
 tempfile = "3"
 serde_json.workspace = true
+md-5 = "0.10"
 rcgen = { version = "0.14", features = ["pem", "x509-parser"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }

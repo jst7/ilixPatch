@@ -286,6 +286,8 @@ pub async fn run(args: RunArgs) -> Result<bool> {
     if args.iteration_data.is_some() && data.is_empty() && args.iteration_count.is_none() {
         bail!("iteration data file has no rows");
     }
+    // Built first: OAuth 2.0 token requests reuse it (proxy, CA, client-cert flags).
+    let engine = args.network.engine(args.insecure)?;
     let config = RunConfig {
         environment: env_selection(&targets, args.env.as_deref(), args.global_env.as_deref())?,
         env_overrides: args.env_var.iter().cloned().collect(),
@@ -297,9 +299,9 @@ pub async fn run(args: RunArgs) -> Result<bool> {
         bail: args.bail,
         persist_variables: true,
         keep_bodies: args.verbose || args.reporters.contains(&Reporter::Html),
+        oauth2: crate::oauth2_provider(&engine),
     };
 
-    let engine = args.network.engine(args.insecure)?;
     let cancel = CancellationToken::new();
     cancel_on_ctrl_c(cancel.clone());
 

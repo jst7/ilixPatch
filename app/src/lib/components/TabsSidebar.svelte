@@ -78,6 +78,10 @@
     if (tab.kind === "import") {
       return { key, tab, title: t("tabs.import"), hint: "", method: null, dirty: false };
     }
+    if (tab.kind === "container") {
+      const name = node?.name ?? basename(tab.path);
+      return { key, tab, title: t("tabs.container", { name }), hint: node?.hint ?? "", method: null, dirty: ws.isTabDirty(tab) };
+    }
     if (tab.kind === "git") {
       const name = basename(tab.repo);
       const info = ws.repoByRoot.get(tab.repo);
@@ -329,6 +333,10 @@
                 ><circle cx="4" cy="3" r="1.6" /><circle cx="4" cy="13" r="1.6" /><circle cx="12" cy="8" r="1.6" /><path
                   d="M4 4.6v6.8M4.6 4.4C6 7 8 8 10.4 8"
                 /></svg
+              >
+            {:else if v.tab.kind === "container"}
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"
+                ><rect x="3.5" y="7" width="9" height="7" rx="1.2" /><path d="M5.5 7V5a2.5 2.5 0 015 0v2" /></svg
               >
             {:else if v.tab.kind === "import"}
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"

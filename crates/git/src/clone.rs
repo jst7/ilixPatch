@@ -343,7 +343,7 @@ pub fn clone_repo(
         })?,
     };
     validate_dir_name(&name)?;
-    let parent = fs::canonicalize(&opts.parent_dir).map_err(io_err(&opts.parent_dir))?;
+    let parent = dunce::canonicalize(&opts.parent_dir).map_err(io_err(&opts.parent_dir))?;
     if !parent.is_dir() {
         return Err(invalid(parent, "not a directory"));
     }

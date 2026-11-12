@@ -18,9 +18,12 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::auth::Auth;
 use crate::model::{Collection, Environment, FORMAT_VERSION, Folder, Request, RequestFile};
 
 pub const COLLECTION_FILE: &str = "collection.toml";
+/// Optional per-folder settings (`[auth]`, D39). Never a request file.
+pub const FOLDER_FILE: &str = "folder.toml";
 pub const ENVIRONMENTS_DIR: &str = "environments";
 pub const SECRET_SUFFIX: &str = ".secret.toml";
 
@@ -56,6 +59,8 @@ pub enum StorageError {
     EnvExists(String),
     #[error("serialize: {0}")]
     Serialize(#[from] toml::ser::Error),
+    #[error("{path}: {message}")]
+    Edit { path: PathBuf, message: String },
 }
 
 pub type Result<T> = std::result::Result<T, StorageError>;
@@ -66,6 +71,16 @@ pub(crate) struct CollectionFile {
     pub(crate) name: String,
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub(crate) variables: IndexMap<String, String>,
+    /// Collection auth (D39); `Inherit` (= no auth) is omitted.
+    #[serde(default, skip_serializing_if = "Auth::is_inherit")]
+    pub(crate) auth: Auth,
+}
+
+/// `folder.toml`.
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct FolderFile {
+    #[serde(default, skip_serializing_if = "Auth::is_inherit")]
+    auth: Auth,
 }
 
 pub(crate) fn io_err(path: &Path) -> impl FnOnce(std::io::Error) -> StorageError + '_ {
@@ -134,6 +149,7 @@ pub fn load_collection(dir: impl AsRef<Path>) -> Result<Collection> {
         path: dir.clone(),
         variables: meta.variables,
         environments: load_environments(&dir.join(ENVIRONMENTS_DIR))?,
+        auth: meta.auth,
         root,
     })
 }
@@ -144,6 +160,11 @@ fn load_folder(dir: &Path, is_root: bool) -> Result<Folder> {
         path: dir.to_path_buf(),
         ..Default::default()
     };
+    let folder_file = dir.join(FOLDER_FILE);
+    if !is_root && folder_file.is_file() {
+        let f: FolderFile = parse(&folder_file)?;
+        folder.auth = f.auth;
+    }
     for path in sorted_entries(dir)? {
         let name = file_name(&path);
         if name.starts_with('.') {
@@ -157,6 +178,7 @@ fn load_folder(dir: &Path, is_root: bool) -> Result<Folder> {
         } else if name.ends_with(".toml")
             && !name.ends_with(SECRET_SUFFIX)
             && !(is_root && name == COLLECTION_FILE)
+            && name != FOLDER_FILE
         {
             let request = parse(&path)?;
             folder.requests.push(RequestFile { path, request });
@@ -186,6 +208,128 @@ fn load_environments(dir: &Path) -> Result<Vec<Environment>> {
         envs.push(env);
     }
     Ok(envs)
+}
+
+fn read_doc(path: &Path) -> Result<toml_edit::DocumentMut> {
+    let text = match fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(source) => {
+            return Err(StorageError::Io {
+                path: path.into(),
+                source,
+            });
+        }
+    };
+    text.parse::<toml_edit::DocumentMut>()
+        .map_err(|e| StorageError::Edit {
+            path: path.into(),
+            message: e.to_string(),
+        })
+}
+
+/// A serializable value as a `toml_edit` table (for `[auth]`, `[variables]`).
+fn to_table<T: Serialize>(value: &T, path: &Path) -> Result<toml_edit::Table> {
+    let text = toml::to_string(value)?;
+    let doc = text
+        .parse::<toml_edit::DocumentMut>()
+        .map_err(|e| StorageError::Edit {
+            path: path.into(),
+            message: e.to_string(),
+        })?;
+    let mut table = doc.as_table().clone();
+    table.set_implicit(false);
+    table.set_position(None);
+    Ok(table)
+}
+
+/// Set (`Some`, not `Inherit`) or remove a top-level table in a TOML file,
+/// keeping everything else (comments, order, formatting). Returns the
+/// edited document.
+fn set_table<T: Serialize>(
+    doc: &mut toml_edit::DocumentMut,
+    key: &str,
+    value: Option<&T>,
+    path: &Path,
+) -> Result<()> {
+    match value {
+        Some(v) => {
+            doc.insert(key, toml_edit::Item::Table(to_table(v, path)?));
+        }
+        None => {
+            doc.remove(key);
+        }
+    }
+    Ok(())
+}
+
+fn require_collection(collection: &Path) -> Result<PathBuf> {
+    let manifest = collection.join(COLLECTION_FILE);
+    if !manifest.is_file() {
+        return Err(StorageError::NotACollection(collection.into()));
+    }
+    Ok(manifest)
+}
+
+/// Set or clear (`None` / `Inherit` = no auth) the `[auth]` of a collection,
+/// preserving the rest of `collection.toml`.
+pub fn save_collection_auth(collection: impl AsRef<Path>, auth: Option<&Auth>) -> Result<()> {
+    let manifest = require_collection(collection.as_ref())?;
+    let mut doc = read_doc(&manifest)?;
+    set_table(
+        &mut doc,
+        "auth",
+        auth.filter(|a| !a.is_inherit()),
+        &manifest,
+    )?;
+    fs::write(&manifest, doc.to_string()).map_err(io_err(&manifest))
+}
+
+/// Set or clear (`None` / `Inherit`) a folder's auth in `<folder>/folder.toml`.
+/// The file is removed when nothing else is left in it.
+pub fn save_folder_auth(folder: impl AsRef<Path>, auth: Option<&Auth>) -> Result<()> {
+    let folder = folder.as_ref();
+    if !folder.is_dir() {
+        return Err(StorageError::Forbidden {
+            path: folder.into(),
+            reason: "not a folder",
+        });
+    }
+    if folder.join(COLLECTION_FILE).is_file() {
+        return Err(StorageError::Forbidden {
+            path: folder.into(),
+            reason: "this is a collection: use its collection auth",
+        });
+    }
+    let file = folder.join(FOLDER_FILE);
+    let mut doc = read_doc(&file)?;
+    set_table(&mut doc, "auth", auth.filter(|a| !a.is_inherit()), &file)?;
+    if doc.as_table().is_empty() && doc.to_string().trim().is_empty() {
+        match fs::remove_file(&file) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(io_err(&file)(e)),
+        }
+    } else {
+        fs::write(&file, doc.to_string()).map_err(io_err(&file))
+    }
+}
+
+/// Replace the `[variables]` of a collection, preserving the rest of
+/// `collection.toml`.
+pub fn save_collection_variables(
+    collection: impl AsRef<Path>,
+    variables: &IndexMap<String, String>,
+) -> Result<()> {
+    let manifest = require_collection(collection.as_ref())?;
+    let mut doc = read_doc(&manifest)?;
+    set_table(
+        &mut doc,
+        "variables",
+        (!variables.is_empty()).then_some(variables),
+        &manifest,
+    )?;
+    fs::write(&manifest, doc.to_string()).map_err(io_err(&manifest))
 }
 
 /// Write a request to `path`, creating parent folders if needed.
@@ -236,6 +380,7 @@ mod tests {
             body: None,
             scripts: Default::default(),
             settings: Default::default(),
+            auth: Default::default(),
         };
         save_request(root.join("users/list.toml"), &req).unwrap();
 

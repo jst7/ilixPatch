@@ -56,35 +56,9 @@ export function formatBytes(n: number): string {
 
 // ---------- cURL ----------
 
-function shellQuote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
-}
-
-/** Build a cURL command for a request (query params not already in the URL are appended). */
-export function toCurl(req: Request): string {
-  let url = req.url;
-  const query = Object.entries(req.query ?? {});
-  if (query.length) {
-    const existing = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("&") : [];
-    const extra = query
-      .filter(([k]) => !existing.some((p) => p === k || p.startsWith(`${encodeURIComponent(k)}=`) || p.startsWith(`${k}=`)))
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
-    if (extra.length) url += (url.includes("?") ? (url.endsWith("?") || url.endsWith("&") ? "" : "&") : "?") + extra.join("&");
-  }
-  const parts = ["curl"];
-  if (req.method !== "GET") parts.push("-X", req.method);
-  parts.push(shellQuote(url));
-  for (const [k, v] of Object.entries(req.headers ?? {})) parts.push("-H", shellQuote(`${k}: ${v}`));
-  const body = req.body ?? null;
-  if (body?.type === "form") {
-    for (const [k, v] of Object.entries(body.fields)) parts.push("--data-urlencode", shellQuote(`${k}=${v}`));
-  } else if (body) {
-    const hasType = Object.keys(req.headers ?? {}).some((k) => k.toLowerCase() === "content-type");
-    if (body.type === "json" && !hasType) parts.push("-H", shellQuote("Content-Type: application/json"));
-    parts.push("--data-raw", shellQuote(body.content));
-  }
-  return parts.join(" ");
-}
+// cURL export lives in $lib/curl (shared with the request editor's "Copy as cURL").
+import { toCurl } from "$lib/curl";
+export { toCurl };
 
 // ---------- actions ----------
 

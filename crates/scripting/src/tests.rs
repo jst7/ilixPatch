@@ -41,6 +41,7 @@ fn request() -> Request {
         body: None,
         scripts: Scripts::default(),
         settings: Default::default(),
+        auth: Default::default(),
     }
 }
 

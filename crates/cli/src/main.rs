@@ -3,6 +3,7 @@ mod hints;
 mod import_cmd;
 mod load_cmd;
 mod net_args;
+mod oauth2_cli;
 mod run_cmd;
 
 use std::path::{Path, PathBuf};
@@ -289,4 +290,13 @@ pub fn cancel_on_ctrl_c(token: ilixpatch_runner::CancellationToken) {
             }
         }
     });
+}
+
+/// OAuth 2.0 token supplier for `run`/`load` (D39): the shared token store
+/// (see `oauth2_cli`), with refresh and automatic client_credentials/password fetch.
+/// Token requests use `engine`, i.e. the same proxy / CA / client-certificate flags as the run.
+pub fn oauth2_provider(
+    engine: &ilixpatch_engine::Engine,
+) -> Option<ilixpatch_runner::OAuth2Handle> {
+    oauth2_cli::provider(engine.clone())
 }

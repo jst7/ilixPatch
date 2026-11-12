@@ -27,7 +27,7 @@ pub fn enclosing_repo(path: impl AsRef<Path>) -> Option<PathBuf> {
 /// directories, `node_modules`, `target` and symlinks are not descended into.
 pub fn discover_repos(project_root: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
     let root = project_root.as_ref();
-    let root = fs::canonicalize(root).map_err(io_err(root))?;
+    let root = dunce::canonicalize(root).map_err(io_err(root))?;
     let mut out = Vec::new();
     if let Some(enclosing) = enclosing_repo(&root) {
         out.push(enclosing);

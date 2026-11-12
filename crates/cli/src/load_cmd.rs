@@ -88,6 +88,8 @@ pub async fn run(args: LoadArgs) -> Result<bool> {
         anyhow::bail!("--max-error-rate must be between 0 and 1");
     }
     let targets = resolve_target(&args.path)?;
+    // Built first: OAuth 2.0 token requests reuse it (proxy, CA, client-cert flags).
+    let engine = args.network.engine(args.insecure)?;
     let config = LoadConfig {
         environment: env_selection(&targets, args.env.as_deref(), args.global_env.as_deref())?,
         env_overrides: args.env_var.iter().cloned().collect(),
@@ -104,9 +106,9 @@ pub async fn run(args: LoadArgs) -> Result<bool> {
         think_time: args.think_time,
         run_scripts: !args.no_scripts,
         timeout: (!args.timeout.is_zero()).then_some(args.timeout),
+        oauth2: crate::oauth2_provider(&engine),
         ..Default::default()
     };
-    let engine = args.network.engine(args.insecure)?;
     let stop = CancellationToken::new();
     cancel_on_ctrl_c(stop.clone());
 

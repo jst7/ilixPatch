@@ -1,0 +1,27 @@
+[package]
+name = "ilixpatch-auth"
+description = "Authorization signers for ilixPatch: API key, Bearer, Basic, JWT, Digest, OAuth 1.0/2.0, Hawk, AWS SigV4, NTLM, Akamai EdgeGrid, ASAP"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+ilixpatch-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+base64 = "0.22"
+url = "2"
+percent-encoding = "2"
+sha1 = { version = "0.10", features = ["oid"] }
+sha2 = { version = "0.10", features = ["oid"] }
+md-5 = "0.10"
+md4 = "0.10"
+hmac = "0.12"
+rand_core = "0.6"
+rsa = { version = "0.9", features = ["sha2", "pem"] }
+p256 = { version = "0.13", features = ["ecdsa", "pem", "pkcs8"] }
+p384 = { version = "0.13", features = ["ecdsa", "pem", "pkcs8"] }
+p521 = { version = "0.13", features = ["ecdsa", "pem", "pkcs8"] }

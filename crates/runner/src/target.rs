@@ -165,8 +165,20 @@ fn find_collection_dir(start: &Path) -> Option<PathBuf> {
 /// collection directory, a folder directory, or a single request `.toml`.
 /// Request order mirrors [`Collection::requests`] (a folder's requests before
 /// its subfolders, depth-first).
+///
+/// Each item's `auth` is its effective auth (D39 inheritance: request →
+/// folders → collection; `NoAuth` when nothing is set).
 pub fn resolve_target(path: impl AsRef<Path>) -> Result<Vec<RunTarget>, RunError> {
-    let path = path.as_ref();
+    let mut targets = resolve_target_tree(path.as_ref())?;
+    for t in &mut targets {
+        for item in &mut t.items {
+            item.request.auth = ilixpatch_core::auth::effective_auth(&t.collection, &item.file);
+        }
+    }
+    Ok(targets)
+}
+
+fn resolve_target_tree(path: &Path) -> Result<Vec<RunTarget>, RunError> {
     let abs =
         fs::canonicalize(path).map_err(|e| RunError::Target(format!("{}: {e}", path.display())))?;
 

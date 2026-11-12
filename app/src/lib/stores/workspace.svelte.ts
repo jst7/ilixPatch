@@ -12,6 +12,7 @@ import {
   type Scripts,
   type HttpVersionPref,
   type RequestSettings,
+  type Auth,
   type GitRepoInfo,
   type HistoryEntry,
   type SendResult,
@@ -24,6 +25,8 @@ import { runtimeVars } from "./runtimeVars.svelte";
 import { toRequestError } from "$lib/requestError";
 import { history } from "./history.svelte";
 import { dropEnvSession, envSession, envStore, type EnvChoice, type ResolvedEnv } from "./environments.svelte";
+import { canonicalAuth, cleanAuth, effectiveAuth, type EffectiveAuth } from "$lib/auth";
+import { containerSession, dropContainerSession } from "./containerSettings.svelte";
 
 // ---------- localStorage helpers (may be unavailable / throw) ----------
 
@@ -74,6 +77,8 @@ export interface Draft {
   tests: string;
   /** Per-request network overrides (null = use the global setting). */
   settings: DraftSettings;
+  /** Authorization (D39); { type: "inherit" } = use the folder/collection auth. */
+  auth: Auth;
 }
 
 export interface DraftSettings {
@@ -129,6 +134,7 @@ export function draftFromRequest(r: Request): Draft {
     preRequest: r.scripts?.pre_request ?? "",
     tests: r.scripts?.tests ?? "",
     settings: draftSettings(r.settings),
+    auth: r.auth ? (JSON.parse(JSON.stringify(r.auth)) as Auth) : { type: "inherit" },
   };
 }
 
@@ -145,6 +151,7 @@ export function requestFromDraft(d: Draft): Request {
     body,
     ...scriptsFromDraft(d),
     ...(requestSettings(d.settings) ? { settings: requestSettings(d.settings) } : {}),
+    ...(d.auth && d.auth.type !== "inherit" ? { auth: cleanAuth(d.auth) } : {}),
   };
 }
 
@@ -176,6 +183,7 @@ function canonical(r: Request): string {
     r.scripts?.pre_request?.trim() ? r.scripts.pre_request : null,
     r.scripts?.tests?.trim() ? r.scripts.tests : null,
     Object.entries(requestSettings(r.settings) ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    canonicalAuth(r.auth),
   ]);
 }
 
@@ -265,7 +273,9 @@ export type OpenTab =
   /** 3-way merge resolver for one conflicted file (D24). */
   | { kind: "merge"; repo: string; path: string }
   /** Postman import wizard (D31); single instance, not restored on restart. */
-  | { kind: "import" };
+  | { kind: "import" }
+  /** Settings (authorization, variables) of a collection or folder directory (D39). */
+  | { kind: "container"; path: string };
 
 /** Key of a history tab; also the key of its in-memory draft and response (not a file path). */
 export function historyKey(id: number): string {
@@ -280,6 +290,7 @@ export function tabKey(tab: OpenTab): string {
   if (tab.kind === "git") return `git:${tab.repo}`;
   if (tab.kind === "merge") return `merge:${tab.path}`;
   if (tab.kind === "import") return "import";
+  if (tab.kind === "container") return `container:${tab.path}`;
   return `${tab.kind}:${tab.target}`;
 }
 
@@ -289,6 +300,7 @@ export function tabPath(tab: OpenTab): string {
   if (tab.kind === "environments") return tab.project ?? "env:global";
   if (tab.kind === "merge") return tab.path;
   if (tab.kind === "import") return "import";
+  if (tab.kind === "container") return tab.path;
   return tab.kind === "request" ? tab.path : tab.kind === "git" ? tab.repo : tab.target;
 }
 
@@ -551,6 +563,7 @@ class Workspace {
   isTabDirty(tab: OpenTab): boolean {
     if (tab.kind === "history") return this.isHistoryDirty(tab.id);
     if (tab.kind === "environments") return envSession(tab.project).dirty;
+    if (tab.kind === "container") return containerSession(tab.path).dirty;
     return tab.kind === "request" && this.isDirty(tab.path);
   }
 
@@ -563,6 +576,7 @@ class Workspace {
       // Closing a request tab discards its draft (the caller already confirmed).
       if (tab.kind === "request" && keys.has(tabKey(tab))) delete this.drafts[tab.path];
       if (tab.kind === "environments" && keys.has(tabKey(tab))) dropEnvSession(tab.project);
+      if (tab.kind === "container" && keys.has(tabKey(tab))) dropContainerSession(tab.path);
       if (tab.kind === "history" && keys.has(tabKey(tab))) {
         const key = historyKey(tab.id);
         delete this.drafts[key];
@@ -602,7 +616,9 @@ class Workspace {
           ? first.project === null
             ? translate("env.globalTitle")
             : translate("env.projectTitle", { name: this.nodes.get(first.project)?.name ?? first.project })
-          : (this.drafts[tabPath(first)]?.name ?? "");
+          : first.kind === "container"
+            ? (this.nodes.get(first.path)?.name ?? "")
+            : (this.drafts[tabPath(first)]?.name ?? "");
       try {
         discard = await ask(
           dirty.length === 1 ? translate("tabs.discardOne", { name }) : translate("tabs.discardMany", { count: dirty.length }),
@@ -659,6 +675,25 @@ class Workspace {
   /** Reload the history list (call after each send). */
   refreshHistory() {
     return history.refresh();
+  }
+
+  /**
+   * Auth used when sending the draft at `key` (request path or history key): its own auth, or the
+   * nearest folder/collection auth when it inherits (collection "inherit" = no auth).
+   */
+  effectiveAuthFor(key: string): EffectiveAuth {
+    const own = this.drafts[key]?.auth ?? null;
+    let loc = this.index.get(key) ?? null;
+    if (!loc && key.startsWith("history:")) {
+      const p = this.historyTabs[Number(key.slice(8))]?.entry?.request_path;
+      loc = (p && this.index.get(p)) || null;
+    }
+    return effectiveAuth(own, loc?.collection ?? null, loc?.folders ?? []);
+  }
+
+  /** Open the settings tab (authorization, variables) of a collection or folder directory. */
+  openContainer(path: string) {
+    this.openTab({ kind: "container", path });
   }
 
   /** Open the Environments tab of a project, or the global one (null). */
@@ -725,7 +760,9 @@ class Workspace {
     const previous = this.responses[key]?.result ?? null;
     this.responses[key] = { loading: true, result: previous, error: null, requestId, startedAt: Date.now() };
     try {
-      const result = await api.sendRequest(requestFromDraft(draft), variables, context, requestId);
+      const request = requestFromDraft(draft);
+      request.auth = cleanAuth(this.effectiveAuthFor(key).auth);
+      const result = await api.sendRequest(request, variables, context, requestId);
       if (collection) this.applyVarUpdates(collection, result.variable_updates ?? []);
       this.responses[key] = { loading: false, result, error: null };
     } catch (e) {
@@ -830,6 +867,7 @@ class Workspace {
           t &&
           ((t.kind === "request" && typeof t.path === "string") ||
             ((t.kind === "runner" || t.kind === "load") && typeof t.target === "string") ||
+            (t.kind === "container" && typeof t.path === "string") ||
             (t.kind === "git" && typeof t.repo === "string") ||
             (t.kind === "merge" && typeof t.repo === "string" && typeof t.path === "string") ||
             (t.kind === "history" && typeof t.id === "number") ||
@@ -984,6 +1022,7 @@ class Workspace {
     const draft = this.drafts[path];
     if (!loc || !draft || this.responses[path]?.loading) return;
     const request = requestFromDraft(draft);
+    request.auth = cleanAuth(this.effectiveAuthFor(path).auth);
     const variables = this.sendVariablesFor(loc.collection);
     const requestId = crypto.randomUUID();
     const previous = this.responses[path]?.result ?? null;

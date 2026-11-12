@@ -26,6 +26,8 @@ export interface Request {
   scripts?: Scripts;
   /** Per-request overrides of the global network settings (D29). Omitted when empty. */
   settings?: RequestSettings;
+  /** Authorization (D39). Omitted = inherit from folder/collection. */
+  auth?: Auth;
 }
 
 /** null/undefined = use the global NetworkSettings value. */
@@ -52,6 +54,8 @@ export interface Folder {
   name: string;
   /** Absolute directory path. */
   path: string;
+  /** Folder auth from folder.toml (D39); { type: "inherit" } when absent. */
+  auth: Auth;
   requests: RequestFile[];
   folders: Folder[];
 }
@@ -67,6 +71,8 @@ export interface Collection {
   /** Absolute directory path (contains collection.toml). */
   path: string;
   variables: Record<string, string>;
+  /** Collection auth from collection.toml (D39); "inherit" here means no auth. */
+  auth: Auth;
   environments: Environment[];
   /** Top-level folder of the collection; root.path === collection.path. */
   root: Folder;
@@ -705,6 +711,162 @@ export interface RequestError {
   proxy?: string | null;
 }
 
+// ---------- Authorization (D39) — mirrors crates/core/src/auth.rs ----------
+// Every string field may contain {{variables}}.
+
+export type AddTo = "header" | "query" | "body";
+
+export type Auth =
+  | { type: "inherit" }
+  | { type: "no_auth" }
+  | { type: "api_key"; key: string; value: string; in?: AddTo }
+  | { type: "bearer"; token: string }
+  | {
+      type: "jwt";
+      /** HS256/384/512, RS256/384/512, PS256/384/512, ES256/384/512 */
+      algorithm: string;
+      secret?: string | null;
+      secret_base64?: boolean;
+      private_key?: string | null;
+      /** JSON object */
+      payload: string;
+      /** JSON object with extra header fields */
+      header?: string | null;
+      add_to?: AddTo;
+      header_prefix?: string | null;
+      query_param?: string | null;
+    }
+  | { type: "basic"; username: string; password?: string }
+  | {
+      type: "digest";
+      username: string;
+      password?: string;
+      realm?: string | null;
+      nonce?: string | null;
+      /** MD5, MD5-sess, SHA-256, SHA-256-sess, SHA-512-256, SHA-512-256-sess */
+      algorithm?: string | null;
+      qop?: string | null;
+      nonce_count?: string | null;
+      client_nonce?: string | null;
+      opaque?: string | null;
+      disable_retry?: boolean;
+    }
+  | {
+      type: "oauth1";
+      /** HMAC-SHA1, HMAC-SHA256, HMAC-SHA512, RSA-SHA1, RSA-SHA256, RSA-SHA512, PLAINTEXT */
+      signature_method: string;
+      consumer_key: string;
+      consumer_secret?: string;
+      token?: string | null;
+      token_secret?: string | null;
+      private_key?: string | null;
+      callback_url?: string | null;
+      verifier?: string | null;
+      timestamp?: string | null;
+      nonce?: string | null;
+      version?: string | null;
+      realm?: string | null;
+      add_to?: AddTo;
+      include_body_hash?: boolean;
+      add_empty_params?: boolean;
+    }
+  | ({ type: "oauth2" } & OAuth2Config)
+  | {
+      type: "hawk";
+      id: string;
+      key: string;
+      algorithm?: "sha256" | "sha1" | null;
+      user?: string | null;
+      nonce?: string | null;
+      ext?: string | null;
+      app?: string | null;
+      dlg?: string | null;
+      timestamp?: string | null;
+      include_payload_hash?: boolean;
+    }
+  | {
+      type: "awsv4";
+      access_key: string;
+      secret_key: string;
+      session_token?: string | null;
+      region: string;
+      service: string;
+      add_to?: AddTo;
+    }
+  | { type: "ntlm"; username: string; password?: string; domain?: string | null; workstation?: string | null; disable_retry?: boolean }
+  | {
+      type: "akamai";
+      client_token: string;
+      client_secret: string;
+      access_token: string;
+      base_url?: string | null;
+      nonce?: string | null;
+      timestamp?: string | null;
+      headers_to_sign?: string | null;
+      max_body_size?: number | null;
+    }
+  | {
+      type: "asap";
+      algorithm: string;
+      issuer: string;
+      subject?: string | null;
+      audience: string;
+      key_id: string;
+      private_key: string;
+      additional_claims?: string | null;
+      expires_in?: number | null;
+    };
+
+export type AuthType = Auth["type"];
+
+export type OAuth2Grant = "authorization_code" | "authorization_code_pkce" | "implicit" | "password" | "client_credentials";
+
+export interface OAuth2Config {
+  grant_type: OAuth2Grant;
+  /** Tokens are stored per user under this name (never in the repo). */
+  token_name: string;
+  auth_url?: string | null;
+  access_token_url?: string | null;
+  client_id: string;
+  client_secret?: string | null;
+  scope?: string | null;
+  state?: string | null;
+  callback_url?: string | null;
+  /** Listen on a loopback port for the redirect (default true). */
+  use_local_callback?: boolean;
+  code_challenge_method?: "S256" | "plain" | null;
+  code_verifier?: string | null;
+  username?: string | null;
+  password?: string | null;
+  client_authentication?: "basic" | "body";
+  audience?: string | null;
+  resource?: string | null;
+  extra_params?: Record<string, string>;
+  add_to?: AddTo;
+  header_prefix?: string | null;
+  auto_refresh?: boolean;
+  auto_fetch?: boolean;
+  /** Literal token to use instead of the token store. */
+  access_token?: string | null;
+}
+
+/** A stored OAuth 2.0 token (user-level token store, never in a repo). */
+export interface OAuth2StoredToken {
+  id: string;
+  token_name: string;
+  access_token: string;
+  token_type: string | null;
+  refresh_token: string | null;
+  id_token: string | null;
+  scope: string | null;
+  /** Unix seconds. */
+  expires_at: number | null;
+  /** Unix seconds. */
+  created_at: number;
+  /** Full token response JSON. */
+  raw: unknown;
+}
+
 export const api = {
   /** All projects registered in the app config, in insertion order. */
   listProjects: () => invoke<ProjectEntry[]>("list_projects"),
@@ -872,4 +1034,26 @@ export const api = {
   /** Parse Postman exports: collection/environment/globals .json files, a data-dump .zip, or a folder of them. */
   importPostmanPreview: (paths: string[]) => invoke<ImportPreview>("import_postman_preview", { paths }),
   importPostmanApply: (plan: ImportPlan) => invoke<ImportReport>("import_postman_apply", { plan }),
+
+  // Authorization (D39)
+  /** Set/clear a collection's auth (collection.toml [auth]); null = no auth. */
+  saveCollectionAuth: (collectionPath: string, auth: Auth | null) =>
+    invoke<void>("save_collection_auth", { collectionPath, auth }),
+  /** Set/clear a folder's auth (folder.toml [auth]); null = inherit (folder.toml removed if empty). */
+  saveFolderAuth: (folderPath: string, auth: Auth | null) => invoke<void>("save_folder_auth", { folderPath, auth }),
+  /** Set a collection's variables (collection.toml [variables]). */
+  saveCollectionVariables: (collectionPath: string, variables: Record<string, string>) =>
+    invoke<void>("save_collection_variables", { collectionPath, variables }),
+  /** Run the OAuth 2.0 flow for `config` (variables resolved with `variables`): opens the system browser
+   *  for code/PKCE/implicit and waits for the loopback redirect (or `cancelOAuth2`). Stores and returns the token. */
+  oauth2GetToken: (config: OAuth2Config, variables: SendVariables) =>
+    invoke<OAuth2StoredToken>("oauth2_get_token", { config, variables }),
+  oauth2CancelFlow: () => invoke<void>("oauth2_cancel_flow"),
+  oauth2RefreshToken: (id: string, config: OAuth2Config, variables: SendVariables) =>
+    invoke<OAuth2StoredToken>("oauth2_refresh_token", { id, config, variables }),
+  /** All stored tokens, or only those for `tokenName`. Newest first. */
+  oauth2ListTokens: (tokenName: string | null) => invoke<OAuth2StoredToken[]>("oauth2_list_tokens", { tokenName }),
+  oauth2DeleteTokens: (ids: string[]) => invoke<void>("oauth2_delete_tokens", { ids }),
+  /** Mark which stored token is used for `tokenName` (default: the newest valid one). */
+  oauth2SelectToken: (tokenName: string, id: string) => invoke<void>("oauth2_select_token", { tokenName, id }),
 };

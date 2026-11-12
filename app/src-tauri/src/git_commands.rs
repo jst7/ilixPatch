@@ -4,7 +4,6 @@
 //! encloses one; files must be inside that repo (checked by the crate). All
 //! commands are `async` so git never runs on the main thread.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -27,12 +26,12 @@ fn project_roots(registry: &Registry) -> CmdResult<Vec<PathBuf>> {
     Ok(registry
         .paths()?
         .iter()
-        .filter_map(|p| fs::canonicalize(p).ok())
+        .filter_map(|p| dunce::canonicalize(p).ok())
         .collect())
 }
 
 fn registered_project(registry: &Registry, project_path: &str) -> CmdResult<PathBuf> {
-    let root = fs::canonicalize(project_path).map_err(|e| format!("{project_path}: {e}"))?;
+    let root = dunce::canonicalize(project_path).map_err(|e| format!("{project_path}: {e}"))?;
     if !project_roots(registry)?.contains(&root) {
         return Err(format!("{project_path}: not a registered project"));
     }
@@ -42,7 +41,7 @@ fn registered_project(registry: &Registry, project_path: &str) -> CmdResult<Path
 /// A repo root the UI may operate on: inside a registered project (or its
 /// root), or the repo enclosing a registered project.
 fn allowed_repo(registry: &Registry, repo_root: &str) -> CmdResult<PathBuf> {
-    let root = fs::canonicalize(repo_root).map_err(|e| format!("{repo_root}: {e}"))?;
+    let root = dunce::canonicalize(repo_root).map_err(|e| format!("{repo_root}: {e}"))?;
     let ok = project_roots(registry)?.iter().any(|p| {
         root.starts_with(p) || git::enclosing_repo(p).is_some_and(|enclosing| enclosing == root)
     });
@@ -423,12 +422,14 @@ pub fn git_checkout_commit(
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
 
     #[test]
     fn repo_and_path_checks() {
         let dir = tempfile::tempdir().unwrap();
-        let base = dir.path().canonicalize().unwrap();
+        let base = dunce::canonicalize(dir.path()).unwrap();
         let outer = base.join("outer");
         let proj = outer.join("proj");
         fs::create_dir_all(proj.join("col")).unwrap();

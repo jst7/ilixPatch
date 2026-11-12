@@ -6,6 +6,7 @@
 use indexmap::IndexMap;
 use thiserror::Error;
 
+use crate::auth::Auth;
 use crate::model::{Body, Request};
 
 #[derive(Debug, Error, PartialEq)]
@@ -95,7 +96,59 @@ impl Scope {
             // Scripts are code, never interpolated.
             scripts: req.scripts.clone(),
             settings: req.settings,
+            auth: self.resolve_auth(&req.auth)?,
         })
+    }
+
+    /// Resolve `{{variables}}` in every string field of an [`Auth`] (D39).
+    ///
+    /// Walks the serialized form, so new auth types and fields are covered
+    /// without changes here. All undefined names are reported together.
+    pub fn resolve_auth(&self, auth: &Auth) -> Result<Auth, VarError> {
+        if matches!(auth, Auth::Inherit | Auth::NoAuth) {
+            return Ok(auth.clone());
+        }
+        let Ok(mut value) = toml::Value::try_from(auth) else {
+            return Ok(auth.clone());
+        };
+        let mut missing = Vec::new();
+        self.interpolate_value(&mut value, &mut missing)?;
+        if !missing.is_empty() {
+            return Err(VarError::Undefined(missing));
+        }
+        Ok(value.try_into().unwrap_or_else(|_| auth.clone()))
+    }
+
+    fn interpolate_value(
+        &self,
+        value: &mut toml::Value,
+        missing: &mut Vec<String>,
+    ) -> Result<(), VarError> {
+        match value {
+            toml::Value::String(s) if s.contains("{{") => match self.interpolate(s) {
+                Ok(v) => *s = v,
+                Err(VarError::Undefined(names)) => {
+                    for n in names {
+                        if !missing.contains(&n) {
+                            missing.push(n);
+                        }
+                    }
+                }
+                Err(e) => return Err(e),
+            },
+            toml::Value::Array(items) => {
+                for v in items {
+                    self.interpolate_value(v, missing)?;
+                }
+            }
+            toml::Value::Table(t) => {
+                for (_, v) in t.iter_mut() {
+                    self.interpolate_value(v, missing)?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
     }
 }
 

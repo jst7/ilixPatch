@@ -115,7 +115,7 @@ mi-repo/
 
 ## D14 · Licencia y comunidad ✅
 - Licencia doble **MIT o Apache-2.0**, la convención en Rust.
-- `CONTRIBUTING.md` y CI en GitHub Actions (fmt, clippy `-D warnings` y tests en Linux, macOS y Windows, más svelte-check).
+- CI en GitHub Actions (fmt, clippy `-D warnings` y tests en Linux, macOS y Windows, más svelte-check).
 - Buenos puntos de entrada para contribuidores: importadores y CLI.
 - Los cambios grandes se discuten en un issue antes de programarlos.
 
@@ -126,6 +126,8 @@ mi-repo/
   - La CI falla si el archivo no está actualizado.
   - 🗓️ **Pendiente:** incluirlo también en los archivos de release de la CLI y añadir `cargo-deny` para rechazar licencias no permitidas.
 - **Autoría:** Jorge Segovia Tormo ([github.com/jst7](https://github.com/jst7)). Aparece en el "Acerca de", en el panel nativo de macOS, en `Cargo.toml` y en los metadatos del instalador.
+
+- **Licencia confirmada (12-11-2026):** se mantiene la **doble licencia MIT o Apache-2.0** (`LICENSE-MIT` y `LICENSE-APACHE`). El `LICENSE` (MIT) creado al abrir el repo en GitHub se conserva tal cual. Es el mismo texto MIT y no cambia nada.
 
 ## D15 · Seguridad de las operaciones de archivos ✅
 - Los comandos que borran o escriben verifican que la ruta esté **dentro de un proyecto registrado**. Nunca borran la raíz del proyecto ni `.ilixpatch/`.
@@ -344,6 +346,72 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - **botones de acción**: desactivar SSL para esta petición, abrir los ajustes de HTTPS, certificados o proxy, subir el timeout, abrir los entornos…;
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
+
+## D41 · Respuestas grandes: streaming, archivos temporales y lectura por fragmentos 🗓️ (v0.3.0, después de D39)
+> Completa D09 ("los datos grandes se quedan en Rust"), que estaba pendiente: hasta ahora el body entero se leía a un `Vec<u8>` y viajaba completo a la interfaz.
+- **Streaming real** con `reqwest::Response::bytes_stream()`. Nunca se carga el body entero en memoria por defecto.
+  - **Memoria hasta un umbral** (por defecto ~1 MB). Si se supera, se **vuelca a un archivo temporal** (`tempfile`, en la caché de la app) mientras se va recibiendo.
+  - El tamaño se calcula incrementalmente. Hay un **límite máximo** configurable: al pasarlo se para la descarga y queda la respuesta parcial con un aviso.
+- **`ResponseStore` en Rust** con un `body_id` por respuesta, en memoria o en archivo. Se libera al cerrar la pestaña o enviar de nuevo, con LRU por tamaño total, y **borra los temporales** al salir (y al arrancar, los que hayan quedado huérfanos).
+- **La interfaz pide fragmentos bajo demanda:**
+  - `send_request` devuelve los metadatos más una **vista previa** (los primeros KB) y el `body_id`.
+  - Comandos `response_read(body_id, offset, len)` por bytes y `response_lines(body_id, start, count)` por líneas, con un **índice de líneas** construido en Rust.
+  - **JSON grande:** se formatea **en streaming en Rust** a otro temporal, sin parsear todo en memoria, para poder verlo por fragmentos.
+  - **Buscar** en el body se hace en Rust (`response_search`, con regex y offsets) en lugar de en el editor.
+  - **Visor virtualizado** para bodies por encima del umbral. Por debajo se sigue usando CodeMirror.
+  - **"Guardar respuesta en archivo…"** copia desde el temporal sin pasar por la interfaz.
+- **Cancelación efectiva:** el bucle del stream comprueba el `CancellationToken`. Al cancelar se **suelta el stream**, con lo que se cierra la conexión, y **se borra el temporal parcial** en ese momento. Lo mismo al cerrar la pestaña o la app.
+- **Scripts y tests:** `pm.response.text()` y `json()` cargan el body solo si hace falta, hasta un límite. Por encima, el script recibe un aviso y el body truncado.
+- **Runner y pruebas de carga:** por defecto **descartan el body** (solo cuentan bytes), salvo que haya scripts de test que lo necesiten. Así una prueba de carga no acumula memoria.
+- **Historial:** guarda como máximo `max_body_kb` (D22), leído del temporal.
+
+## D40 · Releases sin firma, y firma opcional ✅
+- **No hacen falta claves de desarrollador** para publicar. Sin secretos, la release genera apps **sin firmar**:
+  - **macOS:** firma ad-hoc (`bundle.macOS.signingIdentity = "-"`). Así Gatekeeper muestra "desarrollador no identificado" (se abre con clic derecho → Abrir) en lugar de "está dañada".
+  - **Windows:** SmartScreen pide "Más información → Ejecutar de todas formas".
+- **Error que se corrigió:** un secreto que no existe llega a GitHub Actions como **variable vacía**. Tauri intentaba importar un certificado vacío o notarizar sin Apple ID, y fallaba. Ahora un paso previo exporta las variables `APPLE_*` **solo si el secreto tiene valor**: certificado e identidad para firmar, y además Apple ID, contraseña y Team ID para notarizar.
+- **Windows y `result_large_err`:** en Windows un `PathBuf` ocupa 32 bytes, así que los errores con varias rutas pueden pasar el umbral de 128 bytes de clippy solo ahí. Regla: **meter en `Box` los errores grandes** (toml, serde, reqwest) dentro de los enums de error.
+- Windows vuelve a estar en `release.yml`, tanto el instalador `.msi`/`.exe` como `ilixpatch.exe`.
+
+## D39 · Authorization con todos los métodos de Postman ✅
+- **Tipos soportados:**
+  - Inherit (por defecto) y No Auth;
+  - API Key (header o query), Bearer, JWT Bearer (HS, RS, PS y ES), Basic;
+  - **Digest** (MD5 y SHA-256, también `-sess`, con qop): con reto y respuesta, o directo si se conocen realm y nonce;
+  - OAuth 1.0 (HMAC-SHA1/256/512, RSA-SHA y PLAINTEXT, en header, query o body);
+  - **OAuth 2.0**: Authorization Code con y sin PKCE, Implicit, Password y Client Credentials;
+  - Hawk, **AWS SigV4** (en headers o URL prefirmada), **NTLMv2**, Akamai EdgeGrid y ASAP.
+- **Modelo:** `ilixpatch_core::auth::Auth`, una enum con el campo `type`. Se guarda en `[auth]` del `.toml` de la petición, en `collection.toml` y en un `folder.toml` opcional por carpeta.
+  - **Herencia:** petición → carpetas → colección, como en Postman. `no_auth` corta la herencia.
+  - Todos los campos admiten `{{variables}}`. Para los secretos se recomiendan las variables secretas del entorno.
+- **Crate `crates/auth`:** funciones puras y deterministas (reloj y aleatoriedad inyectables), probadas con los vectores publicados en los RFC y en la documentación de AWS, Hawk y MS-NLMP.
+  - El runner aplica la firma justo antes de enviar.
+  - El motor gestiona los retos de Digest y NTLM. NTLM va ligado a la conexión, así que se usa la misma conexión en todo el intercambio.
+- **OAuth 2.0:**
+  - El navegador del sistema se abre con **retorno a un servidor local en 127.0.0.1** y PKCE S256.
+  - Los tokens se guardan **solo en el equipo del usuario** (`oauth2-tokens.json`, permisos 0600), nunca en el repo.
+  - Renovación automática con refresh token, y petición automática del token en los flujos Client Credentials y Password (también desde la CLI).
+- **Interfaz:**
+  - pestaña **Authorization** en la petición, con un formulario por tipo, ayuda y aviso si un secreto se escribe tal cual en un proyecto con git;
+  - pestaña de **ajustes de colección o carpeta** (Authorization y Variables);
+  - gestión de tokens OAuth2 ("Get New Access Token", refrescar, borrar).
+- **Firmas verificadas** con los vectores publicados:
+  - RFC 7617 (Basic), RFC 2617 y RFC 7616 (Digest), RFC 5849 (OAuth 1.0) y RFC 7636 (PKCE);
+  - MS-NLMP §4.2.4 (NTLMv2), la suite oficial de AWS SigV4, el README de Hawk, los 13 casos de edgegrid-python (Akamai) y jwt.io.
+  - Criptografía en **Rust puro (RustCrypto)**, porque `ring` y `jsonwebtoken` no firman ES512.
+- **Peticiones de token de OAuth2** usan el mismo motor que los envíos (`Engine::client_for_url`): proxy, CAs y certificado de cliente del host, tanto en la app (leyendo los ajustes en el momento) como en la CLI (con sus flags).
+- **Aleatoriedad:** nonces, salts, PKCE, `state` y *blinding* RSA salen siempre del generador aleatorio del sistema. Si este no está disponible, la app **falla de forma visible** en vez de usar valores predecibles.
+- **Importador de Postman y cURL:** la autenticación se lleva a este modelo, en lugar de convertirla en headers.
+  - cURL: `-u` → Basic, `--digest`, `--ntlm`, `--aws-sigv4` y `--oauth2-bearer`.
+
+## D38 · Importar y exportar cURL desde la barra de URL ✅
+- **Pegar un cURL** en la barra de URL (o escribirlo y pulsar Enter) **rellena la petición entera**, como en Postman: método, URL, headers, body y ajustes. El nombre y los scripts se conservan.
+  - **Compatible con** "Copy as cURL" de Chrome y Firefox (bash `\`, cmd de Windows `^` y PowerShell `` ` ``, comillas `'…'`, `"…"` y `$'…'`) y con lo que exporta Postman.
+  - **Flags:** `-X`, `-H`, `-d/--data*`, `--data-urlencode`, `--json`, `-F` (sin archivos), `-u` (→ Basic), `-A`, `-e`, `-b`, `-G`, `-I`, `-k` (→ sin SSL), `-L`, `--max-redirs`, `-m` (→ timeout), `--http1.1`/`--http2` y `--url`. Los de salida o depuración (`-s`, `-v`, `-o`, `--compressed`…) se ignoran sin avisar.
+  - Proxy, certificados y archivos generan un **aviso** visible bajo la barra, con lo que no se importó.
+  - El body JSON se detecta y se formatea. Los formularios se importan como texto editable con su `Content-Type`.
+- **Botón "cURL"** en la fila de pestañas de la petición: copiar como cURL **con las variables resueltas** del entorno activo, **con `{{variables}}`** o **en una sola línea**. Los ajustes por petición se convierten en flags (`--insecure`, `--location`, `--max-time`…).
+- Un solo módulo, `app/src/lib/curl.ts`, que también usa el historial ("Copiar como cURL"). Tiene autotest propio (`node src/lib/curl.selftest.mjs`) incluido en la CI.
 
 ## D37 · Añadir proyectos solo desde el botón "+" ✅
 - "Abrir carpeta", "Clonar repositorio" e "Importar desde Postman" están **solo en el menú del "+"** de la cabecera de la barra lateral. Se quitan los botones sueltos que sobrecargaban la interfaz.

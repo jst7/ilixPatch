@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 ilixpatch-core.workspace = true
+ilixpatch-auth.workspace = true
 ilixpatch-engine.workspace = true
 ilixpatch-scripting.workspace = true
 serde.workspace = true

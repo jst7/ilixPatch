@@ -4,6 +4,9 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use ilixpatch_core::auth::{
+    AddTo, ApiKeyAuth, Auth, BasicAuth, BearerAuth, ClientAuthentication, OAuth2Grant,
+};
 use ilixpatch_core::environments::{EnvStore, load_globals};
 use ilixpatch_core::{Body, Request, project};
 use ilixpatch_importer::{
@@ -126,7 +129,8 @@ fn preview_tree_ids_and_warnings() {
         "path_variable",
         "body_formdata",
         "body_file",
-        "auth_oauth2",
+        "oauth2_token_not_imported",
+        "auth_unsupported",
         "body_graphql",
         "disabled_param",
     ] {
@@ -163,7 +167,7 @@ fn applies_whole_collection_with_conversions() {
             report.environments,
             report.skipped
         ),
-        (1, 3, 9, 1, 0)
+        (1, 4, 18, 1, 0)
     );
     let col = root.join("shop-api");
     assert!(report.files.contains(&col.join("collection.toml")));
@@ -182,7 +186,14 @@ fn applies_whole_collection_with_conversions() {
         Some("https://shop.example.com")
     );
     assert!(!c.variables.contains_key("old"));
-    assert_eq!(c.requests().len(), 9);
+    assert_eq!(c.requests().len(), 18);
+    // Collection auth lives in collection.toml; requests inherit it.
+    assert_eq!(
+        c.auth,
+        Auth::Bearer(BearerAuth {
+            token: "{{token}}".into()
+        })
+    );
 
     let list = req(&col.join("users/list-users.toml"));
     assert_eq!(list.url, "{{base_url}}/users");
@@ -190,7 +201,7 @@ fn applies_whole_collection_with_conversions() {
     assert_eq!(list.query["page"], "1");
     assert_eq!(list.headers["Accept"], "application/json");
     assert!(!list.headers.contains_key("X-Debug"));
-    assert_eq!(list.headers["Authorization"], "Bearer {{token}}");
+    assert!(list.auth.is_inherit() && !list.headers.contains_key("Authorization"));
     let pre = list.scripts.pre_request.unwrap();
     assert!(
         pre.starts_with("// From collection \"Shop API\"\npm.variables.set"),
@@ -205,22 +216,40 @@ fn applies_whole_collection_with_conversions() {
 
     let del = req(&col.join("users/admin/delete-user.toml"));
     assert_eq!(del.url, "{{base_url}}/users/42");
-    assert_eq!(del.headers["Authorization"], "Basic YWRtaW46czNjcmV0");
+    assert!(del.auth.is_inherit());
+    let admin_folder = fs::read_to_string(col.join("users/admin/folder.toml")).unwrap();
+    let admin_auth: toml::Table = toml::from_str(&admin_folder).unwrap();
+    let admin_auth: Auth = admin_auth["auth"].clone().try_into().unwrap();
+    assert_eq!(
+        admin_auth,
+        Auth::Basic(BasicAuth {
+            username: "admin".into(),
+            password: "s3cret".into()
+        })
+    );
+    assert!(!col.join("users/folder.toml").exists());
     let ping = req(&col.join("users/admin/public-ping.toml"));
-    assert!(!ping.headers.contains_key("Authorization"));
+    assert_eq!(ping.auth, Auth::NoAuth);
 
     let login = req(&col.join("auth/login.toml"));
     assert!(matches!(&login.body, Some(Body::Json { content }) if content.contains("\"user\"")));
-    assert!(!login.headers.contains_key("Authorization"));
-    let pre = login.scripts.pre_request.unwrap();
+    assert!(login.auth.is_inherit());
     assert!(
-        pre.contains(r#"btoa(pm.variables.replaceIn("{{user}}:{{pass}}"))"#),
-        "{pre}"
+        fs::read_to_string(col.join("auth/folder.toml"))
+            .unwrap()
+            .contains("{{user}}")
     );
 
     let upload = req(&col.join("upload-avatar.toml"));
-    assert_eq!(upload.query["api_key"], "{{apiKey}}");
-    assert!(!upload.headers.contains_key("Authorization"));
+    assert!(upload.query.is_empty());
+    assert_eq!(
+        upload.auth,
+        Auth::ApiKey(ApiKeyAuth {
+            key: "api_key".into(),
+            value: "{{apiKey}}".into(),
+            add_to: AddTo::Query
+        })
+    );
     match &upload.body {
         Some(Body::Form { fields }) => assert_eq!(fields.keys().collect::<Vec<_>>(), ["name"]),
         b => panic!("{b:?}"),
@@ -235,7 +264,56 @@ fn applies_whole_collection_with_conversions() {
         }
         b => panic!("{b:?}"),
     }
-    assert!(!gql.headers.contains_key("Authorization"));
+    match &gql.auth {
+        Auth::Oauth2(o) => {
+            assert_eq!(o.grant_type, OAuth2Grant::ClientCredentials);
+            assert_eq!(o.token_name, "shop-machine");
+            assert_eq!(o.client_id, "{{client_id}}");
+            assert_eq!(o.client_authentication, ClientAuthentication::Body);
+            assert_eq!(o.access_token, None);
+        }
+        a => panic!("{a:?}"),
+    }
+    let gql_file = fs::read_to_string(col.join("graphql.toml")).unwrap();
+    assert!(!gql_file.contains("secret-token-value"));
+
+    // Every Postman auth type maps onto the model.
+    let signed = |f: &str| req(&col.join(format!("signed/{f}.toml"))).auth;
+    assert!(
+        matches!(signed("digest"), Auth::Digest(d) if d.realm.as_deref() == Some("r") && d.qop.as_deref() == Some("auth"))
+    );
+    assert!(
+        matches!(signed("oauth1"), Auth::Oauth1(o) if o.signature_method == "HMAC-SHA256" && o.add_to == AddTo::Header && o.token_secret.as_deref() == Some("ts"))
+    );
+    assert!(
+        matches!(signed("hawk"), Auth::Hawk(h) if h.id == "id1" && h.ext.as_deref() == Some("x"))
+    );
+    assert!(
+        matches!(signed("aws"), Auth::Awsv4(a) if a.region == "eu-west-1" && a.service == "s3")
+    );
+    assert!(matches!(signed("ntlm"), Auth::Ntlm(n) if n.domain.as_deref() == Some("CORP")));
+    assert!(
+        matches!(signed("akamai"), Auth::Akamai(a) if a.base_url.as_deref() == Some("https://akab.example"))
+    );
+    assert!(
+        matches!(signed("jwt"), Auth::Jwt(j) if j.algorithm == "HS512" && j.add_to == AddTo::Query && j.query_param.as_deref() == Some("jwt"))
+    );
+    assert!(
+        matches!(signed("asap"), Auth::Asap(a) if a.expires_in == Some(3600) && a.key_id == "k1")
+    );
+    assert!(signed("weird").is_inherit());
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| w.code == "auth_unsupported" && w.message.contains("futureauth"))
+    );
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| w.code == "oauth2_token_not_imported")
+    );
 
     let form = req(&col.join("form-login.toml"));
     assert!(matches!(&form.body, Some(Body::Form { fields }) if fields.len() == 1));
@@ -309,7 +387,26 @@ fn placements_exclusions_and_conflicts() {
     // Admin is placed on its own, so it's not copied inside People too.
     assert!(!existing.join("people/admin").exists());
     assert!(existing.join("write-notes.toml").is_file());
-    assert_eq!(req(&existing.join("write-notes.toml")).name, "Write notes");
+    let notes_req = req(&existing.join("write-notes.toml"));
+    assert_eq!(notes_req.name, "Write notes");
+    // Placed without its Postman collection: it keeps the auth it inherited there.
+    assert_eq!(
+        notes_req.auth,
+        Auth::Bearer(BearerAuth {
+            token: "{{token}}".into()
+        })
+    );
+    assert!(matches!(
+        req(&existing.join("delete-user.toml")).auth,
+        Auth::Basic(_)
+    ));
+    assert_eq!(req(&existing.join("public-ping.toml")).auth, Auth::NoAuth);
+    // The People folder carries the collection's bearer auth.
+    assert!(
+        fs::read_to_string(existing.join("people/folder.toml"))
+            .unwrap()
+            .contains("bearer")
+    );
     // Admin flattened as requests.
     assert!(
         existing.join("delete-user.toml").is_file() && existing.join("public-ping.toml").is_file()
@@ -340,7 +437,7 @@ fn placements_exclusions_and_conflicts() {
     )
     .unwrap();
     let r = apply(&parsed, &whole, &ctx).unwrap();
-    assert_eq!(r.requests, 9);
+    assert_eq!(r.requests, 18);
     assert!(!root.join("shop-api-3").exists());
     assert_eq!(
         req(&root.join("shop-api/notes.toml")).url,
@@ -411,7 +508,7 @@ fn nested_placement_moves_the_node_out_of_its_ancestor() {
     assert!(!root.join("shop-api/notes.toml").exists());
     assert!(other.join("admin/delete-user.toml").is_file());
     assert!(other.join("notes.toml").is_file());
-    assert_eq!(r.requests, 9);
+    assert_eq!(r.requests, 18);
 }
 
 #[test]
@@ -437,7 +534,13 @@ fn script_and_auth_options() {
     let plan = default_plan(&parsed, "s", &root, None, EnvScope::Project, opts);
     apply(&parsed, &plan, &ApplyContext::default()).unwrap();
     let list = req(&root.join("shop-api-2/users/list-users.toml"));
-    assert!(list.scripts.tests.is_none() && !list.headers.contains_key("Authorization"));
+    assert!(list.scripts.tests.is_none() && list.auth.is_inherit());
+    assert!(
+        !fs::read_to_string(root.join("shop-api-2/collection.toml"))
+            .unwrap()
+            .contains("[auth]")
+    );
+    assert!(!root.join("shop-api-2/users/admin/folder.toml").exists());
     let login = req(&root.join("shop-api-2/auth/login.toml"));
     assert!(login.scripts.pre_request.is_none());
 }

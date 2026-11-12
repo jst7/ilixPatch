@@ -10,6 +10,7 @@
 //! Conversion rules (auth, bodies, scripts, URLs…) live in `convert.rs`.
 
 mod apply;
+mod auth_map;
 mod convert;
 mod parse;
 mod session;

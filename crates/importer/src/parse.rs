@@ -547,7 +547,7 @@ pub(crate) fn collection_warnings(
         ));
     }
     for n in all.iter().filter(|n| n.kind == NodeKind::Request) {
-        convert::convert(n, opts, out);
+        convert::convert(n, opts, false, out);
     }
 }
 

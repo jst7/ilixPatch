@@ -75,6 +75,8 @@ pub struct LoadConfig {
     pub timeout: Option<Duration>,
     /// Snapshot period (default 1 s).
     pub interval: Duration,
+    /// OAuth 2.0 token supplier (D39).
+    pub oauth2: Option<crate::auth::OAuth2Handle>,
 }
 
 impl Default for LoadConfig {
@@ -91,6 +93,7 @@ impl Default for LoadConfig {
             run_scripts: true,
             timeout: Some(Duration::from_secs(30)),
             interval: Duration::from_secs(1),
+            oauth2: None,
         }
     }
 }
@@ -264,6 +267,7 @@ async fn virtual_user(
     think_time: Duration,
     run_scripts: bool,
     timeout: Option<Duration>,
+    oauth2: Option<crate::auth::OAuth2Handle>,
 ) {
     let mut stores: Vec<VarStore> = (*base).clone();
     let mut iteration = 0usize;
@@ -278,6 +282,7 @@ async fn virtual_user(
                 iteration_count: 0,
                 timeout,
                 run_scripts,
+                oauth2: oauth2.as_ref().map(|h| &*h.0),
             };
             let start = Instant::now();
             let store = &mut stores[li.target];
@@ -464,6 +469,7 @@ where
                 config.think_time,
                 config.run_scripts,
                 config.timeout,
+                config.oauth2.clone(),
             )));
             vus.push(token);
         }

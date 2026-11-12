@@ -101,6 +101,7 @@
     }
     return [
       ...addItems(),
+      { label: t("tree.authorization"), action: () => ws.openContainer(path) },
       { label: t("tree.run"), action: () => ws.openTab({ kind: "runner", target: path }) },
       { label: t("tree.loadTest"), action: () => ws.openTab({ kind: "load", target: path }) },
       gitItem(),

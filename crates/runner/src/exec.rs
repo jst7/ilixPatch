@@ -1,7 +1,7 @@
 //! The single-request pipeline shared by the app, the collection runner, the
 //! CLI and load tests:
 //!
-//! pre-request script → resolve `{{vars}}` → send → test script.
+//! pre-request script → resolve `{{vars}}` → apply auth → send → test script.
 
 use std::time::Duration;
 
@@ -13,10 +13,11 @@ use ilixpatch_scripting::{
 use indexmap::IndexMap;
 use serde_json::Value;
 
+use crate::auth::{OAuth2Provider, apply_auth};
 use crate::vars::VarStore;
 
-/// Per-execution context (iteration info, timeout, script toggle).
-#[derive(Debug, Clone, Copy)]
+/// Per-execution context (iteration info, timeout, script toggle, OAuth 2.0).
+#[derive(Clone, Copy)]
 pub struct ExecContext<'a> {
     /// Row of the data file for this iteration.
     pub iteration_data: Option<&'a IndexMap<String, Value>>,
@@ -27,6 +28,20 @@ pub struct ExecContext<'a> {
     pub timeout: Option<Duration>,
     /// Run pre-request and test scripts.
     pub run_scripts: bool,
+    /// Supplies OAuth 2.0 tokens when the auth has no literal `access_token`.
+    pub oauth2: Option<&'a dyn OAuth2Provider>,
+}
+
+impl std::fmt::Debug for ExecContext<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExecContext")
+            .field("iteration", &self.iteration)
+            .field("iteration_count", &self.iteration_count)
+            .field("timeout", &self.timeout)
+            .field("run_scripts", &self.run_scripts)
+            .field("oauth2", &self.oauth2.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for ExecContext<'_> {
@@ -37,6 +52,7 @@ impl Default for ExecContext<'_> {
             iteration_count: 1,
             timeout: None,
             run_scripts: true,
+            oauth2: None,
         }
     }
 }
@@ -148,6 +164,7 @@ pub async fn execute_request(
             // Scripts can't change the request's scripts.
             m.scripts = request.scripts.clone();
             m.settings = request.settings;
+            m.auth = request.auth.clone();
             request = std::borrow::Cow::Owned(m);
         }
         if skip {
@@ -169,8 +186,24 @@ pub async fn execute_request(
         }
     };
 
-    // 3. Send.
-    let response = match engine.send_with_timeout(&resolved, ctx.timeout).await {
+    // 3. Authorization (D39): sign, or let the engine run a challenge.
+    let (resolved, challenge) = match apply_auth(resolved.clone(), ctx.oauth2, &mut res.logs).await
+    {
+        Ok(r) => r,
+        Err(re) => {
+            res.error = Some(re.detail.clone());
+            res.request_error = Some(*re);
+            res.request = Some(resolved);
+            return res;
+        }
+    };
+
+    // 4. Send.
+    let sent = match &challenge {
+        None => engine.send_with_timeout(&resolved, ctx.timeout).await,
+        Some(ch) => engine.send_with_auth(&resolved, ctx.timeout, ch).await,
+    };
+    let response = match sent {
         Ok(r) => r,
         Err(e) => {
             let re = engine.describe_error(&e, &resolved, ctx.timeout);
@@ -181,7 +214,7 @@ pub async fn execute_request(
         }
     };
 
-    // 4. Test script.
+    // 5. Test script.
     if ctx.run_scripts
         && let Some(src) = has_code(&request.scripts.tests)
     {

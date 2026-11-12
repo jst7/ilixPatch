@@ -25,6 +25,7 @@
 ## Funcionalidades
 **Peticiones y editor**
 - Métodos HTTP con colores, URL multilínea, params, headers y bodies JSON, texto o formulario.
+- **Pega un comando cURL** en la barra de URL y se rellena la petición entera. Con **Copiar como cURL** la exportas, con las variables resueltas o con `{{variables}}`.
 - Editores CodeMirror con JSON coloreado, plegado de nodos, buscar y reemplazar con regex y multilínea, y autocompletado de `pm`.
 - Cancelar una petición colgada con `⌘.` / `Ctrl+.`.
 - **Errores descriptivos** que explican la causa probable (DNS, conexión rechazada, timeout, certificado, mTLS, proxy…), con botones para solucionarlo.

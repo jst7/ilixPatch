@@ -7,22 +7,53 @@
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "event": [
-    { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.variables.set(\"ts\", Date.now());"] } }
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.variables.set(\"ts\", Date.now());"
+        ]
+      }
+    }
   ],
   "variable": [
-    { "key": "base_url", "value": "https://shop.example.com" },
-    { "key": "apiKey", "value": "abc123" },
-    { "key": "old", "value": "x", "disabled": true }
+    {
+      "key": "base_url",
+      "value": "https://shop.example.com"
+    },
+    {
+      "key": "apiKey",
+      "value": "abc123"
+    },
+    {
+      "key": "old",
+      "value": "x",
+      "disabled": true
+    }
   ],
   "item": [
     {
       "name": "Users",
       "description": "User endpoints",
       "event": [
-        { "listen": "test", "script": { "exec": ["pm.test(\"ok\", () => pm.response.to.have.status(200));"] } }
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"ok\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
       ],
       "item": [
         {
@@ -30,21 +61,46 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json" },
-              { "key": "X-Debug", "value": "1", "disabled": true }
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Debug",
+                "value": "1",
+                "disabled": true
+              }
             ],
             "url": {
               "raw": "{{base_url}}/users?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                }
               ]
             }
           },
           "event": [
-            { "listen": "test", "script": { "exec": ["pm.test(\"list\", () => {});"] } }
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"list\", () => {});"
+                ]
+              }
+            }
           ]
         },
         {
@@ -53,9 +109,24 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/users/:id/:format",
-              "host": ["{{base_url}}"],
-              "path": ["users", ":id", ":format"],
-              "variable": [{ "key": "id", "value": "{{userId}}" }, { "key": "format", "value": "" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                ":id",
+                ":format"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "format",
+                  "value": ""
+                }
+              ]
             }
           }
         },
@@ -64,8 +135,14 @@
           "auth": {
             "type": "basic",
             "basic": [
-              { "key": "username", "value": "admin" },
-              { "key": "password", "value": "s3cret" }
+              {
+                "key": "username",
+                "value": "admin"
+              },
+              {
+                "key": "password",
+                "value": "s3cret"
+              }
             ]
           },
           "item": [
@@ -75,16 +152,28 @@
                 "method": "DELETE",
                 "url": {
                   "raw": "{{base_url}}/users/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["users", ":id"],
-                  "variable": [{ "key": "id", "value": "42" }]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "users",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "42"
+                    }
+                  ]
                 }
               }
             },
             {
               "name": "Public ping",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "GET",
                 "url": "{{base_url}}/ping"
               }
@@ -98,8 +187,14 @@
       "auth": {
         "type": "basic",
         "basic": [
-          { "key": "username", "value": "{{user}}" },
-          { "key": "password", "value": "{{pass}}" }
+          {
+            "key": "username",
+            "value": "{{user}}"
+          },
+          {
+            "key": "password",
+            "value": "{{pass}}"
+          }
         ]
       },
       "item": [
@@ -111,7 +206,11 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"user\": \"{{user}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{base_url}}/login"
           }
@@ -124,17 +223,34 @@
         "auth": {
           "type": "apikey",
           "apikey": [
-            { "key": "key", "value": "api_key" },
-            { "key": "value", "value": "{{apiKey}}" },
-            { "key": "in", "value": "query" }
+            {
+              "key": "key",
+              "value": "api_key"
+            },
+            {
+              "key": "value",
+              "value": "{{apiKey}}"
+            },
+            {
+              "key": "in",
+              "value": "query"
+            }
           ]
         },
         "method": "POST",
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "name", "value": "Ann", "type": "text" },
-            { "key": "avatar", "type": "file", "src": "/tmp/a.png" }
+            {
+              "key": "name",
+              "value": "Ann",
+              "type": "text"
+            },
+            {
+              "key": "avatar",
+              "type": "file",
+              "src": "/tmp/a.png"
+            }
           ]
         },
         "url": "{{base_url}}/avatar"
@@ -143,11 +259,54 @@
     {
       "name": "GraphQL",
       "request": {
-        "auth": { "type": "oauth2", "oauth2": [] },
+        "auth": {
+          "type": "oauth2",
+          "oauth2": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "key": "tokenName",
+              "value": "shop-machine"
+            },
+            {
+              "key": "accessTokenUrl",
+              "value": "https://auth.example.com/token"
+            },
+            {
+              "key": "clientId",
+              "value": "{{client_id}}"
+            },
+            {
+              "key": "clientSecret",
+              "value": "{{client_secret}}"
+            },
+            {
+              "key": "scope",
+              "value": "read write"
+            },
+            {
+              "key": "client_authentication",
+              "value": "body"
+            },
+            {
+              "key": "addTokenTo",
+              "value": "header"
+            },
+            {
+              "key": "accessToken",
+              "value": "secret-token-value"
+            }
+          ]
+        },
         "method": "POST",
         "body": {
           "mode": "graphql",
-          "graphql": { "query": "query($id: ID!) { user(id: $id) { name } }", "variables": "{\"id\": 1}" }
+          "graphql": {
+            "query": "query($id: ID!) { user(id: $id) { name } }",
+            "variables": "{\"id\": 1}"
+          }
         },
         "url": "{{base_url}}/graphql"
       }
@@ -159,8 +318,15 @@
         "body": {
           "mode": "urlencoded",
           "urlencoded": [
-            { "key": "user", "value": "ann" },
-            { "key": "debug", "value": "1", "disabled": true }
+            {
+              "key": "user",
+              "value": "ann"
+            },
+            {
+              "key": "debug",
+              "value": "1",
+              "disabled": true
+            }
           ]
         },
         "url": "{{base_url}}/form"
@@ -170,9 +336,272 @@
       "name": "Notes",
       "request": {
         "method": "PUT",
-        "body": { "mode": "raw", "raw": "plain text" },
+        "body": {
+          "mode": "raw",
+          "raw": "plain text"
+        },
         "url": "{{base_url}}/notes"
       }
+    },
+    {
+      "name": "Signed",
+      "item": [
+        {
+          "name": "Digest",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/digest",
+            "auth": {
+              "type": "digest",
+              "digest": [
+                {
+                  "key": "username",
+                  "value": "d"
+                },
+                {
+                  "key": "password",
+                  "value": "p"
+                },
+                {
+                  "key": "realm",
+                  "value": "r"
+                },
+                {
+                  "key": "algorithm",
+                  "value": "MD5"
+                },
+                {
+                  "key": "qop",
+                  "value": "auth"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OAuth1",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/oauth1",
+            "auth": {
+              "type": "oauth1",
+              "oauth1": [
+                {
+                  "key": "signatureMethod",
+                  "value": "HMAC-SHA256"
+                },
+                {
+                  "key": "consumerKey",
+                  "value": "ck"
+                },
+                {
+                  "key": "consumerSecret",
+                  "value": "cs"
+                },
+                {
+                  "key": "token",
+                  "value": "t"
+                },
+                {
+                  "key": "tokenSecret",
+                  "value": "ts"
+                },
+                {
+                  "key": "addParamsToHeader",
+                  "value": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hawk",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/hawk",
+            "auth": {
+              "type": "hawk",
+              "hawk": [
+                {
+                  "key": "authId",
+                  "value": "id1"
+                },
+                {
+                  "key": "authKey",
+                  "value": "k1"
+                },
+                {
+                  "key": "algorithm",
+                  "value": "sha256"
+                },
+                {
+                  "key": "extraData",
+                  "value": "x"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "AWS",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/aws",
+            "auth": {
+              "type": "awsv4",
+              "awsv4": [
+                {
+                  "key": "accessKey",
+                  "value": "AK"
+                },
+                {
+                  "key": "secretKey",
+                  "value": "SK"
+                },
+                {
+                  "key": "region",
+                  "value": "eu-west-1"
+                },
+                {
+                  "key": "service",
+                  "value": "s3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "NTLM",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/ntlm",
+            "auth": {
+              "type": "ntlm",
+              "ntlm": [
+                {
+                  "key": "username",
+                  "value": "u"
+                },
+                {
+                  "key": "password",
+                  "value": "p"
+                },
+                {
+                  "key": "domain",
+                  "value": "CORP"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Akamai",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/akamai",
+            "auth": {
+              "type": "edgegrid",
+              "edgegrid": [
+                {
+                  "key": "accessToken",
+                  "value": "at"
+                },
+                {
+                  "key": "clientToken",
+                  "value": "ct"
+                },
+                {
+                  "key": "clientSecret",
+                  "value": "cs"
+                },
+                {
+                  "key": "baseURL",
+                  "value": "https://akab.example"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "JWT",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/jwt",
+            "auth": {
+              "type": "jwt",
+              "jwt": [
+                {
+                  "key": "algorithm",
+                  "value": "HS512"
+                },
+                {
+                  "key": "secret",
+                  "value": "{{jwt_secret}}"
+                },
+                {
+                  "key": "payload",
+                  "value": "{\"sub\":1}"
+                },
+                {
+                  "key": "addTokenTo",
+                  "value": "queryParam"
+                },
+                {
+                  "key": "queryParamKey",
+                  "value": "jwt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "ASAP",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/asap",
+            "auth": {
+              "type": "asap",
+              "asap": [
+                {
+                  "key": "alg",
+                  "value": "RS256"
+                },
+                {
+                  "key": "iss",
+                  "value": "me"
+                },
+                {
+                  "key": "aud",
+                  "value": "them"
+                },
+                {
+                  "key": "kid",
+                  "value": "k1"
+                },
+                {
+                  "key": "privateKey",
+                  "value": "-----BEGIN-----"
+                },
+                {
+                  "key": "exp",
+                  "value": "1h"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Weird",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/signed/weird",
+            "auth": {
+              "type": "futureauth",
+              "futureauth": []
+            }
+          }
+        }
+      ]
     }
   ]
 }

@@ -8,6 +8,7 @@
 //! Redirects are followed by the engine itself so each hop is recorded.
 //! See `README.md` in this crate.
 
+pub mod challenge;
 pub mod error;
 pub mod proxy;
 pub mod settings;
@@ -22,8 +23,10 @@ use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use challenge::{ChallengeAuth, body_bytes, full_url, with_auth_env};
 pub use error::{ErrorContext, RequestError, RequestErrorKind, classify, detail_chain};
 pub use proxy::{Bypass, HostPattern};
+pub use reqwest::Url;
 pub use settings::{
     ClientCertificate, NetworkSettings, ProxyMode, ProxySettings, TlsVersion, load_settings,
     save_settings,
@@ -46,6 +49,9 @@ pub enum EngineError {
     /// Invalid network settings; the message names the offending field.
     #[error("{0}")]
     Config(String),
+    /// Authorization could not be computed (D39); names the auth type and field.
+    #[error("{0}")]
+    Auth(String),
 }
 
 /// `Display` of an error and its sources, without repetitions.
@@ -121,7 +127,7 @@ impl Response {
 
 /// Key of the client cache: everything that needs a separate `reqwest::Client`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct ClientKey {
+pub(crate) struct ClientKey {
     verify: bool,
     http1_only: bool,
     h2_prior_knowledge: bool,
@@ -307,6 +313,21 @@ impl Engine {
         &self.inner.settings
     }
 
+    /// A pooled client configured with the global network settings (proxy, extra CAs,
+    /// TLS verification, HTTP version) and the client certificate matching `url`'s host.
+    /// Used for side requests such as OAuth 2.0 token endpoints, so they behave exactly
+    /// like regular sends (e.g. behind a corporate proxy).
+    pub fn client_for_url(&self, url: &str) -> Result<reqwest::Client, EngineError> {
+        let parsed =
+            reqwest::Url::parse(url).map_err(|_| EngineError::InvalidUrl(url.to_string()))?;
+        self.client(ClientKey {
+            verify: self.inner.settings.verify_ssl,
+            http1_only: self.inner.settings.http_version == HttpVersionPref::Http1,
+            h2_prior_knowledge: false,
+            identity: self.identity_for(&parsed),
+        })
+    }
+
     /// Merge the global settings, the caller's timeout and the request's
     /// `[settings]`. Precedence: request settings > `timeout` argument >
     /// global settings.
@@ -336,6 +357,22 @@ impl Engine {
         {
             return Ok(c.clone());
         }
+        let client = self.build_client(key, false)?;
+        self.inner
+            .clients
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key, client.clone());
+        Ok(client)
+    }
+
+    /// Build a client. `connection_bound` (NTLM): HTTP/1.1 and at most one
+    /// idle connection per host, so a handshake reuses the same socket.
+    fn build_client(
+        &self,
+        key: ClientKey,
+        connection_bound: bool,
+    ) -> Result<reqwest::Client, EngineError> {
         let s = &self.inner.settings;
         let mut b = reqwest::Client::builder()
             .user_agent(USER_AGENT)
@@ -353,8 +390,11 @@ impl Engine {
                 TlsVersion::Tls13 => reqwest::tls::Version::TLS_1_3,
             });
         }
-        if key.http1_only {
+        if key.http1_only || connection_bound {
             b = b.http1_only();
+        }
+        if connection_bound {
+            b = b.pool_max_idle_per_host(1);
         }
         if key.h2_prior_knowledge {
             b = b.http2_prior_knowledge();
@@ -373,15 +413,8 @@ impl Engine {
                 }))
             }
         };
-        let client = b
-            .build()
-            .map_err(|e| EngineError::Config(format!("HTTP client: {}", error_chain(&e))))?;
-        self.inner
-            .clients
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(key, client.clone());
-        Ok(client)
+        b.build()
+            .map_err(|e| EngineError::Config(format!("HTTP client: {}", error_chain(&e))))
     }
 
     /// The client identity (index) for a URL: first enabled pattern that matches.
@@ -459,6 +492,26 @@ impl Engine {
         req: &Request,
         timeout: Option<Duration>,
     ) -> Result<Response, EngineError> {
+        self.send_inner(req, timeout, None).await
+    }
+
+    /// Send with a challenge–response auth (Digest, NTLM); see [`ChallengeAuth`].
+    pub async fn send_with_auth(
+        &self,
+        req: &Request,
+        timeout: Option<Duration>,
+        auth: &ChallengeAuth,
+    ) -> Result<Response, EngineError> {
+        challenge::send(self, req, timeout, auth).await
+    }
+
+    /// `dedicated`: per-exchange clients (NTLM) instead of the shared cache.
+    pub(crate) async fn send_inner(
+        &self,
+        req: &Request,
+        timeout: Option<Duration>,
+        dedicated: Option<&Mutex<HashMap<ClientKey, reqwest::Client>>>,
+    ) -> Result<Response, EngineError> {
         let eff = self.effective(req, timeout);
         let mut url =
             reqwest::Url::parse(&req.url).map_err(|_| EngineError::InvalidUrl(req.url.clone()))?;
@@ -503,7 +556,26 @@ impl Engine {
                     && url.scheme() == "http",
                 identity: self.identity_for(&url),
             };
-            let client = self.client(key)?;
+            let client = match dedicated {
+                None => self.client(key)?,
+                Some(pool) => {
+                    let existing = pool
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .get(&key)
+                        .cloned();
+                    match existing {
+                        Some(c) => c,
+                        None => {
+                            let c = self.build_client(key, true)?;
+                            pool.lock()
+                                .unwrap_or_else(|e| e.into_inner())
+                                .insert(key, c.clone());
+                            c
+                        }
+                    }
+                }
+            };
             let mut builder = client.request(method.clone(), url.clone());
             if let Some(t) = remaining(start)? {
                 builder = builder.timeout(t);
@@ -625,3 +697,6 @@ impl Engine {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod auth_tests;

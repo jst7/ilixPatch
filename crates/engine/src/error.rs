@@ -283,6 +283,7 @@ pub fn classify(e: &EngineError, ctx: &ErrorContext<'_>) -> RequestError {
             };
             return base(kind, format!("{m}."));
         }
+        EngineError::Auth(m) => return base(K::Other, m.clone()),
         EngineError::Http(_) => {}
     }
 

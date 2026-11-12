@@ -72,6 +72,8 @@ pub struct RunConfig {
     pub persist_variables: bool,
     /// Keep response bodies/headers in [`RequestExtra`] (verbose output, reports).
     pub keep_bodies: bool,
+    /// OAuth 2.0 token supplier (D39); `None`: only literal `access_token`s work.
+    pub oauth2: Option<crate::auth::OAuth2Handle>,
 }
 
 impl Default for RunConfig {
@@ -87,6 +89,7 @@ impl Default for RunConfig {
             bail: false,
             persist_variables: true,
             keep_bodies: false,
+            oauth2: None,
         }
     }
 }
@@ -401,6 +404,7 @@ where
             iteration_count: iterations,
             timeout: config.timeout,
             run_scripts: true,
+            oauth2: config.oauth2.as_ref().map(|h| &*h.0),
         };
 
         let mut pos = 0;

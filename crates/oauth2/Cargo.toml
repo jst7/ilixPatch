@@ -1,0 +1,22 @@
+[package]
+name = "ilixpatch-oauth2"
+description = "OAuth 2.0 for ilixPatch: per-user token store, browser/loopback flows, refresh and a token provider for sends"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+ilixpatch-core.workspace = true
+ilixpatch-auth.workspace = true
+ilixpatch-runner.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+tokio = { workspace = true, features = ["net", "io-util", "time", "sync"] }
+getrandom = "0.3"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["net", "io-util", "time", "sync", "macros", "rt-multi-thread"] }
+indexmap.workspace = true

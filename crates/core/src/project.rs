@@ -200,6 +200,7 @@ pub fn create_collection(project_root: impl AsRef<Path>, name: &str) -> Result<P
         version: FORMAT_VERSION,
         name: name.into(),
         variables: Default::default(),
+        auth: Default::default(),
     };
     fs::write(&manifest, toml::to_string_pretty(&meta)?).map_err(io_err(&manifest))?;
     Ok(dir)
@@ -223,10 +224,11 @@ pub fn create_folder(parent: impl AsRef<Path>, name: &str) -> Result<PathBuf> {
 pub fn create_request(folder: impl AsRef<Path>, name: &str) -> Result<RequestFile> {
     let name = check_name(name)?;
     let folder = existing_dir(folder.as_ref())?;
+    // `collection.toml` / `folder.toml` are not requests.
     let reserved: &[&str] = if is_collection_root(&folder) {
-        &["collection"]
+        &["collection", "folder"]
     } else {
-        &[]
+        &["folder"]
     };
     let path = unique_path(&folder, &slugify(name), ".toml", reserved);
     let request = Request {
@@ -238,6 +240,7 @@ pub fn create_request(folder: impl AsRef<Path>, name: &str) -> Result<RequestFil
         body: None,
         scripts: Default::default(),
         settings: Default::default(),
+        auth: Default::default(),
     };
     storage::save_request(&path, &request)?;
     Ok(RequestFile { path, request })

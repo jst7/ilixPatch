@@ -6,6 +6,7 @@
 //! `RequestRunResult`, `RunSummary`, `LoadOptions`, `LoadSnapshot`,
 //! `LoadRequestStats`) match `app/src/lib/api.ts`.
 
+pub mod auth;
 pub mod exec;
 pub mod load;
 pub mod report;
@@ -13,6 +14,7 @@ pub mod run;
 pub mod target;
 pub mod vars;
 
+pub use auth::{BoxFuture, OAuth2Handle, OAuth2Provider, apply_auth, auth_type_name};
 pub use exec::{ExecContext, ExecResult, execute_request};
 pub use ilixpatch_engine::{RequestError, RequestErrorKind};
 pub use load::{
@@ -48,3 +50,6 @@ pub enum RunError {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod auth_pipeline_tests;

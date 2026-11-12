@@ -157,7 +157,7 @@ pub fn canonicalize_lenient(path: impl AsRef<Path>) -> Result<PathBuf> {
     let mut missing = Vec::new();
     let mut cur = path;
     loop {
-        match fs::canonicalize(cur) {
+        match dunce::canonicalize(cur) {
             Ok(mut base) => {
                 for name in missing.iter().rev() {
                     base.push(name);
@@ -177,7 +177,7 @@ pub fn canonicalize_lenient(path: impl AsRef<Path>) -> Result<PathBuf> {
 
 /// Canonical repo root, which must contain `.git`.
 fn repo_root(root: &Path) -> Result<PathBuf> {
-    let root = fs::canonicalize(root).map_err(io_err(root))?;
+    let root = dunce::canonicalize(root).map_err(io_err(root))?;
     if !is_repo_root(&root) {
         return Err(invalid(root, "not a git repository root"));
     }
@@ -316,7 +316,7 @@ pub fn checkout(root: impl AsRef<Path>, branch: &str, create: bool) -> Result<Re
 /// Make `dir` its own repository (`git init`).
 pub fn init(dir: impl AsRef<Path>) -> Result<RepoInfo> {
     let dir = dir.as_ref();
-    let dir = fs::canonicalize(dir).map_err(io_err(dir))?;
+    let dir = dunce::canonicalize(dir).map_err(io_err(dir))?;
     if !dir.is_dir() {
         return Err(invalid(dir, "not a directory"));
     }

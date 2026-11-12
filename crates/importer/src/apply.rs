@@ -7,15 +7,14 @@ use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
 use ilixpatch_core::Request;
+use ilixpatch_core::auth::Auth;
 use ilixpatch_core::environments::{
     self, EnvStore, EnvVariable, EnvironmentDoc, load_globals, save_globals, validate_name,
 };
 use ilixpatch_core::model::FORMAT_VERSION;
 use ilixpatch_core::project::{self, PROJECT_DIR, ProjectConfig, slugify};
 use ilixpatch_core::storage::{self, COLLECTION_FILE, ENVIRONMENTS_DIR};
-use indexmap::IndexMap;
 use regex::Regex;
-use serde::Serialize;
 
 use crate::convert::{self, ConvertOptions};
 use crate::parse::SrcNode;
@@ -36,18 +35,12 @@ fn invalid(msg: impl Into<String>) -> ImportError {
     ImportError::Invalid(msg.into())
 }
 
-#[derive(Serialize)]
-struct CollectionManifest<'a> {
-    version: u32,
-    name: &'a str,
-    #[serde(skip_serializing_if = "IndexMap::is_empty")]
-    variables: IndexMap<String, String>,
-}
-
 enum Op {
     Dir(PathBuf),
     Request(PathBuf, Box<Request>),
     Manifest(PathBuf, String),
+    /// `folder.toml` `[auth]` of a folder.
+    FolderAuth(PathBuf, Box<Auth>),
 }
 
 struct Planner<'a> {
@@ -137,7 +130,38 @@ impl Planner<'_> {
         Some(dir)
     }
 
-    fn request(&mut self, parent: &Path, node: &SrcNode, name: &str) {
+    /// The node's auth (`effective`: including what it inherits in Postman).
+    fn auth_of(&mut self, node: &SrcNode, effective: bool) -> Auth {
+        if !self.convert.convert_auth {
+            return Auth::Inherit;
+        }
+        let src = if effective {
+            node.effective_auth.as_ref()
+        } else {
+            node.auth.as_ref()
+        };
+        let Some(src) = src else {
+            return Auth::Inherit;
+        };
+        let warnings = &mut self.report.warnings;
+        crate::auth_map::map_auth(src, &mut |code, msg| {
+            warnings.push(ImportWarning::new(
+                Some(&node.id),
+                code,
+                format!("{}: {msg}", node.name),
+            ));
+        })
+    }
+
+    fn folder_auth(&mut self, dir: &Path, node: &SrcNode, effective: bool) {
+        let auth = self.auth_of(node, effective);
+        if !auth.is_inherit() {
+            self.ops
+                .push(Op::FolderAuth(dir.to_path_buf(), Box::new(auth)));
+        }
+    }
+
+    fn request(&mut self, parent: &Path, node: &SrcNode, name: &str, effective: bool) {
         let reserved: &[&str] = if self.is_collection_root(parent) {
             &["collection"]
         } else {
@@ -146,7 +170,7 @@ impl Planner<'_> {
         let Some((path, _)) = self.claim(parent, name, ".toml", reserved) else {
             return;
         };
-        let mut req = convert::convert(node, &self.convert, &mut self.report.warnings);
+        let mut req = convert::convert(node, &self.convert, effective, &mut self.report.warnings);
         req.name = name.to_string();
         self.ops.push(Op::Request(path, Box::new(req)));
         self.report.requests += 1;
@@ -160,10 +184,11 @@ impl Planner<'_> {
                 continue;
             }
             match child.kind {
-                NodeKind::Request => self.request(dir, child, &child.name),
+                NodeKind::Request => self.request(dir, child, &child.name, false),
                 _ => {
                     if let Some(sub) = self.dir(dir, &child.name) {
                         self.report.folders += 1;
+                        self.folder_auth(&sub, child, false);
                         self.children(child, &sub);
                     }
                 }
@@ -174,7 +199,7 @@ impl Planner<'_> {
     /// `node` itself (a request) or its contents, into `dir`.
     fn contents(&mut self, node: &SrcNode, dir: &Path) {
         if node.kind == NodeKind::Request {
-            self.request(dir, node, &node.name);
+            self.request(dir, node, &node.name, true);
         } else {
             self.children(node, dir);
         }
@@ -229,27 +254,43 @@ impl Planner<'_> {
                 if !existed {
                     self.ops.push(Op::Dir(dir.clone()));
                 }
-                let mut variables = if existed {
-                    existing_vars(&dir)?
+                let mut manifest = if existed {
+                    existing_manifest(&dir)?
                 } else {
-                    IndexMap::new()
+                    toml::Table::new()
                 };
+                let mut variables: toml::Table = manifest
+                    .get("variables")
+                    .and_then(|v| v.as_table())
+                    .cloned()
+                    .unwrap_or_default();
                 if node.kind == NodeKind::Collection {
                     for v in node.variables.iter().filter(|v| v.enabled) {
-                        variables.insert(v.key.clone(), v.value.clone());
+                        variables.insert(v.key.clone(), toml::Value::String(v.value.clone()));
                     }
                 }
-                let manifest = CollectionManifest {
-                    version: FORMAT_VERSION,
-                    name: &name,
-                    variables,
-                };
+                manifest.insert(
+                    "version".into(),
+                    toml::Value::Integer(i64::from(FORMAT_VERSION)),
+                );
+                manifest.insert("name".into(), toml::Value::String(name.clone()));
+                if !variables.is_empty() {
+                    manifest.insert("variables".into(), toml::Value::Table(variables));
+                }
+                // Collection auth: what the node uses in Postman (a request keeps its own).
+                if node.kind != NodeKind::Request {
+                    let auth = self.auth_of(node, true);
+                    if !auth.is_inherit() {
+                        let v = toml::Value::try_from(&auth).map_err(|e| invalid(e.to_string()))?;
+                        manifest.insert("auth".into(), v);
+                    }
+                }
                 let text = toml::to_string_pretty(&manifest).map_err(|e| invalid(e.to_string()))?;
                 self.ops.push(Op::Manifest(dir.join(COLLECTION_FILE), text));
                 self.collection_roots.insert(dir.clone());
                 self.report.collections += 1;
                 if node.kind == NodeKind::Request {
-                    self.request(&dir, node, &name);
+                    self.request(&dir, node, &name, true);
                 } else {
                     self.children(node, &dir);
                 }
@@ -258,20 +299,23 @@ impl Planner<'_> {
                 self.collection_vars_dropped(node);
                 if let Some(dir) = self.dir(target, &name) {
                     self.report.folders += 1;
+                    if node.kind != NodeKind::Request {
+                        self.folder_auth(&dir, node, true);
+                    }
                     self.contents(node, &dir);
                 }
             }
             PlaceAs::Request => {
                 self.collection_vars_dropped(node);
                 if node.kind == NodeKind::Request {
-                    self.request(target, node, &name);
+                    self.request(target, node, &name, true);
                 } else {
                     let mut reqs = Vec::new();
                     for c in &node.children {
                         self.requests_flat(c, &mut reqs);
                     }
                     for r in reqs {
-                        self.request(target, r, &r.name);
+                        self.request(target, r, &r.name, true);
                     }
                 }
             }
@@ -280,23 +324,13 @@ impl Planner<'_> {
     }
 }
 
-/// Variables of an existing collection.toml (kept when overwriting).
-fn existing_vars(dir: &Path) -> Result<IndexMap<String, String>> {
+/// An existing collection.toml as a table (kept and updated when overwriting).
+fn existing_manifest(dir: &Path) -> Result<toml::Table> {
     let path = dir.join(COLLECTION_FILE);
     let Ok(text) = fs::read_to_string(&path) else {
-        return Ok(IndexMap::new());
+        return Ok(toml::Table::new());
     };
-    let table: toml::Table =
-        toml::from_str(&text).map_err(|e| invalid(format!("{}: {e}", path.display())))?;
-    Ok(table
-        .get("variables")
-        .and_then(|v| v.as_table())
-        .map(|t| {
-            t.iter()
-                .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
-                .collect()
-        })
-        .unwrap_or_default())
+    toml::from_str(&text).map_err(|e| invalid(format!("{}: {e}", path.display())))
 }
 
 fn project_paths(project_path: &Path) -> Result<(PathBuf, PathBuf)> {
@@ -505,6 +539,11 @@ pub fn apply(parsed: &Parsed, plan: &ImportPlan, ctx: &ApplyContext) -> Result<I
             Op::Request(path, req) => {
                 storage::save_request(&path, &req).map_err(|e| fail(e.to_string(), &written))?;
                 written.push(path);
+            }
+            Op::FolderAuth(dir, auth) => {
+                storage::save_folder_auth(&dir, Some(&auth))
+                    .map_err(|e| fail(e.to_string(), &written))?;
+                written.push(dir.join(storage::FOLDER_FILE));
             }
             Op::Manifest(path, text) => {
                 fs::write(&path, text)

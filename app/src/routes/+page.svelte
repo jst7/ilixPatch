@@ -10,6 +10,8 @@
   import Sidebar from "$lib/components/Sidebar.svelte";
   import TabsSidebar from "$lib/components/TabsSidebar.svelte";
   import RunnerView from "$lib/components/RunnerView.svelte";
+  import ContainerSettingsView from "$lib/components/ContainerSettingsView.svelte";
+  import { containerSession } from "$lib/stores/containerSettings.svelte";
   import LoadTestView from "$lib/components/LoadTestView.svelte";
   import GitView from "$lib/components/GitView.svelte";
   import EnvironmentsView from "$lib/components/EnvironmentsView.svelte";
@@ -155,6 +157,7 @@
         const tab = ws.activeTab;
         if (tab?.kind === "history") ws.historySaveRequest = tab.id;
         else if (tab?.kind === "environments") void saveEnvTab(tab.project);
+        else if (tab?.kind === "container") void containerSession(tab.path).save();
         else ws.save();
       } else if (e.key === "Enter") {
         e.preventDefault();
@@ -194,6 +197,8 @@
       {#key ws.activeTab.target}<LoadTestView target={ws.activeTab.target} />{/key}
     {:else if ws.activeTab?.kind === "git"}
       {#key ws.activeTab.repo}<GitView repo={ws.activeTab.repo} />{/key}
+    {:else if ws.activeTab?.kind === "container"}
+      {#key ws.activeTab.path}<ContainerSettingsView path={ws.activeTab.path} />{/key}
     {:else if ws.activeTab?.kind === "import"}
       <ImportView />
     {:else if ws.activeTab?.kind === "merge"}

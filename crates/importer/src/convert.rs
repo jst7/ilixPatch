@@ -1,10 +1,12 @@
 //! Postman request item → ilixPatch [`Request`].
 
+use ilixpatch_core::auth::Auth;
 use ilixpatch_core::{Body, HttpMethod, Request, Scripts};
 use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::ImportWarning;
+use crate::auth_map::map_auth;
 use crate::parse::{SrcNode, is_true, kv_list, str_at, text};
 
 /// Conversion switches (a subset of the plan options).
@@ -311,119 +313,18 @@ fn convert_body(
     }
 }
 
-/// A parameter of an auth block: v2.1 `[{key, value}]` or v2.0 `{key: value}`.
-fn auth_param(auth: &Value, typ: &str, key: &str) -> Option<String> {
-    match auth.get(typ)? {
-        Value::Array(items) => items
-            .iter()
-            .find(|i| str_at(i, "key").as_deref() == Some(key))
-            .and_then(|i| str_at(i, "value")),
-        obj @ Value::Object(_) => str_at(obj, key),
-        _ => None,
-    }
-}
-
-pub(crate) fn base64(input: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
-    for chunk in input.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
-        for i in 0..4 {
-            if i <= chunk.len() {
-                out.push(T[(n >> (18 - 6 * i) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
-}
-
-fn js_string(s: &str) -> String {
-    serde_json::to_string(s).unwrap_or_else(|_| "\"\"".into())
-}
-
-/// Turn the effective auth into headers/query, or a pre-request script line.
-fn convert_auth(
-    auth: &Value,
-    headers: &mut IndexMap<String, String>,
-    query: &mut IndexMap<String, String>,
-    warn: &mut Warn<'_>,
-) -> Option<String> {
-    let typ = str_at(auth, "type").unwrap_or_default();
-    let has_header =
-        |h: &IndexMap<String, String>, name: &str| h.keys().any(|k| k.eq_ignore_ascii_case(name));
-    match typ.as_str() {
-        "" | "noauth" | "inherit" => None,
-        "bearer" => {
-            let token = auth_param(auth, "bearer", "token").unwrap_or_default();
-            if !has_header(headers, "Authorization") {
-                headers.insert("Authorization".into(), format!("Bearer {token}"));
-            }
-            None
-        }
-        "apikey" => {
-            let key = auth_param(auth, "apikey", "key").unwrap_or_default();
-            let value = auth_param(auth, "apikey", "value").unwrap_or_default();
-            if key.is_empty() {
-                warn.push("auth_apikey", "API key auth without a key name was dropped");
-            } else if auth_param(auth, "apikey", "in").as_deref() == Some("query") {
-                query.entry(key).or_insert(value);
-            } else if !has_header(headers, &key) {
-                headers.insert(key, value);
-            }
-            None
-        }
-        "basic" => {
-            let user = auth_param(auth, "basic", "username").unwrap_or_default();
-            let pass = auth_param(auth, "basic", "password").unwrap_or_default();
-            if has_header(headers, "Authorization") {
-                None
-            } else if !user.contains("{{") && !pass.contains("{{") {
-                headers.insert(
-                    "Authorization".into(),
-                    format!("Basic {}", base64(format!("{user}:{pass}").as_bytes())),
-                );
-                None
-            } else {
-                // Values use variables: encode at send time.
-                Some(format!(
-                    "// Basic auth (imported from Postman)\npm.request.headers.upsert({{ key: \"Authorization\", value: \"Basic \" + btoa(pm.variables.replaceIn({})) }});",
-                    js_string(&format!("{user}:{pass}"))
-                ))
-            }
-        }
-        "oauth2" => {
-            warn.push(
-                "auth_oauth2",
-                "OAuth 2.0 auth is not supported and was not imported",
-            );
-            None
-        }
-        other => {
-            warn.push(
-                "auth_unsupported",
-                format!("{other} auth is not supported and was not imported"),
-            );
-            None
-        }
-    }
-}
-
 fn join_scripts(parts: Vec<String>) -> Option<String> {
     let parts: Vec<String> = parts.into_iter().filter(|p| !p.trim().is_empty()).collect();
     (!parts.is_empty()).then(|| parts.join("\n\n"))
 }
 
 /// Convert one request node. Warnings are appended to `out`.
+/// `use_effective`: give the request its inherited Postman auth (when it is
+/// placed without the ancestors it inherited from) instead of its own.
 pub(crate) fn convert(
     node: &SrcNode,
     opts: &ConvertOptions,
+    use_effective: bool,
     out: &mut Vec<ImportWarning>,
 ) -> Request {
     let mut warn = Warn {
@@ -443,7 +344,7 @@ pub(crate) fn convert(
             ),
         );
     }
-    let (url, mut query) = convert_url(req, &mut warn);
+    let (url, query) = convert_url(req, &mut warn);
 
     let mut headers = IndexMap::new();
     let header_list = match req.get("header") {
@@ -469,14 +370,21 @@ pub(crate) fn convert(
         .get("body")
         .and_then(|b| convert_body(b, &headers, &mut warn));
 
+    let auth = if opts.convert_auth {
+        let source = if use_effective {
+            node.effective_auth.as_ref()
+        } else {
+            node.auth.as_ref()
+        };
+        source
+            .map(|a| map_auth(a, &mut |code, msg| warn.push(code, msg)))
+            .unwrap_or_default()
+    } else {
+        Auth::Inherit
+    };
+
     let mut pre = Vec::new();
     let mut tests = Vec::new();
-    if opts.convert_auth
-        && let Some(auth) = &node.effective_auth
-        && let Some(script) = convert_auth(auth, &mut headers, &mut query, &mut warn)
-    {
-        pre.push(script);
-    }
     if opts.keep_scripts {
         let parent_scripts: Vec<_> = node
             .parents
@@ -518,5 +426,6 @@ pub(crate) fn convert(
             tests: join_scripts(tests),
         },
         settings: Default::default(),
+        auth,
     }
 }
