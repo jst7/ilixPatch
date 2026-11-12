@@ -15,7 +15,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$ROOT/app"
 MIN_RUST="1.85.0"  # edition 2024
-MIN_NODE="20.0.0"
+MIN_NODE="24.0.0"
 
 MODE="dev"
 ASSUME_YES=0

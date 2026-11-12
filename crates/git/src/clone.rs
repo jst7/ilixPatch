@@ -518,7 +518,12 @@ mod tests {
             "ssh://git@host:22/org/repo.git",
             "git@github.com:org/repo.git",
             "file:///tmp/repo.git",
-            "/tmp/repo.git",
+            // An absolute local path ("/tmp/…" is not absolute on Windows).
+            if cfg!(windows) {
+                r"C:\repos\repo.git"
+            } else {
+                "/tmp/repo.git"
+            },
         ] {
             assert!(validate_url(ok).is_ok(), "{ok}");
         }

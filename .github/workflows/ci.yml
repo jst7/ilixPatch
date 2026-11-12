@@ -22,22 +22,33 @@ jobs:
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
       - name: Install Tauri system dependencies (Linux)
         if: runner.os == 'Linux'
+        # Fail fast on mirror/DNS outages (a GitHub runner DNS failure once made apt retry for 35 min),
+        # and retry the whole step a few times since those outages are usually transient.
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
-            libayatana-appindicator3-dev librsvg2-dev patchelf
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
+          for attempt in 1 2 3; do
+            if sudo apt-get $APT_OPTS update && \
+               sudo apt-get $APT_OPTS install -y --no-install-recommends libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf; then
+              exit 0
+            fi
+            echo "::warning::apt failed (attempt $attempt/3), retrying in 30 s…"
+            sleep 30
+          done
+          echo "::error::Could not install the Linux system dependencies (Ubuntu mirrors unreachable). Re-run the job later."
+          exit 1
       - name: Build frontend (needed by tauri::generate_context!)
         working-directory: app
         run: npm ci && npm run build
@@ -55,10 +66,10 @@ jobs:
     name: Frontend (svelte-check + self-tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
       - working-directory: app
@@ -77,14 +88,14 @@ jobs:
     name: CLI end-to-end (demo project)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run the demo collection with Newman-style reporters
         run: |
           cargo run -q -p ilixpatch-cli -- run examples/demo-project --env dev \
             -r cli,junit --reporter-junit-export target/junit.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: demo-junit

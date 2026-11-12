@@ -1,7 +1,7 @@
 THIRD-PARTY SOFTWARE NOTICES AND LICENSES
 =========================================
 
-ilixPatch (https://github.com/jst7/ilixpatch), © Jorge Segovia Tormo and contributors,
+ilixPatch (https://github.com/jst7/ilixPatch), © Jorge Segovia Tormo and contributors,
 includes the third-party components listed below. Each component is distributed under
 its own license; the full license texts follow the list. Where a component is offered
 under a choice of licenses ("A OR B"), ilixPatch uses it under any of those options.

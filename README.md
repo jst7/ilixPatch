@@ -93,7 +93,7 @@ offers to install what's missing (it asks first), installs the frontend dependen
 | `./init.sh --build` | Build release installers into `target/release/bundle/` |
 
 ### Manual setup
-Requirements: [Rust](https://rustup.rs) ≥ 1.85, Node.js ≥ 20, Git, and the
+Requirements: [Rust](https://rustup.rs) ≥ 1.85, Node.js ≥ 24 (LTS), Git, and the
 [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS (Xcode Command Line Tools on macOS;
 WebKitGTK 4.1 & friends on Linux; MSVC Build Tools + WebView2 on Windows).
 
@@ -285,8 +285,8 @@ node src/lib/merge/selftest.mjs && node src/lib/import/selftest.mjs && node src/
    notarized macOS builds; Windows signing is configured via `bundle.windows.signCommand`.
 
 ## Contributing
-Issues and pull requests are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and skim
-[docs/DECISIONS.md](docs/DECISIONS.md) first. Good first areas: importers, CLI reporters, translations
+Issues and pull requests are welcome! Please skim [docs/DECISIONS.md](docs/DECISIONS.md) first and run the
+checks from [Development](#development) before opening a PR. Good first areas: importers, CLI reporters, translations
 (`app/src/lib/i18n/locales/`), and themes.
 
 ## License

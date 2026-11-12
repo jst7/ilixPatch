@@ -90,7 +90,7 @@ cd ilixPatch
 
 ### A mano
 Necesitas:
-- [Rust](https://rustup.rs) ≥ 1.85, Node.js ≥ 20 y Git;
+- [Rust](https://rustup.rs) ≥ 1.85, Node.js ≥ 24 (LTS) y Git;
 - los [requisitos de Tauri](https://tauri.app/start/prerequisites/) de tu sistema.
 
 ```sh

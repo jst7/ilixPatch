@@ -34,7 +34,9 @@ pub enum StorageError {
     #[error("{path}: {source}")]
     Parse {
         path: PathBuf,
-        source: toml::de::Error,
+        // Boxed: on Windows `PathBuf` is 32 bytes and the unboxed variant exceeds
+        // clippy's `result_large_err` threshold (128 bytes), failing CI there only.
+        source: Box<toml::de::Error>,
     },
     #[error("{0}: not a collection (missing {COLLECTION_FILE})")]
     NotACollection(PathBuf),
@@ -83,7 +85,7 @@ fn read(path: &Path) -> Result<String> {
 pub(crate) fn parse<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
     toml::from_str(&read(path)?).map_err(|source| StorageError::Parse {
         path: path.into(),
-        source,
+        source: Box::new(source),
     })
 }
 

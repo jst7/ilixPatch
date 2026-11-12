@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compare tag with Cargo.toml and tauri.conf.json
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -55,38 +55,79 @@ jobs:
             os: ubuntu-22.04
             args: ""
             targets: ""
+          - name: Windows
+            os: windows-latest
+            args: ""
+            targets: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.targets }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
       - name: Install Tauri system dependencies (Linux)
         if: runner.os == 'Linux'
+        # Fail fast on mirror/DNS outages (a GitHub runner DNS failure once made apt retry for 35 min),
+        # and retry the whole step a few times since those outages are usually transient.
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
-            libayatana-appindicator3-dev librsvg2-dev patchelf
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
+          for attempt in 1 2 3; do
+            if sudo apt-get $APT_OPTS update && \
+               sudo apt-get $APT_OPTS install -y --no-install-recommends libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf; then
+              exit 0
+            fi
+            echo "::warning::apt failed (attempt $attempt/3), retrying in 30 s…"
+            sleep 30
+          done
+          echo "::error::Could not install the Linux system dependencies (Ubuntu mirrors unreachable). Re-run the job later."
+          exit 1
       - name: Install frontend dependencies
         working-directory: app
         run: npm ci
-      - uses: tauri-apps/tauri-action@v0
+      # Signing is OPTIONAL. A missing secret becomes an EMPTY env var in GitHub Actions, and Tauri
+      # then tries to import an empty certificate / notarize with an empty Apple ID and fails.
+      # So only export the variables whose secrets are actually set; otherwise build unsigned.
+      - name: Configure macOS signing (only if secrets are set)
+        if: runner.os == 'macOS'
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            } >> "$GITHUB_ENV"
+            echo "macOS code signing: enabled"
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+              } >> "$GITHUB_ENV"
+              echo "macOS notarization: enabled"
+            fi
+          else
+            echo "::notice::No Apple signing secrets: building an UNSIGNED macOS app (users must right-click > Open the first time)."
+          fi
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: app
           tagName: ${{ github.ref_name }}
@@ -110,9 +151,10 @@ jobs:
           - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu, ext: "" }
           - { os: macos-latest, target: aarch64-apple-darwin, ext: "" }
           - { os: macos-latest, target: x86_64-apple-darwin, ext: "" }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, ext: ".exe" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -134,7 +176,7 @@ jobs:
           else
             tar czf "$name.tar.gz" "$name"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: cli-${{ matrix.target }}
           path: |
