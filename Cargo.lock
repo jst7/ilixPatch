@@ -3245,7 +3245,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-app"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "dunce",
  "ilixpatch-core",
@@ -3265,14 +3265,14 @@ dependencies = [
  "tauri-plugin-opener",
  "tempfile",
  "tokio",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
 name = "ilixpatch-auth"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "hmac 0.12.1",
  "ilixpatch-core",
  "indexmap 2.14.2",
@@ -3294,9 +3294,9 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-bodystore"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "indexmap 2.14.2",
  "regex",
  "serde",
@@ -3306,7 +3306,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -3324,21 +3324,21 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "indexmap 2.14.2",
  "serde",
  "tempfile",
  "thiserror 2.0.21",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
  "toml_edit 0.25.19+spec-1.1.0",
 ]
 
 [[package]]
 name = "ilixpatch-engine"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "getrandom 0.3.4",
  "ilixpatch-auth",
  "ilixpatch-bodystore",
@@ -3356,13 +3356,13 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-rustls",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
  "x509-parser",
 ]
 
 [[package]]
 name = "ilixpatch-git"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "dunce",
  "gix",
@@ -3375,21 +3375,21 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-history"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ilixpatch-core",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
 name = "ilixpatch-importer"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ilixpatch-core",
  "indexmap 2.14.2",
@@ -3398,13 +3398,13 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
  "zip",
 ]
 
 [[package]]
 name = "ilixpatch-oauth2"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "getrandom 0.3.4",
  "ilixpatch-auth",
@@ -3420,7 +3420,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-runner"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "csv",
  "hdrhistogram",
@@ -3435,12 +3435,12 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
- "toml 0.8.2",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
 name = "ilixpatch-scripting"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ilixpatch-core",
  "indexmap 2.14.2",

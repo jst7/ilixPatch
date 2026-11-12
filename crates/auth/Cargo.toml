@@ -12,7 +12,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 indexmap.workspace = true
-base64 = "0.22"
+base64 = "0.23"
 url = "2"
 percent-encoding = "2"
 sha1 = { version = "0.10", features = ["oid"] }
