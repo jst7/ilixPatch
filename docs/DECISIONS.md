@@ -349,6 +349,16 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D56 · Body de formulario editable y ajuste de líneas en la respuesta ✅
+- **Body "Formulario (x-www-form-urlencoded)"**, el *x-www-form-urlencoded* de Postman, se puede **elegir y editar** con la misma tabla clave-valor que los parámetros y las cabeceras.
+  - El modelo, el motor (`Body::Form`, que se envía como `application/x-www-form-urlencoded`), el importador de Postman y "Copiar como cURL" ya lo soportaban. Solo faltaba la interfaz, que lo mostraba como "no editable".
+  - Claves y valores admiten `{{variables}}`.
+  - Pegar un cURL con `-d a=1&b=2` o `--data-urlencode` crea ahora un formulario, no un texto.
+  - *multipart/form-data* (con ficheros) sigue sin soporte.
+- **Ajustar líneas** en el visor de respuestas: un botón en la barra del body, **activado por defecto** y recordado por usuario (`localStorage`).
+  - `CodeEditor` gana la opción `wrap`, que se cambia sin recrear el editor.
+  - El visor virtualizado de bodies muy grandes (D41) no ajusta líneas: usa filas de altura fija.
+
 ## D55 · Peticiones sin proyecto ("peticiones rápidas") ✅
 - **Se puede crear una petición en cualquier momento sin elegir proyecto**, y **al guardarla se decide dónde va**: proyecto › colección › carpeta.
 - **Siempre a mano:**
@@ -635,7 +645,7 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - **Compatible con** "Copy as cURL" de Chrome y Firefox (bash `\`, cmd de Windows `^` y PowerShell `` ` ``, comillas `'…'`, `"…"` y `$'…'`) y con lo que exporta Postman.
   - **Flags:** `-X`, `-H`, `-d/--data*`, `--data-urlencode`, `--json`, `-F` (sin archivos), `-u` (→ Basic), `-A`, `-e`, `-b`, `-G`, `-I`, `-k` (→ sin SSL), `-L`, `--max-redirs`, `-m` (→ timeout), `--http1.1`/`--http2` y `--url`. Los de salida o depuración (`-s`, `-v`, `-o`, `--compressed`…) se ignoran sin avisar.
   - Proxy, certificados y archivos generan un **aviso** visible bajo la barra, con lo que no se importó.
-  - El body JSON se detecta y se formatea. Los formularios se importan como texto editable con su `Content-Type`.
+  - El body JSON se detecta y se formatea. Los formularios se importan como formulario clave-valor editable (desde D56; antes, como texto con su `Content-Type`).
 - **Botón "cURL"** en la fila de pestañas de la petición: copiar como cURL **con las variables resueltas** del entorno activo, **con `{{variables}}`** o **en una sola línea**. Los ajustes por petición se convierten en flags (`--insecure`, `--location`, `--max-time`…).
 - Un solo módulo, `app/src/lib/curl.ts`, que también usa el historial ("Copiar como cURL"). Tiene autotest propio (`node src/lib/curl.selftest.mjs`) incluido en la CI.
 

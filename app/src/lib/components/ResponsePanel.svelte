@@ -2,6 +2,7 @@
   import type { SendResult } from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
+  import { ui } from "$lib/stores/ui.svelte";
   import CodeEditor from "./CodeEditor.svelte";
   import RuntimeVariables from "./RuntimeVariables.svelte";
   import NetworkInfo from "./NetworkInfo.svelte";
@@ -171,6 +172,13 @@
             <button class="ghost small" onclick={() => editor?.unfoldAll()}>{t("response.expandAll")}</button>
           {/if}
           <button class="ghost small" onclick={() => editor?.openSearch()}>{t("response.search")}</button>
+          <button
+            class="ghost small"
+            class:on={ui.wrapResponse}
+            aria-pressed={ui.wrapResponse}
+            title={t("response.wrapHint")}
+            onclick={() => ui.setWrapResponse(!ui.wrapResponse)}>{t("response.wrap")}</button
+          >
         </div>
       {/if}
     </div>
@@ -188,6 +196,7 @@
             value={body.text}
             language={body.language}
             readonly
+            wrap={ui.wrapResponse}
             placeholder={t("response.emptyBody")}
           />
         </div>
@@ -286,6 +295,10 @@
     display: flex;
     gap: 2px;
     align-items: center;
+  }
+  .small.on {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
   .small {
     padding: 3px 8px;

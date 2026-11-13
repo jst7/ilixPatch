@@ -147,12 +147,12 @@ Todos los comandos y flags están en **[docs/CLI.md](docs/CLI.md)**.
 
 ## Funcionalidades
 **Peticiones y editor**
-- Métodos HTTP con colores, URL multilínea, params, headers y bodies JSON, texto o formulario.
+- Métodos HTTP con colores, URL multilínea, params, headers y bodies JSON, texto o **formulario clave-valor** (`x-www-form-urlencoded`).
 - **Pega un comando cURL** en la barra de URL y se rellena la petición entera. Con **Copiar como cURL** la exportas, con las variables resueltas o con `{{variables}}`.
 - Editores CodeMirror con JSON coloreado, plegado de nodos, buscar y reemplazar con regex y multilínea, y autocompletado de `pm`.
 - Cancelar una petición colgada con `⌘.` / `Ctrl+.`.
 - **Errores descriptivos** que explican la causa probable (DNS, conexión rechazada, timeout, certificado, mTLS, proxy…), con botones para solucionarlo.
-- Respuesta con estado, tiempo, tamaño, headers, tests, consola, versión HTTP, redirecciones y certificado TLS.
+- Respuesta con estado, tiempo, tamaño, headers, tests, consola, versión HTTP, redirecciones y certificado TLS; plegado, búsqueda y ajuste de líneas para valores largos.
 - **Autorización** con todos los tipos de Postman: Bearer, Basic, API key, Digest, OAuth 1.0, **OAuth 2.0** (authorization code, PKCE, client credentials, password e implicit; los tokens no salen de tu equipo), AWS Signature v4, Hawk, NTLM, Akamai, JWT y ASAP.
 
 **Organización**

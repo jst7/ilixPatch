@@ -63,19 +63,6 @@
   function applyCurl(text: string) {
     try {
       const { request, warnings } = parseCurl(text);
-      // Form bodies aren't editable in the UI: import them as an editable text body.
-      if (request.body?.type === "form") {
-        const fields = request.body.fields;
-        request.body = {
-          type: "text",
-          content: Object.entries(fields)
-            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-            .join("&"),
-        };
-        const headers = (request.headers ??= {});
-        if (!Object.keys(headers).some((k) => k.toLowerCase() === "content-type"))
-          headers["Content-Type"] = "application/x-www-form-urlencoded";
-      }
       const next = draftFromRequest(request);
       draft.method = next.method;
       draft.url = next.url;
@@ -215,6 +202,7 @@
     { mode: "none", label: () => t("request.body.none") },
     { mode: "json", label: () => "JSON" },
     { mode: "text", label: () => t("request.body.text") },
+    { mode: "form", label: () => t("request.body.form") },
   ];
 
 </script>
@@ -448,7 +436,6 @@
         <div class="body-bar">
           <select bind:value={draft.bodyMode} class="small" aria-label={t("request.bodyType")}>
             {#each bodyModes as b (b.mode)}<option value={b.mode}>{b.label()}</option>{/each}
-            {#if draft.bodyMode === "form"}<option value="form">{t("request.body.form")}</option>{/if}
           </select>
           {#if draft.bodyMode === "json"}
             <button class="ghost small" onclick={formatJson}>{t("request.format")}</button>
@@ -467,7 +454,10 @@
             {/key}
           </div>
         {:else if draft.bodyMode === "form"}
-          <p class="hint">{t("request.formReadonly")}</p>
+          <div class="scroll">
+            <KeyValueTable bind:rows={draft.formFields} />
+            <p class="hint">{t("request.formHint")}</p>
+          </div>
         {:else}
           <p class="hint">{t("request.noBody")}</p>
         {/if}

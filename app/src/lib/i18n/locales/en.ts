@@ -786,11 +786,11 @@ const en = {
   "request.bodyType": "Body type",
   "request.body.none": "None",
   "request.body.text": "Text",
-  "request.body.form": "Form",
+  "request.body.form": "Form (x-www-form-urlencoded)",
   "request.format": "Format JSON",
   "request.invalidJson": "The body is not valid JSON",
   "request.noBody": "This request has no body.",
-  "request.formReadonly": "Form bodies can't be edited here yet; they are kept as-is when saving.",
+  "request.formHint": "Sent as application/x-www-form-urlencoded (Postman's \"x-www-form-urlencoded\"). Keys and values can use {{variables}}.",
 
   // Response
   "response.title": "Response",
@@ -803,6 +803,8 @@ const en = {
   "response.collapseAll": "Collapse all",
   "response.expandAll": "Expand all",
   "response.search": "Search",
+  "response.wrap": "Wrap lines",
+  "response.wrapHint": "Wrap long lines to see the whole value",
   "response.emptyBody": "Empty body",
   "response.headerName": "Name",
   "response.headerValue": "Value",

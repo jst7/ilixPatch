@@ -31,6 +31,8 @@
     extensions?: Extension[];
     /** Called with the view once it is created, and with null when it is destroyed. */
     onview?: (view: EditorView | null) => void;
+    /** Wrap long lines instead of scrolling horizontally. */
+    wrap?: boolean;
   }
 
   let {
@@ -43,6 +45,7 @@
     onannotationclick,
     extensions = [],
     onview,
+    wrap = false,
   }: Props = $props();
 
   let host: HTMLDivElement;
@@ -64,6 +67,8 @@
   const modeC = new Compartment();
   const placeholderC = new Compartment();
   const blameC = new Compartment();
+  const wrapC = new Compartment();
+  let appliedWrap = false;
   // Annotations currently applied, and whether the blame gutter is installed.
   let appliedAnnotations: BlameInfo[] | null = null;
   let blameInstalled = false;
@@ -77,6 +82,7 @@
     appliedLocale = i18n.locale;
     appliedAnnotations = annotations;
     blameInstalled = !!annotations;
+    appliedWrap = wrap;
 
     view = new EditorView({
       parent: host,
@@ -90,6 +96,7 @@
           modeC.of(modeExtension(readonly)),
           placeholderC.of(placeholderExtension(placeholder)),
           blameC.of(annotations ? blameExt(annotations) : []),
+          wrapC.of(wrap ? EditorView.lineWrapping : []),
           EditorView.updateListener.of((u) => {
             if (!u.docChanged) return;
             if (u.transactions.every((tr) => tr.annotation(External))) return;
@@ -142,6 +149,13 @@
     if (!view || r === appliedReadonly) return;
     appliedReadonly = r;
     view.dispatch({ effects: modeC.reconfigure(modeExtension(r)) });
+  });
+
+  $effect(() => {
+    const w = wrap;
+    if (!view || w === appliedWrap) return;
+    appliedWrap = w;
+    view.dispatch({ effects: wrapC.reconfigure(w ? EditorView.lineWrapping : []) });
   });
 
   $effect(() => {

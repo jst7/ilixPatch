@@ -73,7 +73,8 @@ export interface Draft {
   /** Content for json/text bodies (kept when switching between modes). */
   bodyContent: string;
   /** Preserved for "form" bodies, which the UI does not edit. */
-  formFields: Record<string, string>;
+  /** URL-encoded form fields, as editable rows (always ending with an empty one). */
+  formFields: KV[];
   /** Pre-request / tests JavaScript ("" = none). */
   preRequest: string;
   tests: string;
@@ -134,7 +135,7 @@ export function draftFromRequest(r: Request): Draft {
     headers: toRows(r.headers),
     bodyMode: body ? body.type : "none",
     bodyContent: body && body.type !== "form" ? body.content : "",
-    formFields: body && body.type === "form" ? { ...body.fields } : {},
+    formFields: toRows(body && body.type === "form" ? body.fields : undefined),
     preRequest: r.scripts?.pre_request ?? "",
     tests: r.scripts?.tests ?? "",
     settings: draftSettings(r.settings),
@@ -146,7 +147,7 @@ export function draftFromRequest(r: Request): Draft {
 export function requestFromDraft(d: Draft): Request {
   let body: Request["body"] = null;
   if (d.bodyMode === "json" || d.bodyMode === "text") body = { type: d.bodyMode, content: d.bodyContent };
-  else if (d.bodyMode === "form") body = { type: "form", fields: { ...d.formFields } };
+  else if (d.bodyMode === "form") body = { type: "form", fields: fromRows(d.formFields) };
   return {
     name: d.name,
     method: d.method,
