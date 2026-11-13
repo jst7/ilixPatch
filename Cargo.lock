@@ -3233,7 +3233,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-app"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "dunce",
  "ilixpatch-core",
@@ -3258,7 +3258,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-auth"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "base64 0.23.1",
  "hmac",
@@ -3282,7 +3282,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-bodystore"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "base64 0.23.1",
  "indexmap 2.14.2",
@@ -3294,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-cli"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3312,7 +3312,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-core"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "indexmap 2.14.2",
  "serde",
@@ -3324,7 +3324,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-engine"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -3351,7 +3351,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-git"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "dunce",
  "gix",
@@ -3364,7 +3364,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-history"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "ilixpatch-core",
  "miniz_oxide 0.9.1",
@@ -3378,7 +3378,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-importer"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "dunce",
  "ilixpatch-core",
@@ -3395,7 +3395,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-oauth2"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "getrandom 0.4.3",
  "ilixpatch-auth",
@@ -3412,7 +3412,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-runner"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "csv",
  "hdrhistogram",
@@ -3433,7 +3433,7 @@ dependencies = [
 
 [[package]]
 name = "ilixpatch-scripting"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "ilixpatch-core",
  "indexmap 2.14.2",
