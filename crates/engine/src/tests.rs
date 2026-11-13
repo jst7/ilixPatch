@@ -662,7 +662,21 @@ async fn classifies_tls_errors() {
 
     let url = format!("{}/x", https_server(&pki, true).await);
     let e = fail(&trusting, &req(&url)).await;
-    assert_eq!(e.kind, RequestErrorKind::TlsClientCertificate, "{e:?}");
+    // With TLS 1.3 the server rejects a missing client certificate after the
+    // handshake (alert + close). On Windows the OS often aborts the socket
+    // (WSAECONNABORTED, os error 10053) before the client reads that alert, so
+    // the failure surfaces as a reset connection instead.
+    if cfg!(windows) {
+        assert!(
+            matches!(
+                e.kind,
+                RequestErrorKind::TlsClientCertificate | RequestErrorKind::ConnectionReset
+            ),
+            "{e:?}"
+        );
+    } else {
+        assert_eq!(e.kind, RequestErrorKind::TlsClientCertificate, "{e:?}");
+    }
 }
 
 #[tokio::test]
