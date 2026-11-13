@@ -334,7 +334,7 @@ fn existing_manifest(dir: &Path) -> Result<toml::Table> {
 }
 
 fn project_paths(project_path: &Path) -> Result<(PathBuf, PathBuf)> {
-    let root = fs::canonicalize(project_path)
+    let root = dunce::canonicalize(project_path)
         .map_err(|e| invalid(format!("{}: {e}", project_path.display())))?;
     let cfg_path = project::config_path(&root);
     let cfg: ProjectConfig = fs::read_to_string(&cfg_path)
@@ -351,7 +351,7 @@ fn project_paths(project_path: &Path) -> Result<(PathBuf, PathBuf)> {
         ));
     }
     let dir = root.join(rel);
-    let dir = fs::canonicalize(&dir).unwrap_or(dir);
+    let dir = dunce::canonicalize(&dir).unwrap_or(dir);
     Ok((root, dir))
 }
 
@@ -433,7 +433,7 @@ pub fn apply(parsed: &Parsed, plan: &ImportPlan, ctx: &ApplyContext) -> Result<I
         if planner.excluded.contains(node.id.as_str()) {
             continue;
         }
-        let target = fs::canonicalize(&p.target_parent)
+        let target = dunce::canonicalize(&p.target_parent)
             .map_err(|e| invalid(format!("{}: {e}", p.target_parent.display())))?;
         let rel = target
             .strip_prefix(&root)

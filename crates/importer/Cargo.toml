@@ -14,9 +14,10 @@ indexmap.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 regex = { version = "1", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
+# Canonical paths without the \\?\ prefix on Windows (shown to users, compared with plan targets).
+dunce.workspace = true
 # Pure-Rust deflate (zlib-rs) for Postman "Export data" dumps.
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]
 tempfile = "3"
-dunce.workspace = true

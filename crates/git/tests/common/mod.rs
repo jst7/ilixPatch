@@ -32,6 +32,9 @@ pub fn try_sh_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
             "commit.gpgsign=false",
             "-c",
             "init.defaultBranch=main",
+            // Windows runners set core.autocrlf=true globally: keep files byte-exact.
+            "-c",
+            "core.autocrlf=false",
         ])
         .args(args)
         .env("GIT_EDITOR", "true")
@@ -67,6 +70,10 @@ pub fn configure(dir: &Path) {
     sh(dir, &["config", "commit.gpgsign", "false"]);
     sh(dir, &["config", "core.hooksPath", "/dev/null"]);
     sh(dir, &["config", "merge.conflictStyle", "merge"]);
+    // The crate's own git calls run without our `-c` flags; pin line endings
+    // in the repo so a global core.autocrlf=true (Windows runners) can't
+    // turn checked-out files into CRLF.
+    sh(dir, &["config", "core.autocrlf", "false"]);
 }
 
 pub fn new_repo(dir: &Path) -> PathBuf {
