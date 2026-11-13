@@ -4,6 +4,7 @@ description = "OAuth 2.0 for ilixPatch: per-user token store, browser/loopback f
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 authors.workspace = true
 
 [dependencies]

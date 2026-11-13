@@ -4,6 +4,7 @@ description = "Git integration for ilixPatch: repo discovery and reads with gix,
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 authors.workspace = true
 
 [dependencies]

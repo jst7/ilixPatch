@@ -4,6 +4,7 @@ description = "Collection runner (Newman-compatible) and load testing for ilixPa
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 authors.workspace = true
 
 [dependencies]

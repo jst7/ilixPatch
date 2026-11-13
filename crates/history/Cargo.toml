@@ -4,6 +4,7 @@ description = "Local request/response history (SQLite) for ilixPatch"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 authors.workspace = true
 
 [dependencies]

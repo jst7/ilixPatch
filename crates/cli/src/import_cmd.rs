@@ -12,13 +12,15 @@ use ilixpatch_importer::{
 
 use crate::net_args::NetworkArgs;
 
+/// Arguments are boxed: their sizes differ a lot (network flags), and paths
+/// are larger on Windows, where clippy's `large_enum_variant` fires (D40).
 #[derive(Subcommand)]
 pub enum ImportCmd {
     /// Import Postman collections, environments, globals or an "Export data" zip
-    Postman(PostmanArgs),
+    Postman(Box<PostmanArgs>),
     /// Import OpenAPI 3.x / Swagger 2.0 specs (JSON or YAML), from files or URLs
     #[command(name = "openapi", alias = "swagger")]
-    OpenApi(OpenApiArgs),
+    OpenApi(Box<OpenApiArgs>),
 }
 
 #[derive(Clone, Copy, ValueEnum)]
