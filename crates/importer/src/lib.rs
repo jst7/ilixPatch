@@ -1,17 +1,22 @@
-//! Postman importer (D31).
+//! Postman (D31) and OpenAPI / Swagger (D53) importer.
 //!
 //! 1. [`parse_paths`] reads collection / environment / globals `.json` files,
-//!    "Export data" `.zip` dumps and directories of them into a [`Parsed`] set.
+//!    "Export data" `.zip` dumps, OpenAPI 3.x / Swagger 2.0 specs (JSON or
+//!    YAML) and directories of them into a [`Parsed`] set; downloaded specs
+//!    are added with [`Parsed::add_download`].
 //! 2. [`Parsed::preview`] describes it for the UI (tree with stable ids,
 //!    environments, globals, warnings, unreadable files).
 //! 3. [`apply`] writes what an [`ImportPlan`] asks for into a project:
 //!    everything is validated and planned in memory first, then written.
 //!
-//! Conversion rules (auth, bodies, scripts, URLs…) live in `convert.rs`.
+//! Conversion rules (auth, bodies, scripts, URLs…) live in `convert.rs`;
+//! OpenAPI specs are first translated into the same Postman-shaped tree
+//! (`openapi/`).
 
 mod apply;
 mod auth_map;
 mod convert;
+mod openapi;
 mod parse;
 mod session;
 
@@ -23,7 +28,8 @@ use serde::{Deserialize, Serialize};
 
 pub use apply::{ApplyContext, apply, default_plan};
 pub use convert::ConvertOptions;
-pub use parse::{Parsed, parse_paths};
+pub use openapi::GroupBy;
+pub use parse::{MAX_FILE, Parsed, parse_paths, parse_paths_with};
 pub use session::Sessions;
 
 #[derive(Debug, thiserror::Error)]
@@ -106,6 +112,17 @@ pub struct ImportPreview {
     pub globals: Option<Vec<EnvVariable>>,
     pub warnings: Vec<ImportWarning>,
     pub errors: Vec<FileError>,
+    /// At least one OpenAPI / Swagger spec was read (the UI offers [`GroupBy`]).
+    #[serde(default)]
+    pub openapi: bool,
+}
+
+/// Options that change how sources are read (so they need a new preview).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParseOptions {
+    /// Folders for OpenAPI operations.
+    #[serde(default)]
+    pub group_by: GroupBy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

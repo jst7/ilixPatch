@@ -72,6 +72,8 @@ async fn handle<S: AsyncRead + AsyncWrite + Unpin>(mut s: S) {
         }
     } else if path == "/see-other" {
         ("303 See Other", Some("/echo".to_string()), String::new())
+    } else if path == "/missing" {
+        ("404 Not Found", None, "nope".to_string())
     } else {
         ("200 OK", None, format!("{method} {target}{proxy_auth}"))
     };
@@ -232,6 +234,38 @@ async fn https_server_with(
 
 fn s(p: &Path) -> String {
     p.to_string_lossy().into_owned()
+}
+
+#[tokio::test]
+async fn download_follows_settings_and_limits() {
+    let base = http_server().await;
+    let engine = Engine::new();
+    let body = engine
+        .download(&format!("{base}/spec.yaml"), 1024)
+        .await
+        .unwrap();
+    assert_eq!(String::from_utf8(body).unwrap(), "GET /spec.yaml");
+    // Redirects are followed.
+    let body = engine
+        .download(&format!("{base}/redirect/1"), 1024)
+        .await
+        .unwrap();
+    assert_eq!(body, b"done");
+    let err = engine
+        .download(&format!("{base}/redirect/11"), 1024)
+        .await
+        .unwrap_err();
+    assert!(err.starts_with("too many redirects"), "{err}");
+    assert_eq!(
+        engine.download(&format!("{base}/missing"), 1024).await,
+        Err("HTTP 404 Not Found".into())
+    );
+    let err = engine
+        .download(&format!("{base}/echo"), 3)
+        .await
+        .unwrap_err();
+    assert!(err.starts_with("larger than"), "{err}");
+    assert!(engine.download("not a url", 10).await.is_err());
 }
 
 #[tokio::test]

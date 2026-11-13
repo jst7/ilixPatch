@@ -1,0 +1,61 @@
+{
+  "swagger": "2.0",
+  "info": { "title": "Shelter", "version": "1" },
+  "host": "shelter.example.com",
+  "basePath": "/api",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "basicAuth": { "type": "basic" },
+    "key": { "type": "apiKey", "in": "query", "name": "api_key" },
+    "oauth": { "type": "oauth2", "flow": "application", "tokenUrl": "https://shelter.example.com/oauth/token" }
+  },
+  "security": [{ "basicAuth": [] }],
+  "paths": {
+    "/dogs": {
+      "post": {
+        "tags": ["dogs"],
+        "summary": "Add a dog",
+        "parameters": [
+          { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/Dog" } }
+        ],
+        "responses": { "200": { "description": "ok" } }
+      },
+      "get": {
+        "tags": ["dogs"],
+        "summary": "Find dogs",
+        "security": [{ "key": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "type": "array", "items": { "type": "string", "enum": ["available", "adopted"] } },
+          { "name": "page", "in": "query", "type": "integer", "default": 1 }
+        ],
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/dogs/{dogId}/photo": {
+      "post": {
+        "tags": ["dogs"],
+        "summary": "Upload a photo",
+        "consumes": ["multipart/form-data"],
+        "security": [{ "oauth": ["write"] }],
+        "parameters": [
+          { "name": "dogId", "in": "path", "required": true, "type": "integer", "x-example": 3 },
+          { "name": "note", "in": "formData", "type": "string" },
+          { "name": "file", "in": "formData", "type": "file" }
+        ],
+        "responses": { "200": { "description": "ok" } }
+      }
+    }
+  },
+  "definitions": {
+    "Dog": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "example": "Rex" },
+        "age": { "type": "integer" }
+      }
+    }
+  }
+}

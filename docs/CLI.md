@@ -10,7 +10,7 @@ ilixpatch <COMANDO> [OPCIONES]
 Comandos:
   run     Ejecuta un proyecto, colección, carpeta o petición (flags compatibles con Newman)
   load    Prueba de carga con usuarios virtuales
-  import  Importa desde otras herramientas (Postman)
+  import  Importa desde otras herramientas (Postman, OpenAPI / Swagger)
   ls      Lista las peticiones y entornos de una colección o proyecto
 ```
 
@@ -22,6 +22,7 @@ Comandos:
 - [`ilixpatch run`](#ilixpatch-run)
 - [`ilixpatch load`](#ilixpatch-load)
 - [`ilixpatch import postman`](#ilixpatch-import-postman)
+- [`ilixpatch import openapi`](#ilixpatch-import-openapi)
 - [`ilixpatch ls`](#ilixpatch-ls)
 - [Opciones de red (TLS, mTLS, proxy)](#opciones-de-red-tls-mtls-proxy)
 - [Entornos y variables](#entornos-y-variables)
@@ -204,6 +205,44 @@ Capacidades:
 
 Al terminar imprime cuántas colecciones, carpetas, peticiones y entornos se importaron, los ficheros creados y los
 avisos de conversión. Termina con código 1 si algún fichero de entrada no se pudo leer.
+
+## `ilixpatch import openapi`
+Importa especificaciones **OpenAPI 3.0 / 3.1** y **Swagger 2.0**, en JSON o YAML, desde ficheros, carpetas o URLs.
+`swagger` es un alias del subcomando.
+
+```sh
+ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --project ./my-project
+ilixpatch import openapi api.yaml --project ./my-project --into ./my-project/api --group-by path
+```
+
+| Argumento / flag | Descripción |
+|---|---|
+| `<FILE\|URL>…` | Uno o varios ficheros (`.json`, `.yaml`, `.yml`), carpetas que los contengan o URLs `http(s)://` |
+| `--project <dir>` | Proyecto de destino (obligatorio). Si aún no es un proyecto, se inicializa |
+| `--into <dir>` | Importa cada especificación como carpeta dentro de esta colección o carpeta |
+| `--group-by tags\|path` | Carpetas: una por tag (por defecto) o una por segmento de la ruta de la URL |
+| `--on-conflict rename\|overwrite\|skip` | Qué hacer si un fichero o carpeta ya existe (por defecto `rename`) |
+| `-k`, `--proxy`, `--ssl-extra-ca-certs`, … | Para descargar URLs, las mismas [opciones de red](#opciones-de-red-tls-mtls-proxy) que `run` |
+
+Qué se obtiene:
+- **Una colección por especificación**, con la variable de colección `baseUrl` (el primer servidor, con sus variables
+  sustituidas). Si el servidor es relativo y la especificación se descargó, se resuelve contra su URL; si es un fichero,
+  hay un aviso para que definas `baseUrl`.
+- **Una petición por operación**, con el `summary` (o el `operationId`) como nombre:
+  - Parámetros de ruta: su ejemplo, o `{{nombre}}`.
+  - Query, headers y cookies: los obligatorios siempre (con su ejemplo, o `{{nombre}}`); los opcionales, solo si la
+    especificación les da un valor.
+  - Body: el ejemplo de la especificación o, si no lo hay, uno **generado a partir del esquema** (`$ref`, `allOf`,
+    `oneOf`, formatos…).
+  - `Accept` según la respuesta 2xx.
+- **Auth** a partir de `security`: Bearer, Basic, Digest, API key y OAuth 2.0 (prefiere *client credentials*, que la CLI
+  puede obtener sola). Las credenciales quedan como `{{bearerToken}}`, `{{clientSecret}}`… para que las definas en un
+  entorno: no se escriben en `collection.toml`, que se sube a git.
+- **Avisos** de lo que no se pudo convertir: `$ref` a otros ficheros, servidores adicionales, operaciones TRACE,
+  esquemas de seguridad no admitidos, subida de ficheros…
+
+La descarga sigue redirecciones, falla con estados que no son 2xx y admite hasta 200 MB. La especificación de GitHub
+(11 MB de YAML, 1.280 operaciones) se importa en menos de un segundo.
 
 ## `ilixpatch ls`
 Lista el contenido de un proyecto o colección sin ejecutar nada:

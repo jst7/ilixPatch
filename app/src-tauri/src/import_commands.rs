@@ -1,13 +1,16 @@
-//! Postman importer commands (D31): preview parsed exports, then apply a plan.
+//! Importer commands (Postman D31, OpenAPI / Swagger D53): preview parsed
+//! sources (files, folders, downloaded specs), then apply a plan.
 
 use std::fs;
 use std::path::PathBuf;
 
 use ilixpatch_importer::{
-    self as importer, ApplyContext, ImportPlan, ImportPreview, ImportReport, Sessions,
+    self as importer, ApplyContext, ImportPlan, ImportPreview, ImportReport, MAX_FILE,
+    ParseOptions, Parsed, Sessions,
 };
 use tauri::{AppHandle, Manager, State};
 
+use crate::network_commands::SharedEngine;
 use crate::registry::Registry;
 
 type CmdResult<T> = Result<T, String>;
@@ -15,21 +18,49 @@ type CmdResult<T> = Result<T, String>;
 /// Parsed sets between preview and apply (expire after 30 min, removed on apply).
 static SESSIONS: Sessions = Sessions::new();
 
-/// Parse Postman exports chosen by the user (files, `.zip` dumps or folders).
-#[tauri::command(async)]
-pub fn import_postman_preview(paths: Vec<String>) -> CmdResult<ImportPreview> {
-    if paths.is_empty() {
-        return Err("no files to import".into());
+/// Parse what the user chose: Postman exports (files, `.zip` dumps, folders)
+/// and OpenAPI / Swagger specs (files, folders, or `urls` downloaded with the
+/// app's network settings).
+#[tauri::command]
+pub async fn import_preview(
+    shared: State<'_, SharedEngine>,
+    paths: Vec<String>,
+    urls: Vec<String>,
+    options: ParseOptions,
+) -> CmdResult<ImportPreview> {
+    if paths.is_empty() && urls.is_empty() {
+        return Err("nothing to import".into());
     }
-    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
-    let session = SESSIONS.insert(importer::parse_paths(&paths));
+    let engine = shared.get();
+    let mut downloads = Vec::new();
+    for url in urls {
+        let result = engine.download(&url, MAX_FILE).await;
+        downloads.push((url, result));
+    }
+    // Large specs take a moment to parse: keep it off the async runtime.
+    let parsed = tauri::async_runtime::spawn_blocking(move || {
+        let mut parsed = Parsed::new(options);
+        for p in &paths {
+            parsed.add_path(&PathBuf::from(p));
+        }
+        for (url, result) in downloads {
+            match result {
+                Ok(bytes) => parsed.add_download(&url, &bytes),
+                Err(e) => parsed.add_error(&url, e),
+            }
+        }
+        parsed
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let session = SESSIONS.insert(parsed);
     let parsed = SESSIONS.get(&session).ok_or("import session lost")?;
     Ok(parsed.preview(session))
 }
 
 /// Write the chosen items into a registered project.
 #[tauri::command(async)]
-pub fn import_postman_apply(
+pub fn import_apply(
     app: AppHandle,
     registry: State<'_, Registry>,
     plan: ImportPlan,

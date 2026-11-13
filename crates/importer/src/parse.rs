@@ -1,4 +1,4 @@
-//! Reading Postman exports into a source tree.
+//! Reading Postman exports and OpenAPI / Swagger specs into a source tree.
 
 use std::fs;
 use std::io::Read;
@@ -8,12 +8,14 @@ use ilixpatch_core::environments::EnvVariable;
 use serde_json::Value;
 
 use crate::convert::{self, ConvertOptions};
+use crate::openapi;
 use crate::{
-    FileError, ImportEnvironment, ImportNode, ImportPreview, ImportWarning, NodeKind, stable_id,
+    FileError, ImportEnvironment, ImportNode, ImportPreview, ImportWarning, NodeKind, ParseOptions,
+    stable_id,
 };
 
-/// Largest single JSON file (or zip entry) we read.
-const MAX_FILE: u64 = 200 * 1024 * 1024;
+/// Largest single JSON/YAML file (zip entry or download) we read.
+pub const MAX_FILE: u64 = 200 * 1024 * 1024;
 
 /// A collection/folder script inherited by requests below it.
 #[derive(Debug, Clone)]
@@ -68,6 +70,11 @@ pub struct Parsed {
     pub(crate) environments: Vec<SrcEnv>,
     pub(crate) globals: Option<Vec<EnvVariable>>,
     pub(crate) errors: Vec<FileError>,
+    /// Warnings found while reading (OpenAPI specs); conversion warnings are computed later.
+    pub(crate) warnings: Vec<ImportWarning>,
+    /// At least one OpenAPI / Swagger spec was read.
+    pub(crate) openapi: bool,
+    pub(crate) options: ParseOptions,
 }
 
 // ---------- JSON helpers ----------
@@ -357,18 +364,56 @@ impl Parsed {
         }
     }
 
-    /// Classify one JSON document. Unknown documents are reported only when
-    /// the file was given explicitly.
-    fn add_json(&mut self, file: &str, bytes: &[u8], explicit: bool) {
+    fn add_openapi(&mut self, doc: &openapi::Node, file: &str, source_url: Option<&str>) {
+        match openapi::convert(doc, file, source_url, self.options.group_by) {
+            Ok(c) => {
+                self.collections.push(c.collection);
+                self.warnings.extend(c.warnings);
+                self.openapi = true;
+            }
+            Err(e) => self.error(file, e),
+        }
+    }
+
+    /// Classify one document: a Postman JSON export, or an OpenAPI / Swagger
+    /// spec in JSON or YAML. Unknown documents are reported only when the
+    /// file was given explicitly. `source_url`: where it was downloaded from.
+    fn add_document(&mut self, file: &str, bytes: &[u8], explicit: bool, source_url: Option<&str>) {
+        let lower = file.to_ascii_lowercase();
+        let lower = lower.split(['?', '#']).next().unwrap_or("");
+        if lower.ends_with(".yaml") || lower.ends_with(".yml") {
+            match openapi::from_yaml(bytes) {
+                Ok(doc) if openapi::is_openapi(&doc) => self.add_openapi(&doc, file, source_url),
+                Ok(_) if explicit => self.error(file, "not an OpenAPI or Swagger spec"),
+                Err(e) if explicit => self.error(file, format!("invalid YAML: {e}")),
+                _ => {}
+            }
+            return;
+        }
         let v: Value = match serde_json::from_slice(bytes) {
             Ok(v) => v,
             Err(e) => {
+                // Not JSON: a YAML spec without a .yaml name (e.g. a URL)?
+                if !lower.ends_with(".json")
+                    && let Ok(doc) = openapi::from_yaml(bytes)
+                    && openapi::is_openapi(&doc)
+                {
+                    return self.add_openapi(&doc, file, source_url);
+                }
                 if explicit {
                     self.error(file, format!("invalid JSON: {e}"));
                 }
                 return;
             }
         };
+        if v.get("openapi").is_some() || v.get("swagger").is_some() {
+            // Re-read keeping key order (paths, properties).
+            match openapi::from_json(bytes) {
+                Ok(doc) => self.add_openapi(&doc, file, source_url),
+                Err(e) => self.error(file, format!("invalid JSON: {e}")),
+            }
+            return;
+        }
         let scope = str_at(&v, "_postman_variable_scope");
         if (v.get("info").is_some() && v.get("item").is_some()) || is_v1_collection(&v) {
             self.add_collection(&v, file);
@@ -400,7 +445,7 @@ impl Parsed {
         } else if explicit {
             self.error(
                 file,
-                "not a Postman collection, environment or globals export",
+                "not a Postman export (collection, environment, globals) or an OpenAPI / Swagger spec",
             );
         }
     }
@@ -439,13 +484,13 @@ impl Parsed {
                         .map_err(|e| e.to_string())
                 });
             match res {
-                Ok(_) => self.add_json(&entry_label, &bytes, false),
+                Ok(_) => self.add_document(&entry_label, &bytes, false, None),
                 Err(e) => self.error(&entry_label, e),
             }
         }
     }
 
-    fn add_path(&mut self, path: &Path, explicit: bool) {
+    fn add_path_inner(&mut self, path: &Path, explicit: bool) {
         let label = path.display().to_string();
         let meta = match fs::metadata(path) {
             Ok(m) => m,
@@ -469,8 +514,8 @@ impl Parsed {
                 if hidden {
                     continue;
                 }
-                if p.is_dir() || matches!(ext.as_deref(), Some("json" | "zip")) {
-                    self.add_path(&p, false);
+                if p.is_dir() || matches!(ext.as_deref(), Some("json" | "zip" | "yaml" | "yml")) {
+                    self.add_path_inner(&p, false);
                 }
             }
             return;
@@ -486,7 +531,7 @@ impl Parsed {
             return self.error(&label, "file too large");
         }
         match fs::read(path) {
-            Ok(bytes) => self.add_json(&label, &bytes, explicit),
+            Ok(bytes) => self.add_document(&label, &bytes, explicit, None),
             Err(e) => self.error(&label, e.to_string()),
         }
     }
@@ -504,9 +549,37 @@ impl Parsed {
         self.environments.iter().find(|e| e.id == id)
     }
 
+    /// An empty set; add files with [`Parsed::add_path`] and downloads with
+    /// [`Parsed::add_download`].
+    pub fn new(options: ParseOptions) -> Self {
+        Self {
+            options,
+            ..Self::default()
+        }
+    }
+
+    /// A file, `.zip` dump or directory chosen by the user.
+    pub fn add_path(&mut self, path: &Path) {
+        self.add_path_inner(path, true);
+    }
+
+    /// A document downloaded from `url` (an OpenAPI spec, or a Postman export).
+    /// Relative server URLs in a spec are resolved against `url`.
+    pub fn add_download(&mut self, url: &str, bytes: &[u8]) {
+        if bytes.len() as u64 > MAX_FILE {
+            return self.error(url, "file too large");
+        }
+        self.add_document(url, bytes, true, Some(url));
+    }
+
+    /// Record a failure to get a document (e.g. a download error).
+    pub fn add_error(&mut self, file: &str, message: impl Into<String>) {
+        self.error(file, message);
+    }
+
     /// What the UI shows, with warnings computed for default options.
     pub fn preview(&self, session: impl Into<String>) -> ImportPreview {
-        let mut warnings = Vec::new();
+        let mut warnings = self.warnings.clone();
         let opts = ConvertOptions::default();
         for c in &self.collections {
             collection_warnings(c, &opts, &mut warnings);
@@ -526,6 +599,7 @@ impl Parsed {
             globals: self.globals.clone(),
             warnings,
             errors: self.errors.clone(),
+            openapi: self.openapi,
         }
     }
 }
@@ -579,11 +653,17 @@ fn to_import_node(n: &SrcNode) -> ImportNode {
     }
 }
 
-/// Parse every path: `.json` files, `.zip` dumps and directories of them.
+/// Parse every path: Postman `.json` files, `.zip` dumps, OpenAPI / Swagger
+/// specs (`.json`, `.yaml`) and directories of them.
 pub fn parse_paths<P: AsRef<Path>>(paths: &[P]) -> Parsed {
-    let mut parsed = Parsed::default();
+    parse_paths_with(paths, ParseOptions::default())
+}
+
+/// [`parse_paths`] with options (how OpenAPI operations are grouped).
+pub fn parse_paths_with<P: AsRef<Path>>(paths: &[P], options: ParseOptions) -> Parsed {
+    let mut parsed = Parsed::new(options);
     for p in paths {
-        parsed.add_path(p.as_ref(), true);
+        parsed.add_path(p.as_ref());
     }
     parsed
 }

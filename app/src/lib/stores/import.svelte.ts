@@ -1,8 +1,9 @@
-// State of the Postman import wizard (D31). One wizard at a time (single "import" tab); kept here so switching
+// State of the import wizard: Postman (D31) and OpenAPI / Swagger (D53). One wizard at a time (single "import" tab); kept here so switching
 // tabs doesn't lose the arrangement.
 import {
   api,
   type EnvScope,
+  type GroupBy,
   type ImportPlacement,
   type ImportPlan,
   type ImportPreview,
@@ -41,6 +42,10 @@ class ImportWizard {
   step = $state<ImportStep>("source");
   /** Files and folders chosen so far. */
   paths = $state<string[]>([]);
+  /** Spec URLs added so far (downloaded by the backend). */
+  urls = $state<string[]>([]);
+  /** Folders for OpenAPI operations; changing it re-reads the sources. */
+  groupBy = $state<GroupBy>("tags");
   loading = $state(false);
   error = $state<string | null>(null);
   preview = $state.raw<ImportPreview | null>(null);
@@ -89,6 +94,7 @@ class ImportWizard {
   reset() {
     this.step = "source";
     this.paths = [];
+    this.urls = [];
     this.preview = null;
     this.error = null;
     this.excluded = new Set();
@@ -112,18 +118,39 @@ class ImportWizard {
     void this.loadPreview();
   }
 
+  /** Add a spec URL; returns false when it isn't an http(s) URL. */
+  async addUrl(url: string): Promise<boolean> {
+    const u = url.trim();
+    if (!/^https?:\/\/\S+$/i.test(u)) return false;
+    if (!this.urls.includes(u)) this.urls = [...this.urls, u];
+    await this.loadPreview();
+    return true;
+  }
+
+  removeUrl(url: string) {
+    this.urls = this.urls.filter((u) => u !== url);
+    void this.loadPreview();
+  }
+
+  /** Change how OpenAPI operations are grouped. The tree changes, so the arrangement starts over. */
+  async setGroupBy(groupBy: GroupBy) {
+    if (groupBy === this.groupBy) return;
+    this.groupBy = groupBy;
+    await this.loadPreview();
+  }
+
   private previewSeq = 0;
 
   async loadPreview() {
     const seq = ++this.previewSeq;
-    if (this.paths.length === 0) {
+    if (this.paths.length === 0 && this.urls.length === 0) {
       this.preview = null;
       this.error = null;
       return;
     }
     this.loading = true;
     try {
-      const preview = await api.importPostmanPreview(this.paths);
+      const preview = await api.importPreview(this.paths, this.urls, { group_by: this.groupBy });
       if (seq !== this.previewSeq) return;
       this.preview = preview;
       this.error = null;
@@ -224,7 +251,7 @@ class ImportWizard {
     this.applying = true;
     this.error = null;
     try {
-      this.report = await api.importPostmanApply(plan);
+      this.report = await api.importApply(plan);
       this.step = "report";
       await ws.reload(plan.project_path);
       ws.setExpanded(plan.project_path, true);

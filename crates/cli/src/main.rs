@@ -27,7 +27,7 @@ enum Command {
     Run(RunArgs),
     /// Load test a collection, folder or request with virtual users
     Load(LoadArgs),
-    /// Import from other tools (Postman)
+    /// Import from other tools (Postman, OpenAPI / Swagger)
     Import {
         #[command(subcommand)]
         cmd: import_cmd::ImportCmd,
@@ -179,7 +179,7 @@ async fn main() -> ExitCode {
     let cli = Cli::parse();
     let res = match cli.command {
         Command::Ls { path } => ls_cmd(&path),
-        Command::Import { cmd } => import_cmd::run(cmd),
+        Command::Import { cmd } => import_cmd::run(cmd).await,
         Command::Run(args) => run_cmd::run(args).await,
         Command::Load(args) => load_cmd::run(args).await,
     };

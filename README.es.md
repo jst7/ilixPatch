@@ -21,6 +21,7 @@
   - los scripts `pm.*` y las aserciones Chai funcionan sin cambios;
   - la CLI es compatible con Newman;
   - incluye un importador de colecciones, entornos y exportaciones completas de Postman.
+- **Importa OpenAPI / Swagger:** especificaciones 3.x y 2.0 en JSON o YAML, desde archivo o URL, con ejemplos generados a partir de los esquemas.
 
 ## Funcionalidades
 **Peticiones y editor**
@@ -106,13 +107,14 @@ cd .. && cargo build --release -p ilixpatch-cli   # → target/release/ilixpatch
 2. Selecciona el entorno `dev`.
 3. Pulsa `⌘/Ctrl+Enter`.
 
-Para traer tu trabajo de Postman, usa **+ › Importar desde Postman…**.
+Para traer tu trabajo de Postman o una especificación OpenAPI, usa **+ › Importar (Postman, OpenAPI)…**.
 
 ## CLI
 ```sh
 ilixpatch run examples/demo-project --env dev -r cli,junit --reporter-junit-export results/junit.xml
 ilixpatch load examples/demo-project/jsonplaceholder --vus 5 --duration 30s --max-p95 500
 ilixpatch import postman coleccion.json --project ./mi-proyecto
+ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --project ./mi-proyecto
 ```
 Todos los comandos, flags (compatibles con Newman) y capacidades están explicados en **[docs/CLI.md](docs/CLI.md)**.
 

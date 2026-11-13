@@ -609,7 +609,7 @@ export interface ResponseNetworkInfo {
   proxy: string | null;
 }
 
-// ---------- Postman importer (D31) ----------
+// ---------- Importer: Postman (D31) and OpenAPI / Swagger (D53) ----------
 
 export interface ImportWarning {
   /** Id of the source node/environment it refers to (null = general). */
@@ -642,16 +642,26 @@ export interface ImportEnvironment {
   variables: EnvVariable[];
 }
 
+/** How OpenAPI operations are grouped into folders: by (first) tag, or by URL path segment. */
+export type GroupBy = "tags" | "path";
+
+/** Options that change how sources are read (changing them needs a new preview). */
+export interface ParseOptions {
+  group_by: GroupBy;
+}
+
 export interface ImportPreview {
-  /** Opaque id of this parsed set of files, used by importPostmanApply. */
+  /** Opaque id of this parsed set of sources, used by importApply. */
   session: string;
   collections: ImportNode[];
   environments: ImportEnvironment[];
   /** Globals found in a data dump / globals file. */
   globals: EnvVariable[] | null;
   warnings: ImportWarning[];
-  /** Files that could not be read, with the reason. */
+  /** Files (or URLs) that could not be read, with the reason. */
   errors: { file: string; message: string }[];
+  /** At least one OpenAPI / Swagger spec was read (the wizard offers GroupBy). */
+  openapi: boolean;
 }
 
 /** Put one source node (and its checked descendants) somewhere in the destination project. */
@@ -661,7 +671,7 @@ export interface ImportPlacement {
   target_parent: string;
   /** "collection" only when target_parent is the project root (or its collections_dir). */
   as: "collection" | "folder" | "request";
-  /** Rename on import (null = keep the Postman name). */
+  /** Rename on import (null = keep the source name). */
   name: string | null;
 }
 
@@ -1161,10 +1171,14 @@ export const api = {
   /** Validates (files exist, PEM/PFX parse, proxy URL) and saves; error message names the bad field. */
   networkSetSettings: (settings: NetworkSettings) => invoke<void>("network_set_settings", { settings }),
 
-  // Postman importer (D31)
-  /** Parse Postman exports: collection/environment/globals .json files, a data-dump .zip, or a folder of them. */
-  importPostmanPreview: (paths: string[]) => invoke<ImportPreview>("import_postman_preview", { paths }),
-  importPostmanApply: (plan: ImportPlan) => invoke<ImportReport>("import_postman_apply", { plan }),
+  // Importer: Postman (D31), OpenAPI / Swagger (D53)
+  /**
+   * Parse Postman exports (collection/environment/globals .json, a data-dump .zip) and OpenAPI 3.x / Swagger 2.0
+   * specs (.json/.yaml), or folders of them; `urls` are downloaded with the app's network settings.
+   */
+  importPreview: (paths: string[], urls: string[], options: ParseOptions) =>
+    invoke<ImportPreview>("import_preview", { paths, urls, options }),
+  importApply: (plan: ImportPlan) => invoke<ImportReport>("import_apply", { plan }),
 
   // Authorization (D39)
   /** Set/clear a collection's auth (collection.toml [auth]); null = no auth. */

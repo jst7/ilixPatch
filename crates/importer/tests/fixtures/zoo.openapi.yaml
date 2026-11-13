@@ -1,0 +1,163 @@
+# OpenAPI 3.1 fixture: relative server with variables, tags, every parameter
+# location, JSON / form / multipart / XML bodies, $refs, compositions and
+# security (global bearer, per-operation API key, public, OAuth 2.0).
+openapi: 3.1.0
+info:
+  title: Zoo API
+  description: Animals and keepers.
+  version: 1.0.0
+servers:
+  - url: /{version}
+    variables:
+      version: { default: v2 }
+  - url: https://staging.zoo.example.com/v2
+tags:
+  - name: keepers
+  - name: animals
+security:
+  - bearer: []
+paths:
+  /animals:
+    get:
+      tags: [animals]
+      summary: List animals
+      parameters:
+        - { name: limit, in: query, required: true, schema: { type: integer, default: 20 } }
+        - { name: species, in: query, schema: { type: string, enum: [lion, zebra] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: X-Trace, in: header, required: true, schema: { type: string } }
+        - { name: Accept, in: header, schema: { type: string, example: text/csv } }
+        - { name: session, in: cookie, example: abc }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Animal" } } }
+    post:
+      tags: [animals]
+      operationId: createAnimal
+      requestBody:
+        $ref: "#/components/requestBodies/AnimalBody"
+      responses:
+        201: { description: created }
+  /animals/{animalId}:
+    parameters:
+      - $ref: "#/components/parameters/AnimalId"
+    get:
+      tags: [animals]
+      summary: Get an animal
+      security:
+        - apiKey: []
+      responses:
+        default:
+          description: ok
+          content:
+            application/xml: {}
+    put:
+      tags: [animals]
+      summary: Replace an animal
+      parameters:
+        - { name: animalId, in: path, required: true, example: 7 }
+      requestBody:
+        content:
+          application/xml:
+            example: "<animal/>"
+      responses:
+        "204": { description: done }
+    trace:
+      summary: Trace it
+      responses:
+        "200": { description: ok }
+  /animals/{animalId}/photo:
+    post:
+      tags: [animals]
+      summary: Upload a photo
+      parameters:
+        - $ref: "#/components/parameters/AnimalId"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                caption: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        "200": { description: ok }
+  /keepers/login:
+    post:
+      tags: [keepers]
+      summary: Log in
+      security: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                user: { type: string, example: ana }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: ok }
+  /keepers/{keeperId}/schedule:
+    get:
+      tags: [keepers]
+      summary: Keeper schedule
+      security:
+        - oauth: [schedule:read, keepers]
+      parameters:
+        - { name: keeperId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: ok }
+  /health:
+    get:
+      summary: Health
+      security:
+        - {}
+      parameters:
+        - $ref: "common.yaml#/components/parameters/Verbose"
+      responses:
+        "200": { description: ok }
+components:
+  parameters:
+    AnimalId:
+      name: animalId
+      in: path
+      required: true
+      schema: { type: integer }
+  requestBodies:
+    AnimalBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/NewAnimal" }
+  schemas:
+    Animal:
+      type: object
+      properties:
+        id: { type: integer, readOnly: true }
+        name: { type: string }
+        species: { type: string, enum: [lion, zebra] }
+        born: { type: string, format: date }
+        tags: { type: array, items: { type: string } }
+        weight: { type: [number, "null"] }
+        parent: { $ref: "#/components/schemas/Animal" }
+    NewAnimal:
+      allOf:
+        - $ref: "#/components/schemas/Animal"
+        - type: object
+          properties:
+            keeper: { type: string, format: email }
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+    apiKey: { type: apiKey, in: header, name: X-API-Key }
+    oauth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.zoo.example.com/authorize
+          tokenUrl: https://auth.zoo.example.com/token
+          scopes: {}
+        clientCredentials:
+          tokenUrl: https://auth.zoo.example.com/token
+          scopes: {}

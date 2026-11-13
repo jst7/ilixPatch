@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Arrange step of the Postman import (D31): what to import (left), where it goes (right), options + summary.
+  // Arrange step of the import (D31, D53): what to import (left), where it goes (right), options + summary.
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, type ImportWarning } from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
@@ -151,6 +151,20 @@
   <!-- Options, summary and warnings -->
   <section class="bottom" aria-label={t("import.options")}>
     <div class="options">
+      {#if importer.preview?.openapi}
+        <label class="row-field">
+          <span>{t("import.opt.groupBy")}</span>
+          <select
+            value={importer.groupBy}
+            disabled={importer.loading}
+            title={t("import.opt.groupBy.hint")}
+            onchange={(e) => importer.setGroupBy(e.currentTarget.value as "tags" | "path")}
+          >
+            <option value="tags">{t("import.opt.groupBy.tags")}</option>
+            <option value="path">{t("import.opt.groupBy.path")}</option>
+          </select>
+        </label>
+      {/if}
       <label class="row-field">
         <span>{t("import.opt.conflict")}</span>
         <select bind:value={importer.onConflict}>

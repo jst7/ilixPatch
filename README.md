@@ -26,6 +26,7 @@
 - **Git-native**: one TOML file per request → clean diffs, easy reviews, and an IntelliJ-style Git client inside the app.
 - **Postman-compatible where it matters**: `pm.*` scripts and Chai assertions run unchanged, a Newman-compatible CLI,
   and an importer for Postman collections, environments and data dumps.
+- **OpenAPI / Swagger import**: 3.x and 2.0 specs, JSON or YAML, from a file or a URL, with examples generated from the schemas.
 
 ## Features
 **Requests & editor**
@@ -111,7 +112,7 @@ cargo build --release -p ilixpatch-cli                             # → target/
 
 ### Try it
 Open the bundled demo with **+ › Open folder…** → `examples/demo-project`, pick the `dev` environment and press `⌘/Ctrl+Enter`.
-Or import your own work with **+ › Import from Postman…**.
+Or import your own work with **+ › Import (Postman, OpenAPI)…**.
 
 ## CLI (Newman-compatible runner and load testing)
 `ilixpatch run` runs a project, collection, folder or single request `.toml`,
@@ -197,8 +198,9 @@ A request counts as an error on a network error, a status outside 2xx/3xx or a
 failed test. `--no-scripts` skips scripts for maximum throughput. Please be
 gentle with public APIs.
 
-### Importing from Postman
-In the app: **+ › Import from Postman…** — pick what to import and drag it wherever you want in your project.
+### Importing from Postman and OpenAPI
+In the app: **+ › Import (Postman, OpenAPI)…** — drop files or paste a spec URL, pick what to import and drag it wherever
+you want in your project.
 From the command line:
 ```sh
 ilixpatch import postman my-collection.postman_collection.json dev.postman_environment.json \
@@ -206,6 +208,14 @@ ilixpatch import postman my-collection.postman_collection.json dev.postman_envir
 ```
 Collections v2.0/v2.1, environments, globals and the *Export data* `.zip` are supported. Auth (incl. inherited) is converted
 to headers/scripts, collection/folder scripts can be inlined, and secret-looking variables go to git-ignored files.
+
+```sh
+ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --project ./my-project \
+  [--into ./my-project/api] [--group-by tags|path] [--on-conflict rename|overwrite|skip]
+```
+OpenAPI 3.0/3.1 and Swagger 2.0 (JSON or YAML, files or URLs): one collection per spec with a `baseUrl` variable, one
+request per operation (folders by tag or by URL path), parameter and body examples (generated from the schema when
+missing) and auth from `security`. Details in [docs/CLI.md](docs/CLI.md#ilixpatch-import-openapi).
 
 ## Project format
 Everything is plain TOML in your repo: **Project > Collection > Folder > Request**.
@@ -283,7 +293,7 @@ A Cargo workspace; the UI and the CLI are thin shells over UI-agnostic crates.
 | `crates/runner` | Request pipeline, Newman-compatible collection runner, load testing, reporters |
 | `crates/history` | Request history in SQLite with retention |
 | `crates/git` | Multi-repository Git client (gix for reads, system `git` for writes and network) |
-| `crates/importer` | Postman importer |
+| `crates/importer` | Postman and OpenAPI / Swagger importer |
 | `crates/cli` | The `ilixpatch` binary |
 | `app/` | Tauri v2 desktop app: Svelte 5 frontend in `app/src`, Rust commands in `app/src-tauri` |
 

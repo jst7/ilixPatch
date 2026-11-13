@@ -18,6 +18,8 @@ regex = { version = "1", default-features = false, features = ["std", "unicode-c
 dunce.workspace = true
 # Pure-Rust deflate (zlib-rs) for Postman "Export data" dumps.
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+# YAML OpenAPI specs (pure Rust, with limits against alias bombs and deep nesting).
+serde-saphyr = { version = "2.1.1", default-features = false, features = ["deserialize"] }
 
 [dev-dependencies]
 tempfile = "3"

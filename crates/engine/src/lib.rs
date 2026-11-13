@@ -367,6 +367,69 @@ impl Engine {
         })
     }
 
+    /// Download a document, such as an OpenAPI spec to import (D53): a GET
+    /// with the same network settings as regular sends (proxy, CAs, client
+    /// certificate), following redirects (the pooled clients don't), failing
+    /// on non-2xx statuses and bodies over `max_bytes`.
+    pub async fn download(&self, url: &str, max_bytes: u64) -> Result<Vec<u8>, String> {
+        const MAX_REDIRECTS: u32 = 10;
+        let mut current = reqwest::Url::parse(url)
+            .map_err(|_| EngineError::InvalidUrl(url.into()).to_string())?;
+        let mut redirects = 0;
+        let mut resp = loop {
+            let client = self
+                .client_for_url(current.as_str())
+                .map_err(|e| e.to_string())?;
+            let resp = client
+                .get(current.clone())
+                .header(
+                    reqwest::header::ACCEPT,
+                    "application/json, application/yaml;q=0.9, text/yaml;q=0.9, */*;q=0.5",
+                )
+                .timeout(std::time::Duration::from_secs(60))
+                .send()
+                .await
+                .map_err(|e| EngineError::from(e).to_string())?;
+            let next = resp
+                .status()
+                .is_redirection()
+                .then(|| resp.headers().get(reqwest::header::LOCATION))
+                .flatten()
+                .and_then(|l| l.to_str().ok())
+                .and_then(|l| current.join(l).ok());
+            match next {
+                Some(_) if redirects == MAX_REDIRECTS => {
+                    return Err(EngineError::TooManyRedirects(MAX_REDIRECTS).to_string());
+                }
+                Some(next) => {
+                    redirects += 1;
+                    current = next;
+                }
+                None => break resp,
+            }
+        };
+        let status = resp.status();
+        if !status.is_success() {
+            return Err(format!("HTTP {status}"));
+        }
+        let too_large = || format!("larger than {} MB", max_bytes / (1024 * 1024));
+        if resp.content_length().is_some_and(|n| n > max_bytes) {
+            return Err(too_large());
+        }
+        let mut out = Vec::new();
+        while let Some(chunk) = resp
+            .chunk()
+            .await
+            .map_err(|e| EngineError::from(e).to_string())?
+        {
+            if (out.len() + chunk.len()) as u64 > max_bytes {
+                return Err(too_large());
+            }
+            out.extend_from_slice(&chunk);
+        }
+        Ok(out)
+    }
+
     /// Merge the global settings, the caller's timeout and the request's
     /// `[settings]`. Precedence: request settings > `timeout` argument >
     /// global settings.

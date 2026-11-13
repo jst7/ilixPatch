@@ -477,6 +477,17 @@ pub fn apply(parsed: &Parsed, plan: &ImportPlan, ctx: &ApplyContext) -> Result<I
             let mut w = Vec::new();
             collection_warnings_descriptions(c, &mut w);
             planner.report.warnings.extend(w);
+            // Warnings found while reading it (OpenAPI specs).
+            let mut ids = Vec::new();
+            c.walk(&mut ids);
+            let ids: HashSet<&str> = ids.iter().map(|n| n.id.as_str()).collect();
+            planner.report.warnings.extend(
+                parsed
+                    .warnings
+                    .iter()
+                    .filter(|w| w.source_id.as_deref().is_some_and(|id| ids.contains(id)))
+                    .cloned(),
+            );
         }
         planner.place(p, node, &target, &collections_dir)?;
     }

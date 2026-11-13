@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Import tab (D31): Source → Arrange → Report. State lives in the import store (single wizard).
+  // Import tab (Postman D31, OpenAPI D53): Source → Arrange → Report. State lives in the import store (single wizard).
   import { onMount } from "svelte";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { open } from "@tauri-apps/plugin-dialog";
@@ -10,6 +10,15 @@
   import ImportArrange from "./ImportArrange.svelte";
 
   let over = $state(false);
+  let urlInput = $state("");
+  let urlInvalid = $state(false);
+
+  async function addUrl(e: SubmitEvent) {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+    urlInvalid = !(await importer.addUrl(urlInput));
+    if (!urlInvalid) urlInput = "";
+  }
 
   // Real file paths come from Tauri's drag & drop events (the DOM only gets file names).
   onMount(() => {
@@ -42,7 +51,7 @@
       const res = await open({
         multiple: true,
         title: t("import.source.chooseFiles"),
-        filters: [{ name: t("import.source.filterName"), extensions: ["json", "zip"] }],
+        filters: [{ name: t("import.source.filterName"), extensions: ["json", "zip", "yaml", "yml"] }],
       });
       const list = Array.isArray(res) ? res : typeof res === "string" ? [res] : [];
       if (list.length) await importer.addPaths(list);
@@ -126,7 +135,21 @@
         <p class="muted small-text">{t("import.source.formats")}</p>
       </div>
 
-      {#if importer.paths.length}
+      <form class="url-row" onsubmit={addUrl}>
+        <input
+          class="mono"
+          type="url"
+          bind:value={urlInput}
+          oninput={() => (urlInvalid = false)}
+          placeholder="https://api.example.com/openapi.json"
+          aria-label={t("import.source.url")}
+          aria-invalid={urlInvalid}
+        />
+        <button type="submit" disabled={!urlInput.trim() || importer.loading}>{t("import.source.addUrl")}</button>
+      </form>
+      {#if urlInvalid}<p class="error" role="alert">{t("import.source.urlInvalid")}</p>{/if}
+
+      {#if importer.paths.length || importer.urls.length}
         <ul class="paths">
           {#each importer.paths as p (p)}
             {@const err = preview?.errors.find((e) => e.file === p)}
@@ -136,13 +159,21 @@
               <button class="ghost x" aria-label={t("import.source.remove")} title={t("import.source.remove")} onclick={() => importer.removePath(p)}>×</button>
             </li>
           {/each}
-          {#each preview?.errors.filter((e) => !importer.paths.includes(e.file)) ?? [] as err (err.file)}
+          {#each importer.urls as u (u)}
+            {@const err = preview?.errors.find((e) => e.file === u)}
+            <li>
+              <span class="mono path" title={u}>{u}</span>
+              {#if err}<span class="error">{err.message}</span>{/if}
+              <button class="ghost x" aria-label={t("import.source.remove")} title={t("import.source.remove")} onclick={() => importer.removeUrl(u)}>×</button>
+            </li>
+          {/each}
+          {#each preview?.errors.filter((e) => !importer.paths.includes(e.file) && !importer.urls.includes(e.file)) ?? [] as err (err.file)}
             <li><span class="mono path" title={err.file}>{basename(err.file)}</span><span class="error">{err.message}</span></li>
           {/each}
         </ul>
       {/if}
 
-      {#if importer.loading}<p class="muted">{t("import.source.reading")}</p>{/if}
+      {#if importer.loading}<p class="muted">{importer.urls.length ? t("import.source.downloading") : t("import.source.reading")}</p>{/if}
       {#if importer.error}<p class="error" role="alert">{importer.error}</p>{/if}
       {#if found}
         <p class="found">
@@ -152,7 +183,7 @@
       {/if}
 
       <div class="actions">
-        {#if importer.paths.length}<button onclick={() => importer.reset()}>{t("import.source.clear")}</button>{/if}
+        {#if importer.paths.length || importer.urls.length}<button onclick={() => importer.reset()}>{t("import.source.clear")}</button>{/if}
         <button class="primary" disabled={!canContinue || importer.loading} onclick={() => (importer.step = "arrange")}>{t("import.continue")}</button>
       </div>
 
@@ -162,6 +193,7 @@
           <li>{t("import.help.collection")}</li>
           <li>{t("import.help.environment")}</li>
           <li>{t("import.help.dump")}</li>
+          <li>{t("import.help.openapi")}</li>
         </ul>
       </details>
     </div>
@@ -289,6 +321,17 @@
   .buttons {
     display: flex;
     gap: 8px;
+  }
+  .url-row {
+    display: flex;
+    gap: 8px;
+  }
+  .url-row input {
+    flex: 1;
+    min-width: 0;
+  }
+  .url-row input[aria-invalid="true"] {
+    border-color: var(--err);
   }
   .paths {
     list-style: none;

@@ -333,7 +333,8 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
 - **Opciones:** qué hacer si algo ya existe (renombrar, sobrescribir u omitir), convertir auth, conservar scripts y un **patrón para marcar variables secretas** (token, password, api key…), que van al `.secret.toml`.
 - Crate `crates/importer`.
 - **CLI:** `ilixpatch import postman <archivos> --project <dir>`.
-- Contrato en `app/src/lib/api.ts`, en la sección "Postman importer (D31)".
+- Contrato en `app/src/lib/api.ts`, en la sección "Importer: Postman (D31) and OpenAPI / Swagger (D53)".
+- **Ampliado en D53:** el mismo asistente importa también especificaciones OpenAPI / Swagger.
 
 ## D36 · Errores descriptivos con causa probable y qué probar ✅
 - `sendRequest` falla con un **`RequestError` estructurado**, no con texto: `kind`, `message`, `detail` y datos útiles (`host`, `port`, `url`, `timeout_ms`, `variables` y `proxy`).
@@ -347,6 +348,43 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - **botones de acción**: desactivar SSL para esta petición, abrir los ajustes de HTTPS, certificados o proxy, subir el timeout, abrir los entornos…;
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
+
+## D53 · Importador de OpenAPI / Swagger ✅
+- **Formatos:** OpenAPI 3.0 y 3.1 y Swagger 2.0, en **JSON o YAML**, desde **archivo, carpeta o URL**. El formato se detecta por el contenido, así que se usa el mismo asistente que con Postman (D31) y en el mismo paso se pueden mezclar exportaciones de Postman y especificaciones.
+- **Reutiliza todo el importador de Postman:** la especificación se traduce al mismo árbol interno, con peticiones y auth con forma de Postman. Así, la vista previa, el arrastrar a cualquier sitio del proyecto, los conflictos, la conversión de auth al modelo propio (D39), los secretos y el informe son los mismos y no hay dos caminos que mantener.
+- **Conversión:**
+  - El documento pasa a ser una colección (`info.title`) con la variable de colección **`baseUrl`**, que toma el primer servidor y sustituye sus variables por su `default`.
+    - Una URL relativa se resuelve contra la URL de descarga; si se importó un archivo, se queda tal cual y se avisa.
+    - El resto de servidores se nombran en un aviso.
+  - Cada operación es una petición nombrada con su `summary`, su `operationId` o, si no hay ninguno, `MÉTODO /ruta`. TRACE no existe en el modelo: se omite con aviso.
+  - **Carpetas, a elegir en el asistente** (y con `--group-by` en la CLI):
+    - por **tag** (por defecto, como Postman), en el orden declarado en `tags`; las operaciones sin tag van a la raíz;
+    - o por **ruta de la URL**: una carpeta por segmento, y una carpeta sin peticiones con una sola subcarpeta se fusiona con ella (`repos/{owner}/{repo}`).
+    - Cambiar la agrupación vuelve a leer las fuentes, así que la organización del paso 2 empieza de cero.
+  - **Parámetros:**
+    - Los de ruta llevan su ejemplo o, si no hay, `{{nombre}}`.
+    - Los de query, header y cookie que son obligatorios llevan su ejemplo o `{{nombre}}`. Los opcionales solo se incluyen si la especificación da un valor (`example`, `examples`, `default` o `enum`), para no enviar filtros que nadie ha pedido.
+    - Los headers `Accept`, `Content-Type` y `Authorization` declarados como parámetros se ignoran, como dice OpenAPI.
+    - Las cookies se juntan en un header `Cookie`.
+  - **Body:**
+    - Se elige JSON, después formulario, después multipart y por último cualquier otro tipo. Se usa el `example` o el primero de `examples`.
+    - Si no hay ninguno, el ejemplo **se genera a partir del esquema**: resuelve `$ref`, fusiona `allOf`, toma la primera opción de `oneOf`/`anyOf`, entiende los tipos en lista de 3.1 (`["string","null"]`) y los formatos (`date-time`, `email`, `uuid`…), omite las propiedades `readOnly` y corta la recursión.
+    - XML y texto se importan como texto con su `Content-Type`. Los ficheros, igual que en Postman: con aviso.
+  - **`Accept`** se toma del tipo de la primera respuesta 2xx.
+  - **Seguridad:**
+    - La de todo el documento pasa a ser la auth de la colección; la de una operación, si es distinta, la de su petición.
+    - `security: []` o la alternativa opcional `{}` dan *sin auth*.
+    - Bearer, Basic, Digest y API key (en header o query) se convierten. En OAuth2 se prefiere *client credentials*, porque también funciona en la CLI (D39); si no, *authorization code*, *password* o *implicit*, con URLs y scopes.
+    - Las credenciales quedan como `{{bearerToken}}`, `{{clientSecret}}`, etc. y **no se crean como variables de colección**: `collection.toml` se sube a git y alguien acabaría escribiendo el token ahí. Al enviar, el error de variables sin definir (D36) indica que hay que definirlas en un entorno, y allí el patrón de secretos las manda a `.secret.toml`.
+    - API key en cookie, OpenID Connect y mutualTLS no se convierten: aviso.
+  - **`$ref`:** se siguen los del mismo documento, también en cadena y con detección de bucles. Los que apuntan a otro archivo se omiten con aviso.
+- **Lectura:**
+  - La especificación se lee en un árbol propio **que conserva el orden de las claves**: `serde_json` del workspace no tiene `preserve_order`, y activarlo cambiaría el orden en toda la app. Se mantiene así el orden de rutas, operaciones y propiedades de los ejemplos, y se aceptan claves numéricas de YAML (`200:`).
+  - YAML con **`serde-saphyr`** (Rust puro, mantenido). `serde_yaml` está abandonado y `serde_yml` tiene problemas conocidos. Sus límites por defecto son para ficheros de configuración (la especificación de GitHub supera sus 250.000 nodos). Como la entrada ya está limitada a 200 MB, se suben los contadores proporcionales al tamaño y se mantienen las protecciones contra *alias bombs* y la profundidad máxima.
+  - Rendimiento: la especificación de GitHub (11 MB de YAML, 1.280 operaciones) se importa en menos de 1 s.
+- **Descarga desde URL:** `Engine::download`, con los mismos ajustes de red que los envíos (proxy, CAs, certificado de cliente por host). Sigue hasta 10 redirecciones (los clientes del motor no las siguen solos), falla con estados que no son 2xx y corta por encima de 200 MB. La app descarga con sus ajustes de red; la CLI, con los flags de red de `run`.
+- **CLI:** `ilixpatch import openapi <archivos|URLs> --project <dir> [--into] [--group-by tags|path] [--on-conflict]` (alias `swagger`).
+- **Contrato:** los comandos pasan a ser `import_preview(paths, urls, options)` e `import_apply` (`api.importPreview` / `api.importApply`), y `ImportPreview.openapi` indica si se ofrece la agrupación.
 
 ## D52 · Script de publicación y pruebas multiplataforma antes de publicar ✅
 - **`scripts/release.mjs`** (Node, funciona igual en macOS, Linux y Windows): pregunta *major / medium / minor* (X.0.0, x.Y.0 o x.y.Z), o se le pasa la parte o la versión exacta.
