@@ -15,6 +15,7 @@ pub mod proxy;
 pub mod settings;
 pub mod timing;
 pub mod tls;
+pub mod update;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -36,6 +37,7 @@ pub use settings::{
     save_settings,
 };
 pub use tls::{CertificateInfo, certificate_info};
+pub use update::{LatestRelease, UpdateCheck};
 
 /// `User-Agent` sent by default.
 pub const USER_AGENT: &str = concat!("ilixpatch/", env!("CARGO_PKG_VERSION"));

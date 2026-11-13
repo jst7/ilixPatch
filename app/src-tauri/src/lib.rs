@@ -8,6 +8,7 @@ mod network_commands;
 mod oauth2_commands;
 mod registry;
 mod response_commands;
+mod update_commands;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -567,6 +568,7 @@ pub fn run() {
             git_commands::git_checkout_commit,
             import_commands::import_preview,
             import_commands::import_apply,
+            update_commands::update_check,
             oauth2_commands::oauth2_get_token,
             oauth2_commands::oauth2_cancel_flow,
             oauth2_commands::oauth2_refresh_token,

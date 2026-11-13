@@ -74,6 +74,15 @@ async fn handle<S: AsyncRead + AsyncWrite + Unpin>(mut s: S) {
         ("303 See Other", Some("/echo".to_string()), String::new())
     } else if path == "/missing" {
         ("404 Not Found", None, "nope".to_string())
+    } else if path == "/gh/latest" {
+        (
+            "200 OK",
+            None,
+            r#"{"tag_name":"v9.1.0","html_url":"https://github.com/o/r/releases/tag/v9.1.0","published_at":null}"#
+                .to_string(),
+        )
+    } else if path == "/gh/limited" {
+        ("403 Forbidden", None, "{}".to_string())
     } else {
         ("200 OK", None, format!("{method} {target}{proxy_auth}"))
     };
@@ -234,6 +243,34 @@ async fn https_server_with(
 
 fn s(p: &Path) -> String {
     p.to_string_lossy().into_owned()
+}
+
+#[tokio::test]
+async fn update_check_against_a_release_api() {
+    let base = http_server().await;
+    let engine = Engine::new();
+    let c = engine
+        .check_for_update_at(&format!("{base}/gh/latest"), "0.4.1")
+        .await
+        .unwrap();
+    assert!(c.newer);
+    assert_eq!(c.current, "0.4.1");
+    assert_eq!(c.latest.version, "9.1.0");
+    let c = engine
+        .check_for_update_at(&format!("{base}/gh/latest"), "9.1.0")
+        .await
+        .unwrap();
+    assert!(!c.newer);
+    let err = engine
+        .check_for_update_at(&format!("{base}/gh/limited"), "0.4.1")
+        .await
+        .unwrap_err();
+    assert!(err.contains("rate limit"), "{err}");
+    let err = engine
+        .check_for_update_at(&format!("{base}/missing"), "0.4.1")
+        .await
+        .unwrap_err();
+    assert_eq!(err, "no published release found on GitHub");
 }
 
 #[tokio::test]

@@ -3,6 +3,7 @@
   import { themes, TOKEN_GROUPS, type Token } from "$lib/theme/index.svelte";
   import type { HistorySettings } from "$lib/api";
   import { history } from "$lib/stores/history.svelte";
+  import { updates } from "$lib/stores/update.svelte";
   import { clearHistory, formatBytes } from "./historyUtil";
   import NetworkSettingsSection from "./NetworkSettingsSection.svelte";
 
@@ -212,6 +213,11 @@
           {#each LOCALES as l (l.code)}<option value={l.code}>{l.label}</option>{/each}
         </select>
       </label>
+      <label class="row">
+        <span>{t("settings.updates.auto")}</span>
+        <input class="toggle" type="checkbox" checked={updates.auto} onchange={(e) => updates.setAuto(e.currentTarget.checked)} />
+      </label>
+      <p class="hint">{t("settings.updates.hint")}</p>
     </section>
     {:else if section === "history"}
     <section>

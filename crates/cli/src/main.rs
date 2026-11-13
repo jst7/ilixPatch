@@ -37,6 +37,8 @@ enum Command {
         /// Path to a collection directory or a project directory
         path: PathBuf,
     },
+    /// Check GitHub for a newer published release (nothing is downloaded or installed)
+    CheckUpdate,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -179,6 +181,7 @@ async fn main() -> ExitCode {
     let cli = Cli::parse();
     let res = match cli.command {
         Command::Ls { path } => ls_cmd(&path),
+        Command::CheckUpdate => check_update_cmd().await,
         Command::Import { cmd } => import_cmd::run(cmd).await,
         Command::Run(args) => run_cmd::run(args).await,
         Command::Load(args) => load_cmd::run(args).await,
@@ -225,6 +228,28 @@ fn ls_cmd(path: &Path) -> Result<bool> {
             } else {
                 envs.join(", ")
             }
+        );
+    }
+    Ok(true)
+}
+
+/// `ilixpatch check-update` (D54): never runs on its own, so CI jobs make no
+/// unexpected connections. Uses the system proxy settings.
+async fn check_update_cmd() -> Result<bool> {
+    let current = env!("CARGO_PKG_VERSION");
+    let check = ilixpatch_engine::Engine::new()
+        .check_for_update(current)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    if check.newer {
+        println!(
+            "ilixpatch {} is available (you have {current}): {}",
+            check.latest.version, check.latest.url
+        );
+    } else {
+        println!(
+            "ilixpatch {current} is up to date (latest release: {})",
+            check.latest.version
         );
     }
     Ok(true)

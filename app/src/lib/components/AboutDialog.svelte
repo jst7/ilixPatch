@@ -4,6 +4,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { t } from "$lib/i18n/index.svelte";
   import { AUTHOR, GITHUB_URL, GITHUB_USER, LICENSE } from "$lib/about";
+  import { updates } from "$lib/stores/update.svelte";
 
   let { open, onclose }: { open: boolean; onclose: () => void } = $props();
 
@@ -42,6 +43,15 @@
   });
 
   const platform = typeof navigator !== "undefined" ? navigator.userAgent : "";
+
+  async function openRelease(e: Event, url: string) {
+    e.preventDefault();
+    try {
+      await openUrl(url);
+    } catch {
+      window.open(url, "_blank", "noopener");
+    }
+  }
 
   async function openGithub(e: Event) {
     e.preventDefault();
@@ -94,6 +104,24 @@
     <p class="version">
       {t("about.version")} <strong>{version ?? "…"}</strong>
     </p>
+    <div class="update">
+      <button onclick={() => updates.check()} disabled={updates.checking}>
+        {updates.checking ? t("update.checking") : t("update.check")}
+      </button>
+      {#if updates.error}
+        <p class="update-result err" role="alert">{updates.error}</p>
+      {:else if updates.result && !updates.checking}
+        {@const r = updates.result}
+        <p class="update-result" role="status">
+          {#if r.newer}
+            {t("update.available", { version: r.latest.version })} ·
+            <a href={r.latest.url} onclick={(e) => openRelease(e, r.latest.url)}>{t("update.download")}</a>
+          {:else}
+            {t("update.upToDate")}
+          {/if}
+        </p>
+      {/if}
+    </div>
 
     <dl>
       <dt>{t("about.author")}</dt>
@@ -212,6 +240,21 @@
     margin: 4px 0 0;
     color: var(--muted);
     font-size: 13px;
+  }
+  .update {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: -6px 0 14px;
+  }
+  .update-result {
+    margin: 0;
+    font-size: 12px;
+  }
+  .update-result.err {
+    color: var(--err);
+    white-space: pre-wrap;
   }
   .version {
     margin: 10px 0 14px;

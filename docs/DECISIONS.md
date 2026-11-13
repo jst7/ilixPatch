@@ -349,6 +349,18 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D54 · Aviso de versión nueva (comprobación contra GitHub) ✅
+- **Avisa y enlaza; no actualiza sola.** La app pregunta a GitHub cuál es la última release publicada (`/repos/jst7/ilixPatch/releases/latest`), compara versiones y, si hay una más nueva, muestra un aviso con **Descargar** (abre la página de la release) y **Omitir esta versión**.
+  - **Por qué no actualización automática:** el *updater* de Tauri exige un par de claves de firma propio guardado como secreto (si se pierde, ninguna instalación podría volver a actualizarse) y en Linux solo sirve para AppImage, no para `.deb`/`.rpm`. Se puede añadir más adelante sin cambiar esto.
+  - `releases/latest` **nunca devuelve borradores ni pre-releases**. Una release cuyas builds fallaron se queda en borrador (D40), así que nunca se anuncia.
+- **Cuándo:** al arrancar, **como mucho una vez al día**. Se puede desactivar en **Ajustes › General**, y además hay un botón **Buscar actualizaciones** en **Acerca de**.
+  - Es la única conexión que la app hace por su cuenta (D01: local y sin cuenta). El ajuste explica qué ve GitHub: la IP y la versión, que va en el `User-Agent`.
+  - La hora del intento se guarda **antes** de preguntar: sin conexión no se reintenta en cada arranque. Los errores de la comprobación automática son silenciosos; los de la manual se muestran.
+  - Preferencias por usuario en `localStorage`: interruptor, última comprobación y versión omitida. Omitir la 0.4.3 no oculta la 0.4.4.
+- **Red:** usa el motor con los ajustes de red de la app (proxy, CAs). El 403/429 de GitHub (60 peticiones por hora y por IP sin autenticar) se explica como límite temporal.
+- **CLI:** `ilixpatch check-update`. **Nunca comprueba por su cuenta**, para no hacer conexiones inesperadas en CI.
+- Código: `ilixpatch_engine::update`, `update_check` (Tauri) y `stores/update.svelte.ts` con el aviso `UpdateNotice`.
+
 ## D53 · Importador de OpenAPI / Swagger ✅
 - **Formatos:** OpenAPI 3.0 y 3.1 y Swagger 2.0, en **JSON o YAML**, desde **archivo, carpeta o URL**. El formato se detecta por el contenido, así que se usa el mismo asistente que con Postman (D31) y en el mismo paso se pueden mezclar exportaciones de Postman y especificaciones.
 - **Reutiliza todo el importador de Postman:** la especificación se traduce al mismo árbol interno, con peticiones y auth con forma de Postman. Así, la vista previa, el arrastrar a cualquier sitio del proyecto, los conflictos, la conversión de auth al modelo propio (D39), los secretos y el informe son los mismos y no hay dos caminos que mantener.

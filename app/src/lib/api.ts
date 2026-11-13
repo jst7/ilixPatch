@@ -707,6 +707,24 @@ export interface ImportReport {
   warnings: ImportWarning[];
 }
 
+// ---------- Update check (D54) ----------
+
+/** The latest published release on GitHub (drafts and pre-releases never count). */
+export interface LatestRelease {
+  /** Without the leading "v", e.g. "0.4.2". */
+  version: string;
+  /** Release page with the installers, CLI binaries and notes. */
+  url: string;
+  published_at: string | null;
+}
+
+export interface UpdateCheck {
+  current: string;
+  latest: LatestRelease;
+  /** latest is a higher version than current. */
+  newer: boolean;
+}
+
 // ---------- Descriptive request errors (D36) ----------
 
 /** Stable category of a failed send; the UI shows a localized title, likely cause and suggestions per kind. */
@@ -1179,6 +1197,9 @@ export const api = {
   importPreview: (paths: string[], urls: string[], options: ParseOptions) =>
     invoke<ImportPreview>("import_preview", { paths, urls, options }),
   importApply: (plan: ImportPlan) => invoke<ImportReport>("import_apply", { plan }),
+
+  // Update check (D54): asks GitHub with the app's network settings; nothing is downloaded or installed.
+  updateCheck: () => invoke<UpdateCheck>("update_check"),
 
   // Authorization (D39)
   /** Set/clear a collection's auth (collection.toml [auth]); null = no auth. */

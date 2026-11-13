@@ -7,6 +7,7 @@
   import { importer } from "$lib/stores/import.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import GitToasts from "./GitToasts.svelte";
+  import UpdateNotice from "./UpdateNotice.svelte";
   import HistoryView from "./HistoryView.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
   import AboutDialog from "./AboutDialog.svelte";
@@ -190,6 +191,7 @@
 <AboutDialog open={aboutOpen} onclose={() => (aboutOpen = false)} />
 <CloneDialog open={cloneOpen} onclose={() => (cloneOpen = false)} />
 <GitToasts />
+<UpdateNotice />
 
 <style>
   .sidebar {

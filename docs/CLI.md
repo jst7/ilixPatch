@@ -8,10 +8,11 @@ pipeline que usa `newman run` se puede migrar cambiando poco más que el nombre 
 ilixpatch <COMANDO> [OPCIONES]
 
 Comandos:
-  run     Ejecuta un proyecto, colección, carpeta o petición (flags compatibles con Newman)
-  load    Prueba de carga con usuarios virtuales
-  import  Importa desde otras herramientas (Postman, OpenAPI / Swagger)
-  ls      Lista las peticiones y entornos de una colección o proyecto
+  run           Ejecuta un proyecto, colección, carpeta o petición (flags compatibles con Newman)
+  load          Prueba de carga con usuarios virtuales
+  import        Importa desde otras herramientas (Postman, OpenAPI / Swagger)
+  ls            Lista las peticiones y entornos de una colección o proyecto
+  check-update  Comprueba en GitHub si hay una versión nueva publicada
 ```
 
 `ilixpatch --help`, `ilixpatch <comando> --help` y `ilixpatch --version` muestran la ayuda y la versión.
@@ -24,6 +25,7 @@ Comandos:
 - [`ilixpatch import postman`](#ilixpatch-import-postman)
 - [`ilixpatch import openapi`](#ilixpatch-import-openapi)
 - [`ilixpatch ls`](#ilixpatch-ls)
+- [`ilixpatch check-update`](#ilixpatch-check-update)
 - [Opciones de red (TLS, mTLS, proxy)](#opciones-de-red-tls-mtls-proxy)
 - [Entornos y variables](#entornos-y-variables)
 - [Scripts (`pm.*`)](#scripts-pm)
@@ -265,6 +267,19 @@ Todos (format v1)
 ```
 
 Útil para comprobar qué rutas usar con `--folder` / `--filter` y qué entornos hay disponibles.
+
+## `ilixpatch check-update`
+Pregunta a GitHub cuál es la última release publicada y la compara con la versión instalada:
+
+```sh
+$ ilixpatch check-update
+ilixpatch 0.4.3 is available (you have 0.4.2): https://github.com/jst7/ilixPatch/releases/tag/v0.4.3
+```
+
+- No descarga ni instala nada: muestra el enlace a la release.
+- Solo cuenta las releases publicadas; los borradores y las pre-releases no.
+- La CLI **nunca** lo comprueba por su cuenta (en CI no hace conexiones inesperadas).
+- Usa el proxy del sistema. Sin autenticar, GitHub permite 60 consultas por hora y por IP; si se supera, el error lo indica.
 
 ## Opciones de red (TLS, mTLS, proxy)
 Comunes a `run` y `load`:
