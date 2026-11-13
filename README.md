@@ -5,28 +5,148 @@
 <h1 align="center">ilixPatch</h1>
 
 <p align="center">
-  A fast, open-source, <b>local-first API client</b> — collections, environments, scripts, tests,
-  load testing and a built-in Git client. No account, no cloud: your requests are plain files in your repo.
+  <b>The open-source, local-first API client that lives in your Git repo.</b><br>
+  A fast Postman alternative: collections, environments, <code>pm.*</code> scripts and tests, load testing,
+  OpenAPI import and a built-in Git client. No account, no cloud — your requests are plain files.
 </p>
 
 <p align="center">
   <a href="https://github.com/jst7/ilixPatch/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jst7/ilixPatch/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/jst7/ilixPatch/releases"><img alt="Release" src="https://img.shields.io/github/v/release/jst7/ilixPatch?include_prereleases&sort=semver"></a>
   <a href="#license"><img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey">
 </p>
 
-<p align="center"><a href="README.es.md">Leer en castellano</a></p>
+<p align="center">
+  <a href="https://github.com/jst7/ilixPatch/releases"><b>Download</b></a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="docs/CLI.md">CLI docs</a> ·
+  <a href="README.es.md">Leer en castellano</a>
+</p>
 
-> **Status: early development (0.x).** Things move fast and the on-disk format may still change
+> **Status: early development (0.x).** Things move fast and the on-disk format may still change.
 
 ## Why ilixPatch
 - **Fast and light**: Rust core + [Tauri](https://tauri.app) (the OS webview, not a bundled Chromium).
   Starts quickly, uses little memory, and keeps big responses in Rust.
-- **Local-first**: no sign-up, no sync. Everything lives in your project folder.
-- **Git-native**: one TOML file per request → clean diffs, easy reviews, and an IntelliJ-style Git client inside the app.
-- **Postman-compatible where it matters**: `pm.*` scripts and Chai assertions run unchanged, a Newman-compatible CLI,
-  and an importer for Postman collections, environments and data dumps.
-- **OpenAPI / Swagger import**: 3.x and 2.0 specs, JSON or YAML, from a file or a URL, with examples generated from the schemas.
+- **Local-first**: no sign-up, no sync, no telemetry. Everything lives in your project folder.
+- **Git-native**: one TOML file per request → clean diffs, pull-request reviews, and an IntelliJ-style Git client inside the app.
+- **Postman-compatible where it matters**: `pm.*` scripts and Chai assertions run unchanged, the CLI takes Newman's flags,
+  and Postman collections, environments and data dumps import in a few clicks.
+- **OpenAPI / Swagger in seconds**: paste a spec URL or drop a JSON/YAML file and get a ready-to-send collection,
+  with example bodies generated from the schemas.
+- **Same files, same engine, in CI**: the `ilixpatch` CLI runs your collections and load tests with JUnit/JSON/HTML reports.
+
+## Quick start
+1. **[Download](https://github.com/jst7/ilixPatch/releases)** the app for macOS, Windows or Linux.
+2. Bring your requests: **+ › Import (Postman, OpenAPI)…** — drop a Postman export, or paste a spec URL such as
+   `https://petstore3.swagger.io/api/v3/openapi.json`. Or open the bundled demo with **+ › Open folder…** → `examples/demo-project`.
+3. Pick an environment and press **`⌘/Ctrl + Enter`**.
+
+Then commit the project folder: your teammates get the same requests with `git pull`, and CI can run them:
+
+```sh
+ilixpatch run . --env staging -r cli,junit --reporter-junit-export results/junit.xml
+```
+
+What a run looks like, against the bundled demo project (abridged):
+
+```text
+$ ilixpatch run examples/demo-project --env dev
+JSONPlaceholder
+❏ posts
+↳ List posts
+  GET https://jsonplaceholder.typicode.com/posts?userId=1 [200 OK, 2.7kB, 66ms]
+  │ post_id = 1
+  ✓  Status is 200
+  ✓  Content-Type is JSON
+  ✓  Every post belongs to the user
+…
+┌────────────────────┬──────────┬────────┐
+│                    │ executed │ failed │
+├────────────────────┼──────────┼────────┤
+│         iterations │        1 │      0 │
+│           requests │        7 │      0 │
+│       test-scripts │        6 │      0 │
+│ prerequest-scripts │        1 │      0 │
+│         assertions │       14 │      0 │
+└────────────────────┴──────────┴────────┘
+```
+
+## How it works
+Your API workspace is a folder of small TOML files — usually inside the repository of the API it tests.
+The app and the CLI read and write exactly those files; there is no database or server in between.
+
+```mermaid
+flowchart LR
+  I["Postman exports<br/>OpenAPI / Swagger specs"] -- import --> R
+  A["ilixPatch app<br/>edit · send · test · debug"] <-- "reads / writes" --> R[("Your Git repo<br/>one .toml per request")]
+  R -- "commit · pull request" --> V["Code review<br/>readable diffs"]
+  R -- checkout --> C["CI: ilixpatch run / load<br/>JUnit · JSON · HTML reports"]
+```
+
+```text
+my-api/                         ← your repository
+├── .ilixpatch/
+│   ├── config.toml             ← marks the project
+│   └── environments/
+│       ├── staging.toml        ← shared variables (committed)
+│       └── staging.secret.toml ← tokens & passwords (git-ignored)
+└── users-api/                  ← a collection
+    ├── collection.toml         ← variables, auth inherited by every request
+    └── users/
+        └── create-user.toml    ← one request = one file
+```
+
+```toml
+# users-api/users/create-user.toml
+name = "Create user"
+method = "POST"
+url = "{{baseUrl}}/users"
+
+[body]
+type = "json"
+content = '''{ "name": "Ada", "email": "ada@example.com" }'''
+
+[scripts]
+tests = '''
+pm.test("created", () => pm.response.to.have.status(201));
+pm.environment.set("userId", pm.response.json().id);
+'''
+```
+
+Requests are sent by a Rust engine (reqwest + rustls), not by a browser: no CORS, full control over TLS,
+client certificates and proxies, and descriptive errors when something fails.
+
+## Coming from Postman?
+1. Export your collections and environments (or **Settings › Data › Export data** for everything) and import them:
+   folders, auth (including inherited), bodies and variables come along; secret-looking values go to git-ignored files.
+2. Your pre-request and test scripts keep working: `pm.test`, `pm.expect`, `pm.response`, `pm.environment`,
+   `pm.variables`, `postman.setNextRequest`, Chai…
+3. In CI, replace `newman run` with `ilixpatch run`: the flags (`-e`, `-d`, `-n`, `-r cli,junit,html`, `--bail`,
+   `--folder`, `--env-var`, `--ssl-client-cert`…) and the exit codes are the same.
+
+## Run it in CI
+The CLI is a single binary. In GitHub Actions:
+
+```yaml
+- name: Install ilixpatch
+  run: |
+    V=v0.4.2   # pin the version you want
+    curl -sSL "https://github.com/jst7/ilixPatch/releases/download/$V/ilixpatch-$V-x86_64-unknown-linux-gnu.tar.gz" | tar xz
+    echo "$PWD/ilixpatch-$V-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
+
+- name: API tests
+  run: |
+    ilixpatch run . --env staging --env-var token=${{ secrets.API_TOKEN }} \
+      -r cli,junit --reporter-junit-export results/junit.xml
+
+- name: Load test (fails the job if p95 > 300 ms or more than 1% errors)
+  run: ilixpatch load ./users-api --env staging --vus 20 --duration 1m --max-p95 300 --max-error-rate 0.01
+```
+
+Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish).
 
 ## Features
 **Requests & editor**
@@ -36,6 +156,8 @@
 - Cancel a hung request instantly (`⌘.` / `Ctrl+.`); **descriptive errors** that explain the likely cause
   (DNS, connection refused, timeout, TLS issuer/expiry/hostname, mTLS, proxy…) with one-click fixes.
 - Response viewer: status, time, size, headers, tests, console, HTTP version, redirect chain and TLS certificate.
+- **Authorization** with every Postman type: Bearer, Basic, API key, Digest, OAuth 1.0, **OAuth 2.0** (authorization code,
+  PKCE, client credentials, password, implicit — tokens stay on your machine), AWS Signature v4, Hawk, NTLM, Akamai, JWT, ASAP.
 
 **Organisation**
 - **Project › Collection › Folder › Request**, each project usually a Git repository.
@@ -43,6 +165,12 @@
   copyable both ways. Collection & environment variables with Postman precedence.
 - Open requests as tabs in a collapsible right sidebar; search the tree, the tabs and the history.
 - **History** of every call with its response (local SQLite, retention by days and size), restorable into a new tab.
+
+**Import**
+- **Postman**: collections v2.0/v2.1, environments, globals and the *Export data* ZIP.
+- **OpenAPI 3.0 / 3.1 and Swagger 2.0**: JSON or YAML, from a file or a URL. Folders by tag or by URL path, parameter and
+  body examples (generated from the schema when missing), auth from the security schemes.
+- A wizard shows what will be created and lets you **drag each item wherever you want** in your project.
 
 **Scripts, tests and automation**
 - Pre-request and test scripts with the Postman `pm.*` API on an embedded QuickJS engine (Chai `expect`, `pm.response`,
@@ -63,6 +191,7 @@
 
 **Make it yours**
 - Light/dark/system themes and fully customizable colours (export/import), English and Castellano UI (more languages welcome).
+- Tells you when a new version is published (a daily check against GitHub releases that you can turn off).
 
 ## Download
 Pre-built installers and CLI binaries are published on the **[Releases](https://github.com/jst7/ilixPatch/releases)** page:
@@ -223,17 +352,34 @@ Everything is plain TOML in your repo: **Project > Collection > Folder > Request
 ```text
 my-project/                  # usually a git repo
 ├── .ilixpatch/
-│   └── config.toml          # marks the project root
+│   ├── config.toml          # marks the project root
+│   └── environments/        # project environments, shared by every collection
+│       ├── dev.toml         # name + [[variables]]; secret ones keep only their key here
+│       └── dev.secret.toml  # git-ignored: the secret values (tokens, passwords)
 ├── users-api/               # a collection = any subdirectory with collection.toml
-│   ├── collection.toml      # name, format version, collection variables
-│   ├── environments/
-│   │   ├── dev.toml         # [variables]
-│   │   └── dev.secret.toml  # gitignored; overrides dev.toml (tokens, passwords)
-│   └── users/               # folders nest freely
+│   ├── collection.toml      # name, format version, collection variables, auth
+│   └── users/               # folders nest freely (folder.toml for folder auth)
 │       └── list-users.toml  # one request per file
 └── billing-api/
     └── collection.toml
 ```
+
+An environment file:
+
+```toml
+name = "Dev"
+
+[[variables]]
+key = "base_url"
+value = "https://dev.example.com"
+
+[[variables]]
+key = "token"
+secret = true                # the value goes to dev.secret.toml, never to the repo
+```
+
+Global environments (per user, never in a repo) live in the app's config directory. Older projects with
+`<collection>/environments/*.toml` still work: `--env` looks there when the project has no environment with that name.
 
 `.ilixpatch/config.toml`:
 
@@ -265,7 +411,7 @@ type = "json"
 content = '''{ "userId": {{user_id}} }'''
 ```
 
-Variables resolve with increasing priority: collection → environment → secrets.
+Variables resolve with increasing priority: globals → collection → environment → iteration data → local (`pm.variables`).
 
 ## Keyboard shortcuts
 | Shortcut (macOS / Windows·Linux) | Action |
