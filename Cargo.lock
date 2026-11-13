@@ -3327,7 +3327,7 @@ name = "ilixpatch-engine"
 version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "ilixpatch-auth",
  "ilixpatch-bodystore",
  "ilixpatch-core",
@@ -3397,7 +3397,7 @@ dependencies = [
 name = "ilixpatch-oauth2"
 version = "0.4.0"
 dependencies = [
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "ilixpatch-auth",
  "ilixpatch-core",
  "ilixpatch-engine",
