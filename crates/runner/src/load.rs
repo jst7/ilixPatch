@@ -285,6 +285,7 @@ async fn virtual_user(
                 oauth2: oauth2.as_ref().map(|h| &*h.0),
                 // Count bytes only, unless a tests script needs the body.
                 keep_body: false,
+                trace: None, // load tests are not logged (D46)
             };
             let start = Instant::now();
             let store = &mut stores[li.target];

@@ -214,12 +214,42 @@ async fn ntlm_handshake_reuses_the_connection() {
         domain: Some("DOM".into()),
         ..Default::default()
     };
+    let seen: Arc<std::sync::Mutex<Vec<crate::NetExchange>>> = Arc::default();
+    let sink = seen.clone();
+    let opts = crate::SendOptions {
+        trace: Some(crate::Trace::new("ntlm")),
+        ..Default::default()
+    };
     let r = Engine::new()
-        .send_with_auth(&req(&format!("{base}/")), None, &ChallengeAuth::Ntlm(cfg))
+        .with_observer(Arc::new(move |ex| sink.lock().unwrap().push(ex)))
+        .send_opts(
+            &req(&format!("{base}/")),
+            opts,
+            Some(&ChallengeAuth::Ntlm(cfg)),
+        )
         .await
         .unwrap();
     assert_eq!((r.status, r.body_text().as_str()), (200, "same connection"));
     assert_eq!(conns.load(Ordering::SeqCst), 1);
+    // D46: both rounds show in the network console, with the NTLM headers.
+    let seen = seen.lock().unwrap();
+    let phases: Vec<_> = seen
+        .iter()
+        .map(|e| (e.phase.as_deref(), e.status))
+        .collect();
+    assert_eq!(
+        phases,
+        [
+            (Some("ntlm-negotiate"), Some(401)),
+            (Some("ntlm-authenticate"), Some(200))
+        ]
+    );
+    assert!(
+        seen[1]
+            .request_headers
+            .iter()
+            .any(|(k, v)| k == "authorization" && v.starts_with("NTLM "))
+    );
 }
 
 #[test]

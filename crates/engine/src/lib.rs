@@ -10,8 +10,10 @@
 
 pub mod challenge;
 pub mod error;
+pub mod netlog;
 pub mod proxy;
 pub mod settings;
+pub mod timing;
 pub mod tls;
 
 use std::collections::HashMap;
@@ -26,6 +28,7 @@ use thiserror::Error;
 pub use challenge::{ChallengeAuth, body_bytes, full_url, with_auth_env};
 pub use error::{ErrorContext, RequestError, RequestErrorKind, classify, detail_chain};
 pub use ilixpatch_bodystore::{self as bodystore, Body as ResponseBody, BodySink, SinkConfig};
+pub use netlog::{BodyPreview, NetExchange, NetObserver, Trace};
 pub use proxy::{Bypass, HostPattern};
 pub use reqwest::Url;
 pub use settings::{
@@ -166,15 +169,22 @@ struct Inner {
     clients: Mutex<HashMap<ClientKey, reqwest::Client>>,
     /// D41: where large bodies are spilled (system temp when `None`).
     spill_dir: Option<std::path::PathBuf>,
+    /// D46: network console; called for every exchange of a traced send.
+    observer: Option<NetObserver>,
 }
 
 /// Per-send options.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SendOptions {
     /// Default total timeout (the request's own `settings.timeout_ms` wins).
     pub timeout: Option<Duration>,
     /// Count the body bytes but don't keep them (load tests, runs without tests).
     pub discard_body: bool,
+    /// D46: report the exchanges of this send to the engine's observer under
+    /// this id (`None`: not reported, e.g. load tests).
+    pub trace: Option<Arc<netlog::Trace>>,
+    /// D46: what this send is part of (`ntlm-negotiate`…), for the console.
+    pub phase: netlog::Phase,
 }
 
 /// Cheap to clone (shared client cache).
@@ -318,6 +328,7 @@ impl Engine {
                 proxy,
                 clients: Mutex::new(HashMap::new()),
                 spill_dir: None,
+                observer: None,
             }),
         };
         // Build the default client now so configuration errors surface early.
@@ -404,6 +415,9 @@ impl Engine {
         let s = &self.inner.settings;
         let mut b = reqwest::Client::builder()
             .user_agent(USER_AGENT)
+            // D46 phase 2: DNS and connection timings for the network console.
+            .dns_resolver(Arc::new(timing::TimedResolver))
+            .connector_layer(timing::TimingLayer)
             .connect_timeout(Duration::from_secs(30))
             .redirect(reqwest::redirect::Policy::none())
             .tls_info(true)
@@ -565,8 +579,7 @@ impl Engine {
         }
     }
 
-    /// Where large bodies of this engine are spilled.
-    pub fn with_spill_dir(self, dir: impl Into<std::path::PathBuf>) -> Self {
+    fn modify(self, f: impl FnOnce(&mut Inner)) -> Self {
         let mut inner = Arc::try_unwrap(self.inner).unwrap_or_else(|arc| Inner {
             settings: arc.settings.clone(),
             roots: arc.roots.clone(),
@@ -574,11 +587,31 @@ impl Engine {
             proxy: arc.proxy.clone(),
             clients: Mutex::new(HashMap::new()),
             spill_dir: arc.spill_dir.clone(),
+            observer: arc.observer.clone(),
         });
-        inner.spill_dir = Some(dir.into());
+        f(&mut inner);
         Self {
             inner: Arc::new(inner),
         }
+    }
+
+    /// Where large bodies of this engine are spilled.
+    pub fn with_spill_dir(self, dir: impl Into<std::path::PathBuf>) -> Self {
+        let dir = dir.into();
+        self.modify(|i| i.spill_dir = Some(dir))
+    }
+
+    /// D46: report every exchange of traced sends (`SendOptions::trace`).
+    pub fn with_observer(self, observer: NetObserver) -> Self {
+        self.modify(|i| i.observer = Some(observer))
+    }
+
+    /// The observer, for sends that set a trace id.
+    fn observer_for<'s>(
+        &'s self,
+        opts: &'s SendOptions,
+    ) -> Option<(&'s NetObserver, &'s netlog::Trace)> {
+        Some((self.inner.observer.as_ref()?, opts.trace.as_deref()?))
     }
 
     fn sink_config(&self, discard: bool) -> SinkConfig {
@@ -635,7 +668,7 @@ impl Engine {
             _ => EngineError::Http(e),
         };
 
-        let resp = loop {
+        let (resp, pending, hop_start) = loop {
             let key = ClientKey {
                 verify: eff.verify_ssl,
                 http1_only: eff.http_version == HttpVersionPref::Http1,
@@ -690,8 +723,69 @@ impl Engine {
                 Some(Body::Text { content }) => builder.body(content.clone()),
                 Some(Body::Form { fields }) => builder.form(fields),
             };
-            let resp = builder.send().await.map_err(map_err)?;
+            let request = builder.build().map_err(map_err)?;
+            let observed = self.observer_for(&opts);
+            let captured = observed.map(|_| netlog::capture_request(&request, Some(USER_AGENT)));
+            let hop_start = Instant::now();
+            let (sent, conn_timing) = timing::timed(client.execute(request)).await;
+            let hop_timings =
+                netlog::Timings::from_conn(conn_timing, hop_start.elapsed().as_secs_f64() * 1000.0);
+            let resp = match sent {
+                Ok(r) => r,
+                Err(e) => {
+                    let err = map_err(e);
+                    if let (Some((obs, trace)), Some((h, b))) = (observed, captured) {
+                        obs(NetExchange {
+                            trace: Some(trace.id),
+                            label: trace.label.clone(),
+                            phase: opts.phase.map(str::to_string),
+                            timestamp_ms: netlog::now_ms(),
+                            method: method.to_string(),
+                            url: url.to_string(),
+                            request_headers: h,
+                            request_body: b,
+                            status: None,
+                            status_text: None,
+                            response_headers: Vec::new(),
+                            response_body: None,
+                            http_version: None,
+                            remote_addr: None,
+                            proxy: self.proxy_for(&url),
+                            elapsed_ms: hop_start.elapsed().as_secs_f64() * 1000.0,
+                            timings: Some(hop_timings.clone()),
+                            error: Some(detail_chain(&err)),
+                        });
+                    }
+                    return Err(err);
+                }
+            };
             let status = resp.status();
+            // The exchange is reported when we know whether it is a redirect hop.
+            let mut pending = observed.zip(captured).map(|((obs, trace), (h, b))| {
+                (
+                    obs,
+                    NetExchange {
+                        trace: Some(trace.id),
+                        label: trace.label.clone(),
+                        phase: opts.phase.map(str::to_string),
+                        timestamp_ms: netlog::now_ms(),
+                        method: method.to_string(),
+                        url: url.to_string(),
+                        request_headers: h,
+                        request_body: b,
+                        status: Some(status.as_u16()),
+                        status_text: status.canonical_reason().map(str::to_string),
+                        response_headers: netlog::response_headers(&resp),
+                        response_body: None,
+                        http_version: Some(http_version_name(resp.version())),
+                        remote_addr: resp.remote_addr().map(|a| a.to_string()),
+                        proxy: self.proxy_for(&url),
+                        elapsed_ms: 0.0,
+                        timings: Some(hop_timings),
+                        error: None,
+                    },
+                )
+            });
             let location = resp
                 .headers()
                 .get(reqwest::header::LOCATION)
@@ -700,10 +794,15 @@ impl Engine {
             let (true, Some(location)) =
                 (eff.follow_redirects && status.is_redirection(), location)
             else {
-                break resp;
+                break (resp, pending, hop_start);
             };
             if !matches!(status.as_u16(), 301 | 302 | 303 | 307 | 308) {
-                break resp;
+                break (resp, pending, hop_start);
+            }
+            if let Some((obs, mut ex)) = pending.take() {
+                ex.phase = Some("redirect".into());
+                ex.elapsed_ms = hop_start.elapsed().as_secs_f64() * 1000.0;
+                obs(ex);
             }
             if redirects.len() as u32 >= eff.max_redirects {
                 return Err(EngineError::TooManyRedirects(eff.max_redirects));
@@ -769,6 +868,7 @@ impl Engine {
             .collect();
         // D41: stream the body chunk by chunk (decompressed by reqwest).
         let mut resp = resp;
+        let download_start = Instant::now();
         let mut sink = BodySink::new(self.sink_config(opts.discard_body));
         while let Some(chunk) = resp.chunk().await.map_err(map_err)? {
             if !sink
@@ -783,6 +883,21 @@ impl Engine {
         let size = sink.len();
         let (body, body_complete) = sink.finish().map_err(|e| EngineError::Body(Box::new(e)))?;
         let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
+        if let Some((obs, mut ex)) = pending {
+            ex.elapsed_ms = hop_start.elapsed().as_secs_f64() * 1000.0;
+            if let Some(t) = ex.timings.as_mut() {
+                t.download_ms = Some(download_start.elapsed().as_secs_f64() * 1000.0);
+            }
+            ex.response_body = (size > 0).then(|| {
+                let head = body.preview(netlog::BODY_PREVIEW).unwrap_or_default();
+                let mut p = BodyPreview::from_bytes(&head, size);
+                if opts.discard_body {
+                    p.text = String::new();
+                }
+                p
+            });
+            obs(ex);
+        }
 
         Ok(Response {
             status: status.as_u16(),

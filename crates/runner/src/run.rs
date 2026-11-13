@@ -412,6 +412,7 @@ where
             run_scripts: true,
             oauth2: config.oauth2.as_ref().map(|h| &*h.0),
             keep_body: config.keep_bodies,
+            trace: None,
         };
 
         let mut pos = 0;
@@ -441,9 +442,17 @@ where
             }
             let store = &mut stores[ti];
             std::mem::swap(&mut store.globals, &mut globals);
+            // D46: each request of a run is one entry in the network console.
+            let req_ctx = ExecContext {
+                trace: Some(ilixpatch_engine::Trace::new(format!(
+                    "Runner · {}",
+                    item.request.name
+                ))),
+                ..ctx.clone()
+            };
             let exec = tokio::select! {
                 _ = cancel.cancelled() => None,
-                r = execute_request(engine, &item.request, store, &ctx) => Some(r),
+                r = execute_request(engine, &item.request, store, &req_ctx) => Some(r),
             };
             std::mem::swap(&mut store.globals, &mut globals);
             let Some(exec) = exec else {

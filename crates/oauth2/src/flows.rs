@@ -27,6 +27,8 @@ pub struct Flows {
     /// so network-settings changes apply immediately).
     client_for: Option<ClientFor>,
     opener: Option<Opener>,
+    /// D46: network console.
+    observer: Option<ilixpatch_engine::NetObserver>,
     cancel: Notify,
     browser_timeout: Duration,
 }
@@ -45,6 +47,7 @@ impl Flows {
                 .unwrap_or_default(),
             client_for: None,
             opener,
+            observer: None,
             cancel: Notify::new(),
             browser_timeout: BROWSER_TIMEOUT,
         }
@@ -59,6 +62,12 @@ impl Flows {
     /// Pick the HTTP client per token request (see [`ClientFor`]).
     pub fn with_client_for(mut self, client_for: ClientFor) -> Self {
         self.client_for = Some(client_for);
+        self
+    }
+
+    /// D46: report token requests to the network console.
+    pub fn with_observer(mut self, observer: ilixpatch_engine::NetObserver) -> Self {
+        self.observer = Some(observer);
         self
     }
 
@@ -93,17 +102,80 @@ impl Flows {
         for (k, v) in &req.headers {
             builder = builder.header(k, v);
         }
-        let resp = builder
-            .send()
-            .await
+        use ilixpatch_engine::netlog::{self, BodyPreview, NetExchange};
+        let request = builder
+            .build()
             .map_err(|e| format!("token request to {} failed: {e}", req.url))?;
+        // D46: one console entry per token request.
+        let mut logged = self.observer.as_ref().map(|obs| {
+            let (h, b) = netlog::capture_request(&request, None);
+            let trace = ilixpatch_engine::Trace::new("OAuth 2.0 · token");
+            (
+                obs,
+                NetExchange {
+                    trace: Some(trace.id),
+                    label: trace.label.clone(),
+                    phase: Some("oauth2-token".into()),
+                    timestamp_ms: netlog::now_ms(),
+                    method: request.method().to_string(),
+                    url: request.url().to_string(),
+                    request_headers: h,
+                    request_body: b,
+                    status: None,
+                    status_text: None,
+                    response_headers: Vec::new(),
+                    response_body: None,
+                    http_version: None,
+                    remote_addr: None,
+                    proxy: None,
+                    elapsed_ms: 0.0,
+                    timings: None,
+                    error: None,
+                },
+            )
+        });
+        let started = std::time::Instant::now();
+        let (sent, conn_timing) = ilixpatch_engine::timing::timed(http.execute(request)).await;
+        if let Some((_, ex)) = logged.as_mut() {
+            ex.timings = Some(netlog::Timings::from_conn(
+                conn_timing,
+                started.elapsed().as_secs_f64() * 1000.0,
+            ));
+        }
+        let resp = match sent {
+            Ok(r) => r,
+            Err(e) => {
+                if let Some((obs, mut ex)) = logged.take() {
+                    ex.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+                    ex.error = Some(e.to_string());
+                    obs(ex);
+                }
+                return Err(format!("token request to {} failed: {e}", req.url));
+            }
+        };
         let status = resp.status().as_u16();
         let content_type = resp
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
-        let body = resp.bytes().await.map_err(|e| e.to_string())?;
+        if let Some((_, ex)) = logged.as_mut() {
+            ex.status = Some(status);
+            ex.status_text = resp.status().canonical_reason().map(str::to_string);
+            ex.response_headers = netlog::response_headers(&resp);
+            ex.remote_addr = resp.remote_addr().map(|a| a.to_string());
+            ex.http_version = Some(format!("{:?}", resp.version()));
+        }
+        let body = resp.bytes().await.map_err(|e| e.to_string());
+        if let Some((obs, mut ex)) = logged {
+            ex.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+            match &body {
+                Ok(b) => ex.response_body = Some(BodyPreview::from_bytes(b, b.len() as u64)),
+                Err(e) => ex.error = Some(e.clone()),
+            }
+            obs(ex);
+        }
+        let body = body?;
         oauth2::parse_token_response(status, content_type.as_deref(), &body, now())
             .map_err(auth_err)
     }

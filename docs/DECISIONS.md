@@ -296,6 +296,7 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
 - **Selector de entorno:** agrupa los entornos del proyecto, los globales y los de colección legacy. La selección se recuerda por proyecto.
 - **Prioridad de variables:** globales < variables de colección < entorno elegido < variables de ejecución o locales.
 - Contrato en `app/src/lib/api.ts`, en la sección "Environments: project & global (D28)".
+- **Selector de entorno en la cabecera de la petición**, al lado del nombre (no en la barra de la URL, que así gana ancho). En las pestañas del historial, que tienen otra cabecera, sigue junto a la URL.
 
 ## D29 · Red, HTTPS, certificados y proxy (como Postman) ✅
 - **CORS no aplica**, igual que en Postman de escritorio: las peticiones las envía el motor en Rust (`reqwest`), no el navegador del webview.
@@ -346,6 +347,35 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - **botones de acción**: desactivar SSL para esta petición, abrir los ajustes de HTTPS, certificados o proxy, subir el timeout, abrir los entornos…;
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
+
+## D46 · Consola de red: lo que se envía de verdad por debajo ✅
+- **Para qué:** depurar lo que no se ve en la pestaña de la petición: cabeceras finales, redirecciones, rondas de autenticación y peticiones de token.
+- **Qué registra** cada intercambio HTTP (`engine::netlog::NetExchange`):
+  - la **petición tal como sale**: variables resueltas, cabeceras de la autorización y las que añade el cliente HTTP (`Host`, `User-Agent`, `Accept`, `Accept-Encoding`, `Content-Length`), y vista previa del body;
+  - la respuesta: estado, cabeceras, vista previa del body (hasta 64 KB), versión HTTP, IP remota, proxy y tiempo de ese intercambio, o el error.
+- **Intercambios intermedios**, con su fase: cada salto de **redirección**, las rondas de **Digest** (`digest-response`) y **NTLM** (`ntlm-negotiate` y `ntlm-authenticate`) y las peticiones de **token de OAuth 2.0** (`oauth2-token`).
+- **Cómo se captura:** el motor construye la petición (`RequestBuilder::build`) antes de enviarla con `Client::execute` y avisa a un observador (`Engine::with_observer`).
+  - Solo se registran los envíos con `SendOptions::trace` (`Trace` = id y etiqueta). Los intercambios del mismo envío comparten el `trace`.
+  - Llevan `trace` los envíos de las pestañas (etiqueta = nombre de la petición) y del Runner ("Runner · nombre"). **Las pruebas de carga no se registran**, para no inundar la consola ni gastar CPU. La CLI no tiene observador.
+- **Dónde se guarda:** en la app (`netlog_commands`), un buffer circular de **500 entradas solo en memoria**. Nunca se escribe en disco porque contiene secretos. Cada entrada nueva llega a la interfaz con el evento `netlog://entry`.
+- **Interfaz:** panel inferior **"Consola de red"** (⌘/Ctrl+Alt+C, o el botón del pie de la barra lateral), redimensionable.
+  - Lista cronológica (hora, método, estado, fase, URL, origen y duración) con filtro y "Solo errores". Al lado, el detalle de la petición y la respuesta.
+  - **Secretos ocultos por defecto:** `Authorization` (se ve el esquema: "Bearer ••••••"), cookies, `X-Api-Key`… Se muestran con "Mostrar secretos".
+  - **"Copiar como cURL"** de cualquier entrada, con los valores reales.
+- **Tiempos por intercambio** (`engine::timing`), mostrados como barra apilada en el detalle:
+  - **DNS:** resolvedor propio (`dns_resolver`) sobre `getaddrinfo`, como el de reqwest por defecto, que mide la búsqueda.
+  - **Conexión (TCP + TLS):** capa alrededor del conector de reqwest (`connector_layer`) que mide cada conexión nueva. Si no se llama, la conexión se **reutilizó** y se indica.
+  - **Espera** (hasta el primer byte): de enviar la petición a recibir las cabeceras, sin contar DNS ni conexión. **Descarga:** lectura del body.
+  - Las mediciones se asocian a cada envío con un `task_local` de tokio (`timing::timed`), así que funcionan con el cliente compartido y con peticiones en paralelo.
+  - **TCP y TLS van juntos:** separarlos obligaría a sustituir el conector de reqwest. Con proxy, la conexión incluye el `CONNECT`.
+
+## D45 · Memoria con muchas pestañas abiertas 🗓️ (aparcado: hoy no es un problema)
+- **Estado actual:** solo se monta la pestaña activa (editor, visor, vista previa y vistas de Git o Runner), y los bodies grandes están en disco (D41). Por pestaña queda en memoria la última respuesta: cabeceras, tests, consola y el body si cabe en `inline_body_kb`. Ese body pequeño está duplicado en la interfaz y en el `ResponseStore` de Rust (máximo 64 entradas).
+- **Peor caso estimado:** unas 100 pestañas con respuestas de ~1 MB suman unos 150–250 MB. Con respuestas normales de API son unos pocos MB.
+- **Mejoras previstas, si llega a ser un problema:**
+  1. no guardar en la interfaz el body de las pestañas inactivas que ya está en Rust, y releerlo al volver;
+  2. mantener completas solo las últimas N respuestas (por ejemplo 20); del resto, guardar estado, tamaño y cabeceras, con "Reenviar";
+  3. limitar la consola de scripts por respuesta (por ejemplo, las últimas 1.000 líneas).
 
 ## D44 · Vista previa de imágenes, PDF, audio, vídeo y HTML en la respuesta ✅ (v0.3.3)
 - **Qué se previsualiza** (`lib/preview/kind.ts`):

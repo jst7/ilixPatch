@@ -3,6 +3,7 @@ mod env_commands;
 mod git_commands;
 mod history_commands;
 mod import_commands;
+mod netlog_commands;
 mod network_commands;
 mod oauth2_commands;
 mod registry;
@@ -184,6 +185,14 @@ async fn send_request(
         .map(|id| InFlightGuard::register(&in_flight, id, token.clone()));
     let ctx = ExecContext {
         oauth2: Some(&*oauth2.provider),
+        // D46: the exchanges of this send are grouped in the network console.
+        trace: Some(ilixpatch_engine::Trace::new(
+            if request.name.trim().is_empty() {
+                format!("{} {}", request.method.as_str(), request.url)
+            } else {
+                request.name.clone()
+            },
+        )),
         ..Default::default()
     };
     let res = tokio::select! {
@@ -499,6 +508,7 @@ pub fn run() {
             let dir = app.path().app_config_dir()?;
             app.manage(Registry::new(dir.join("projects.toml")));
             history_commands::init(app)?;
+            netlog_commands::init(app);
             network_commands::init(app)?;
             oauth2_commands::init(app)?;
             response_commands::init(app)?;
@@ -587,6 +597,8 @@ pub fn run() {
             response_commands::response_save,
             response_commands::response_release,
             response_commands::response_open,
+            netlog_commands::netlog_list,
+            netlog_commands::netlog_clear,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

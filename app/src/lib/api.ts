@@ -931,6 +931,55 @@ export interface BodySearchResult {
   truncated: boolean;
 }
 
+// ---------- Network console (D46) ----------
+
+export interface NetBodyPreview {
+  /** UTF-8 text (empty for binary bodies). */
+  text: string;
+  size: number;
+  truncated: boolean;
+  binary: boolean;
+}
+
+/** Phases of one exchange, in ms (D46 phase 2). TCP and TLS are measured together. */
+export interface NetTimings {
+  dns_ms: number | null;
+  /** New connection: TCP + TLS (+ proxy CONNECT); null when a pooled connection was reused. */
+  connect_ms: number | null;
+  reused: boolean;
+  /** Request sent → response headers (time to first byte). */
+  wait_ms: number;
+  /** Reading the body (final response only). */
+  download_ms: number | null;
+}
+
+/** One HTTP exchange as sent on the wire (a request, a redirect hop, an auth round, an OAuth 2.0 token request). */
+export interface NetEntry {
+  id: number;
+  /** Exchanges of the same send share it. */
+  trace: number | null;
+  /** Request name, "Runner · name", "OAuth 2.0 · token"… */
+  label: string;
+  /** "redirect" | "digest-response" | "ntlm-negotiate" | "ntlm-authenticate" | "oauth2-token" | null */
+  phase: string | null;
+  timestamp_ms: number;
+  method: string;
+  url: string;
+  /** As sent, including the headers the HTTP client adds (Host, User-Agent, Accept…). */
+  request_headers: [string, string][];
+  request_body: NetBodyPreview | null;
+  status: number | null;
+  status_text: string | null;
+  response_headers: [string, string][];
+  response_body: NetBodyPreview | null;
+  http_version: string | null;
+  remote_addr: string | null;
+  proxy: string | null;
+  elapsed_ms: number;
+  timings: NetTimings | null;
+  error: string | null;
+}
+
 export const api = {
   /** All projects registered in the app config, in insertion order. */
   listProjects: () => invoke<ProjectEntry[]>("list_projects"),
@@ -1141,4 +1190,8 @@ export const api = {
   responseRelease: (id: string) => invoke<void>("response_release", { id }),
   /** D44: open the body with the system app (copied to a temp file with extension `ext`). */
   responseOpen: (id: string, ext: string) => invoke<void>("response_open", { id, ext }),
+
+  // Network console (D46): the last 500 exchanges, in memory only. New ones arrive as `netlog://entry` events.
+  netlogList: () => invoke<NetEntry[]>("netlog_list"),
+  netlogClear: () => invoke<void>("netlog_clear"),
 };

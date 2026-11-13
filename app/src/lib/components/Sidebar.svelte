@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netlog } from "$lib/stores/netlog.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { t } from "$lib/i18n/index.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
@@ -139,6 +140,19 @@
   {/if}
 
   <footer>
+    <button
+      class="ghost icon"
+      class:on={netlog.open}
+      title={t("netlog.toggle")}
+      aria-label={t("netlog.toggle")}
+      aria-pressed={netlog.open}
+      onclick={() => netlog.toggle()}
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M7 9l3 3-3 3M13 15h4" />
+      </svg>
+    </button>
     <button
       class="ghost icon"
       title={t("settings.open")}
@@ -299,5 +313,8 @@
   .icon {
     display: flex;
     padding: 5px;
+  }
+  .icon.on {
+    color: var(--accent);
   }
 </style>

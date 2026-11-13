@@ -10,6 +10,7 @@ authors.workspace = true
 ilixpatch-core.workspace = true
 ilixpatch-auth.workspace = true
 ilixpatch-runner.workspace = true
+ilixpatch-engine.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true

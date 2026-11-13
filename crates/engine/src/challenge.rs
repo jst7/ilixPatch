@@ -115,7 +115,7 @@ pub(crate) async fn send(
     // The challenge (401) responses are read fully but not kept.
     let probe = SendOptions {
         discard_body: true,
-        ..opts
+        ..opts.clone()
     };
     match auth {
         ChallengeAuth::Digest(cfg) => {
@@ -127,11 +127,11 @@ pub(crate) async fn send(
             if let Some(h) = digest::preemptive(cfg, method, &uri, &body, &cnonce) {
                 let h = h.map_err(auth_err("Digest Auth"))?;
                 return engine
-                    .send_inner(&with_authorization(req, h), opts, None)
+                    .send_inner(&with_authorization(req, h), opts.clone(), None)
                     .await;
             }
             // When no challenge comes, this is the real response.
-            let first = engine.send_inner(req, opts, None).await?;
+            let first = engine.send_inner(req, opts.clone(), None).await?;
             if first.status != 401 || cfg.disable_retry {
                 return Ok(first);
             }
@@ -140,16 +140,24 @@ pub(crate) async fn send(
             };
             let h = digest::authorization(cfg, &ch, method, &uri, &body, 1, &cnonce)
                 .map_err(auth_err("Digest Auth"))?;
+            let retry = SendOptions {
+                phase: Some("digest-response"),
+                ..opts
+            };
             engine
-                .send_inner(&with_authorization(req, h), opts, None)
+                .send_inner(&with_authorization(req, h), retry, None)
                 .await
         }
         ChallengeAuth::Ntlm(cfg) => {
             // One client (and so one pooled connection) for the whole handshake.
             let pool = Mutex::new(HashMap::new());
             let t1 = ntlm::negotiate(cfg).map_err(auth_err("NTLM"))?;
+            let negotiate = SendOptions {
+                phase: Some("ntlm-negotiate"),
+                ..probe
+            };
             let first = engine
-                .send_inner(&with_authorization(req, t1), probe, Some(&pool))
+                .send_inner(&with_authorization(req, t1), negotiate, Some(&pool))
                 .await?;
             let www = www_authenticate(&first);
             let has_type2 = www.iter().any(|v| {
@@ -161,8 +169,12 @@ pub(crate) async fn send(
             }
             let t3 = with_auth_env(|env| ntlm::authenticate(cfg, &www, env))
                 .map_err(auth_err("NTLM"))?;
+            let authenticate = SendOptions {
+                phase: Some("ntlm-authenticate"),
+                ..opts
+            };
             engine
-                .send_inner(&with_authorization(req, t3), opts, Some(&pool))
+                .send_inner(&with_authorization(req, t3), authenticate, Some(&pool))
                 .await
         }
     }

@@ -42,7 +42,11 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     });
     let provider = TokenProvider::new(
         Arc::new(TokenStore::new(dir)),
-        Arc::new(Flows::new(Some(opener)).with_client_for(client_for)),
+        Arc::new(
+            Flows::new(Some(opener))
+                .with_client_for(client_for)
+                .with_observer(crate::netlog_commands::observer(app.handle())),
+        ),
     );
     app.manage(OAuth2State {
         provider: Arc::new(provider),

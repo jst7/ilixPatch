@@ -217,6 +217,18 @@
 
 </script>
 
+{#snippet envPicker()}
+  {#if collection}
+    {@const envProject = ws.projectOf(collection)?.path ?? null}
+    <EnvSelect
+      projectPath={envProject}
+      {collection}
+      value={ws.resolveEnv(collection)?.choice ?? ws.envChoice(envProject)}
+      onchange={(c) => envProject && ws.setEnvChoice(envProject, c)}
+    />
+  {/if}
+{/snippet}
+
 {#if draft}
   <section class="editor">
     {#if header}
@@ -241,6 +253,8 @@
         />
         {#if dirty}<span class="dirty-dot" title={t("request.unsaved")}></span>{/if}
       </nav>
+      <!-- The environment applies to the request: next to its name, not in the URL bar. -->
+      <div class="head-env">{@render envPicker()}</div>
       <div class="head-actions">
         {#if dirty}
           <button class="ghost small" onclick={() => ws.revert(path)}>{t("request.revert")}</button>
@@ -294,15 +308,7 @@
           <span class="url-blame uncommitted" title={blameTooltip(null)}>—</span>
         {/if}
       {/if}
-      {#if collection}
-        {@const envProject = ws.projectOf(collection)?.path ?? null}
-        <EnvSelect
-          projectPath={envProject}
-          {collection}
-          value={ws.resolveEnv(collection)?.choice ?? ws.envChoice(envProject)}
-          onchange={(c) => envProject && ws.setEnvChoice(envProject, c)}
-        />
-      {/if}
+      {#if header}{@render envPicker()}{/if}
       <button
         class="send"
         class:primary={!sending}
@@ -509,6 +515,11 @@
   }
   .name:focus {
     border-color: var(--accent);
+  }
+  .head-env {
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
   }
   .head-actions {
     display: flex;

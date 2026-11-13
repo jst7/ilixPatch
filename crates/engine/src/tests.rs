@@ -663,3 +663,71 @@ async fn classifies_tls_errors() {
     let e = fail(&trusting, &req(&url)).await;
     assert_eq!(e.kind, RequestErrorKind::TlsClientCertificate, "{e:?}");
 }
+
+#[tokio::test]
+async fn network_console_reports_each_hop() {
+    let base = http_server().await;
+    let seen: Arc<std::sync::Mutex<Vec<NetExchange>>> = Arc::default();
+    let sink = seen.clone();
+    let engine = Engine::new().with_observer(Arc::new(move |ex| sink.lock().unwrap().push(ex)));
+    let mut r = req(&format!("{base}/redirect/2"));
+    r.headers.insert("X-Test".into(), "1".into());
+    let trace = Trace::new("my request");
+    let opts = SendOptions {
+        trace: Some(trace.clone()),
+        ..Default::default()
+    };
+    engine.send_opts(&r, opts, None).await.unwrap();
+    // Untraced sends (load tests) are not reported.
+    engine.send(&req(&format!("{base}/x"))).await.unwrap();
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.len(), 3, "two redirect hops and the final response");
+    assert!(
+        seen.iter()
+            .all(|e| e.trace == Some(trace.id) && e.label == "my request")
+    );
+    assert_eq!(seen[0].phase.as_deref(), Some("redirect"));
+    assert_eq!(seen[1].phase.as_deref(), Some("redirect"));
+    assert_eq!(seen[2].phase, None);
+    assert_eq!(seen[2].status, Some(200));
+    let h = &seen[0].request_headers;
+    let get = |n: &str| h.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
+    assert_eq!(get("x-test").as_deref(), Some("1"));
+    assert_eq!(get("user-agent").as_deref(), Some(USER_AGENT));
+    assert!(get("host").is_some());
+    assert!(
+        seen[2]
+            .response_body
+            .as_ref()
+            .is_some_and(|b| b.text == "done")
+    );
+}
+
+#[tokio::test]
+async fn network_console_timings() {
+    // "localhost" goes through the resolver, so the DNS lookup is timed too.
+    let base = http_server().await.replace("127.0.0.1", "localhost");
+    let seen: Arc<std::sync::Mutex<Vec<NetExchange>>> = Arc::default();
+    let sink = seen.clone();
+    let engine = Engine::new().with_observer(Arc::new(move |ex| sink.lock().unwrap().push(ex)));
+    let opts = SendOptions {
+        trace: Some(Trace::new("t")),
+        ..Default::default()
+    };
+    engine
+        .send_opts(&req(&format!("{base}/x")), opts, None)
+        .await
+        .unwrap();
+    let seen = seen.lock().unwrap();
+    let t = seen[0].timings.clone().expect("timings");
+    assert!(!t.reused, "first send opens a connection");
+    assert!(t.dns_ms.is_some(), "localhost is resolved");
+    assert!(t.connect_ms.is_some());
+    assert!(t.download_ms.is_some());
+    let sum = t.dns_ms.unwrap() + t.connect_ms.unwrap() + t.wait_ms + t.download_ms.unwrap();
+    assert!(
+        sum <= seen[0].elapsed_ms + 1.0,
+        "{t:?} vs {}",
+        seen[0].elapsed_ms
+    );
+}

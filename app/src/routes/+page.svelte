@@ -19,6 +19,8 @@
   import { searchFocus } from "$lib/search/focus.svelte";
   import MergeView from "$lib/components/merge/MergeView.svelte";
   import ImportView from "$lib/components/import/ImportView.svelte";
+  import NetConsole from "$lib/components/NetConsole.svelte";
+  import { netlog } from "$lib/stores/netlog.svelte";
 
   const LS_LAYOUT = "ilixpatch.layout";
 
@@ -111,11 +113,18 @@
 
   onMount(() => {
     ws.init();
+    void netlog.init();
     // The backend records each send in the local history, then emits this event.
     const unlistenHistory = listen<number>("history://recorded", () => ws.refreshHistory());
     // Capture phase so shortcuts win over the code editor's own keymap (e.g. Mod-Enter).
     const onkey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
+      // D46: ⌘⌥C / Ctrl+Alt+C toggles the network console.
+      if (e.altKey && !e.shiftKey && e.code === "KeyC") {
+        e.preventDefault();
+        netlog.toggle();
+        return;
+      }
       const stop = () => {
         e.preventDefault();
         e.stopPropagation();
@@ -190,7 +199,8 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="gutter v" onpointerdown={resizeSidebar} ondblclick={() => ((sidebarWidth = 280), saveLayout())}></div>
 
-  <main bind:this={mainEl}>
+  <main>
+    <div class="workarea" bind:this={mainEl}>
     {#if ws.activeTab?.kind === "runner"}
       {#key ws.activeTab.target}<RunnerView target={ws.activeTab.target} />{/key}
     {:else if ws.activeTab?.kind === "load"}
@@ -261,6 +271,8 @@
         <p class="keys">{t("main.shortcutsSearch")}</p>
       </div>
     {/if}
+    </div>
+    {#if netlog.open}<NetConsole />{/if}
   </main>
 
   {#if !tabsCollapsed}
@@ -329,6 +341,13 @@
     min-width: 0;
     min-height: 0;
     background: var(--bg);
+  }
+  .workarea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
   }
   .pane {
     min-height: 0;

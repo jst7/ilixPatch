@@ -17,7 +17,7 @@ use crate::auth::{OAuth2Provider, apply_auth};
 use crate::vars::VarStore;
 
 /// Per-execution context (iteration info, timeout, script toggle, OAuth 2.0).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct ExecContext<'a> {
     /// Row of the data file for this iteration.
     pub iteration_data: Option<&'a IndexMap<String, Value>>,
@@ -34,6 +34,9 @@ pub struct ExecContext<'a> {
     /// request has a tests script (and scripts run); otherwise only its size
     /// is counted.
     pub keep_body: bool,
+    /// D46: network console id for the exchanges of this send (`None`: not
+    /// reported).
+    pub trace: Option<std::sync::Arc<ilixpatch_engine::Trace>>,
 }
 
 impl std::fmt::Debug for ExecContext<'_> {
@@ -58,6 +61,7 @@ impl Default for ExecContext<'_> {
             run_scripts: true,
             oauth2: None,
             keep_body: true,
+            trace: None,
         }
     }
 }
@@ -209,6 +213,8 @@ pub async fn execute_request(
     let opts = SendOptions {
         timeout: ctx.timeout,
         discard_body: !needs_body,
+        trace: ctx.trace.clone(),
+        phase: None,
     };
     let sent = engine.send_opts(&resolved, opts, challenge.as_ref()).await;
     let response = match sent {
