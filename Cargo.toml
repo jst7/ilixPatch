@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/auth", "crates/core", "crates/engine", "crates/bodystore", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "crates/oauth2", "app/src-tauri"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["Jorge Segovia Tormo"]
