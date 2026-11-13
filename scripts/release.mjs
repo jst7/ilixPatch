@@ -55,9 +55,22 @@ function step(label, cmd, cmdArgs, opts = {}) {
   if (r.status !== 0) fail(`${label} failed`);
 }
 
-const rl = createInterface({ input: stdin, output: stdout });
+// Lines are queued as they arrive: with piped input (printf 'y\nn\n' | node …) readline
+// emits them while commands run, and rl.question() would miss them.
+const rl = createInterface({ input: stdin, output: stdout, terminal: stdin.isTTY });
+const pending = [];
+const waiting = [];
+let closed = false;
+rl.on("line", (line) => (waiting.length ? waiting.shift()(line) : pending.push(line)));
+rl.on("close", () => {
+  closed = true;
+  while (waiting.length) waiting.shift()("");
+});
 async function ask(q) {
-  return (await rl.question(q)).trim();
+  stdout.write(q);
+  if (pending.length) return pending.shift().trim();
+  if (closed) return "";
+  return (await new Promise((resolve) => waiting.push(resolve))).trim();
 }
 async function confirm(q, def = false) {
   if (yes) return true;
