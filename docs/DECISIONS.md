@@ -348,6 +348,16 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D51 · Agrupado automático de pestañas (interruptor) ✅
+- **Interruptor** en la cabecera de la barra de pestañas ("Agrupar automáticamente por proyecto"). Se guarda con las carpetas (D50), en `localStorage`.
+- **Encendido:** las carpetas se calculan solas en cada momento, sin moverlas a mano:
+  - **una carpeta por proyecto**, en el orden de la barra lateral, con sus peticiones, Runner, pruebas de carga e historial (por la petición de origen);
+  - dentro de cada proyecto, **"Configuración"** con las pestañas de Git y Merge (del repositorio del proyecto, o del que lo contiene), Entornos del proyecto y ajustes de colección o carpeta;
+  - **"General"** para lo que no es de ningún proyecto: entornos globales, importador e historial sin petición de origen.
+  - Las carpetas automáticas se pliegan y despliegan (estado propio, `autoCollapsed`), cuentan sus pestañas y con el clic derecho permiten cerrar sus pestañas o apagar el modo. No se renombran ni se mueven.
+  - Arrastrar solo reordena: no cambia de carpeta, porque la carpeta la decide el proyecto.
+- **Apagado:** vuelven las carpetas manuales tal como estaban. El modo automático no las toca.
+
 ## D50 · Carpetas de pestañas (anidadas y plegables) ✅
 - **Para qué:** con muchas pestañas abiertas, poder agruparlas por niveles (por ejemplo "Clientes / Pedidos") y plegar lo que no se está usando.
 - **Modelo** (`stores/tabGroups.svelte.ts`): carpetas `{ id, name, parent, collapsed }` y la carpeta de cada pestaña por su clave. Solo es organización: el orden y las pestañas siguen en el workspace.

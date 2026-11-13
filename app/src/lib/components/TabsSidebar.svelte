@@ -2,7 +2,7 @@
   import { tabGroups, type TabGroup } from "$lib/stores/tabGroups.svelte";
   import { suppressTextSelection } from "$lib/dragSelect";
   import { t } from "$lib/i18n/index.svelte";
-  import { ws, historyKey, tabKey, tabPath, type MenuItem, type OpenTab } from "$lib/stores/workspace.svelte";
+  import { ws, historyKey, isWithin, tabKey, tabPath, type MenuItem, type OpenTab } from "$lib/stores/workspace.svelte";
   import GitIcon from "./GitIcon.svelte";
   import EnvIcon from "./EnvIcon.svelte";
   import { envSession } from "$lib/stores/environments.svelte";
@@ -161,7 +161,7 @@
       { label: t("tabs.closeAll"), action: () => ws.closeAllTabs() },
       { label: t("tabs.closeSaved"), action: () => ws.closeSavedTabs() },
     ];
-    return [...list, ...revealItem(v), ...folderItems(v)];
+    return [...list, ...revealItem(v), ...(tabGroups.auto ? [] : folderItems(v))];
   }
 
   // ----- tab folders (D50) -----
@@ -188,6 +188,21 @@
   function groupMenu(e: MouseEvent, g: TabGroup) {
     e.preventDefault();
     e.stopPropagation();
+    if (tabGroups.isAutoId(g.id)) {
+      ws.menu = {
+        x: e.clientX,
+        y: e.clientY,
+        items: [
+          {
+            label: g.collapsed ? t("tabs.folder.expand") : t("tabs.folder.collapse"),
+            action: () => tabGroups.toggle(g.id),
+          },
+          { label: t("tabs.folder.closeTabs"), action: () => void ws.closeTabs(autoKeys.get(g.id) ?? []) },
+          { label: t("tabs.auto.off"), action: () => tabGroups.setAuto(false) },
+        ],
+      };
+      return;
+    }
     const keysIn = () => {
       const ids = tabGroups.subtree(g.id);
       return views.filter((v) => ids.has(tabGroups.member[v.key])).map((v) => v.key);
@@ -221,8 +236,74 @@
 
   /** The list as rows: folders first (with their subfolders and tabs), then top-level tabs.
    *  While searching, folders open to show their matches; the collapsed rail is flat. */
+  // ----- automatic grouping (D51): by project, with a "Settings" subfolder (Git, environments…) -----
+
+  /** Project a tab belongs to (null = not in a project: global environments, import…). */
+  function projectOfTab(tab: OpenTab): string | null {
+    const projects = ws.entries.map((e) => e.path);
+    const inside = (p: string | null | undefined) => (p ? (projects.find((pr) => isWithin(p, pr)) ?? null) : null);
+    switch (tab.kind) {
+      case "environments":
+        return tab.project;
+      case "git":
+      case "merge":
+        // A repo can be the project itself, inside it, or contain it.
+        return inside(tab.repo) ?? projects.find((pr) => isWithin(pr, tab.repo)) ?? null;
+      case "history":
+        return inside(ws.historyTabs[tab.id]?.entry?.request_path);
+      case "import":
+        return null;
+      default:
+        return inside(tabPath(tab));
+    }
+  }
+
+  const CONFIG_KINDS = new Set<OpenTab["kind"]>(["git", "merge", "environments", "container"]);
+
+  /** Tab keys of each automatic folder (for its menu). */
+  let autoKeys = new Map<string, string[]>();
+
+  function autoRows(): Row[] {
+    const out: Row[] = [];
+    const keysOf = new Map<string, string[]>();
+    const shown = (v: TabView) => !matches || matches.has(v.key);
+    const byProject = new Map<string | null, { v: TabView; i: number }[]>();
+    views.forEach((v, i) => {
+      const p = projectOfTab(v.tab);
+      if (!byProject.has(p)) byProject.set(p, []);
+      byProject.get(p)!.push({ v, i });
+    });
+    const folder = (id: string, name: string, depth: number, list: { v: TabView; i: number }[]) => {
+      const visible = list.filter((t) => shown(t.v));
+      if (!visible.length) return null;
+      keysOf.set(id, list.map((t) => t.v.key));
+      const g: TabGroup = { id, name, parent: null, collapsed: !!tabGroups.autoCollapsed[id] && !matches };
+      out.push({ kind: "group", g, depth, count: list.length });
+      return g;
+    };
+    const order: (string | null)[] = [...ws.entries.map((e) => e.path), null];
+    for (const p of order) {
+      const list = byProject.get(p);
+      if (!list?.length) continue;
+      const id = p ? `auto:${p}` : "auto:general";
+      const name = p ? (ws.entries.find((e) => e.path === p)?.project?.name ?? p) : t("tabs.auto.general");
+      const g = folder(id, name, 0, list);
+      if (!g || g.collapsed) continue;
+      const config = p ? list.filter((t) => CONFIG_KINDS.has(t.v.tab.kind)) : [];
+      const rest = p ? list.filter((t) => !CONFIG_KINDS.has(t.v.tab.kind)) : list;
+      if (config.length) {
+        const c = folder(`${id}:config`, t("tabs.auto.config"), 1, config);
+        if (c && !c.collapsed) for (const t of config) if (shown(t.v)) out.push({ kind: "tab", ...t, depth: 2 });
+      }
+      for (const t of rest) if (shown(t.v)) out.push({ kind: "tab", ...t, depth: 1 });
+    }
+    autoKeys = keysOf;
+    return out;
+  }
+
   const rows = $derived.by((): Row[] => {
     const keys = views.map((v) => v.key);
+    if (!collapsed && tabGroups.auto) return autoRows();
     if (collapsed || !tabGroups.groups.length) {
       return views.flatMap((v, i) => (!matches || matches.has(v.key) ? [{ kind: "tab" as const, v, i, depth: 0 }] : []));
     }
@@ -317,7 +398,7 @@
       moved = true;
       dragFrom = index;
       const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-group-id]");
-      dragGroup = over?.dataset.groupId ?? null;
+      dragGroup = over?.dataset.groupId && !tabGroups.isAutoId(over.dataset.groupId) ? over.dataset.groupId : null;
       dragOver = dragGroup ? null : insertionIndex(ev.clientY);
     };
     const up = () => {
@@ -333,7 +414,7 @@
       } else if (moved && key && dragOver !== null) {
         // Dropped between tabs: reorder, and take the folder of the tab it lands next to.
         const target = views[dragOver] ?? views[dragOver - 1];
-        if (target && target.key !== key) tabGroups.assign(key, tabGroups.groupOf(target.key));
+        if (target && target.key !== key && !tabGroups.auto) tabGroups.assign(key, tabGroups.groupOf(target.key));
         ws.moveTab(index, dragOver > index ? dragOver - 1 : dragOver);
       }
       if (moved) {
@@ -375,17 +456,36 @@
 
 <aside class="tabs-side" class:collapsed aria-label={t("tabs.title")}>
   <header>
+    <button
+      class="toggle"
+      title={collapsed ? t("tabs.expand") : t("tabs.collapse")}
+      aria-label={collapsed ? t("tabs.expand") : t("tabs.collapse")}
+      aria-expanded={!collapsed}
+      onclick={ontoggle}
+    >
+      <!-- Side panel icon: the right column of a window, with the direction it will move. -->
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="1.5" y="2.5" width="13" height="11" rx="1.8" />
+        <path d="M10 2.5v11" />
+        {#if collapsed}
+          <path d="M6.5 6L4.5 8l2 2" />
+        {:else}
+          <path d="M4.5 6l2 2-2 2" />
+        {/if}
+      </svg>
+    </button>
     {#if !collapsed}
       <span class="title">{t("tabs.title")}</span>
       {#if ws.tabs.length}<span class="count">{ws.tabs.length}</span>{/if}
       <span class="spacer"></span>
-      {#if tabGroups.groups.length}
-        {@const allCollapsed = tabGroups.groups.every((g) => g.collapsed)}
+      {@const folderIds = tabGroups.auto ? rows.filter((r) => r.kind === "group").map((r) => (r as { g: TabGroup }).g.id) : tabGroups.groups.map((g) => g.id)}
+      {#if folderIds.length}
+        {@const allCollapsed = folderIds.every((id) => (tabGroups.isAutoId(id) ? !!tabGroups.autoCollapsed[id] : !!tabGroups.get(id)?.collapsed))}
         <button
           class="ghost hbtn"
           title={allCollapsed ? t("tabs.folder.expandAll") : t("tabs.folder.collapseAll")}
           aria-label={allCollapsed ? t("tabs.folder.expandAll") : t("tabs.folder.collapseAll")}
-          onclick={() => tabGroups.setAllCollapsed(!allCollapsed)}
+          onclick={() => folderIds.forEach((id) => tabGroups.setCollapsed(id, !allCollapsed))}
         >
           <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             {#if allCollapsed}<path d="M4 6l4 4 4-4" />{:else}<path d="M4 10l4-4 4 4" />{/if}
@@ -394,31 +494,32 @@
       {/if}
       <button
         class="ghost hbtn"
-        title={t("tabs.folder.new")}
-        aria-label={t("tabs.folder.new")}
-        onclick={() => tabGroups.create(t("tabs.folder.newName"))}
+        class:on={tabGroups.auto}
+        title={tabGroups.auto ? t("tabs.auto.on") : t("tabs.auto.toggle")}
+        aria-label={t("tabs.auto.toggle")}
+        aria-pressed={tabGroups.auto}
+        onclick={() => tabGroups.setAuto(!tabGroups.auto)}
       >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">
-          <path d="M1.5 4.5a1 1 0 011-1h3.5l1.5 1.5h6a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1z" />
-          <path d="M8 7.5v4M6 9.5h4" />
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="1.5" y="2.5" width="5" height="4" rx="1" />
+          <rect x="1.5" y="9.5" width="5" height="4" rx="1" />
+          <path d="M9 4.5h5.5M9 11.5h5.5M11.5 2l1.2 1.2M12.7 2l-1.2 1.2" />
         </svg>
       </button>
+      {#if !tabGroups.auto}
+        <button
+          class="ghost hbtn"
+          title={t("tabs.folder.new")}
+          aria-label={t("tabs.folder.new")}
+          onclick={() => tabGroups.create(t("tabs.folder.newName"))}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1.5 4.5a1 1 0 011-1h3.5l1.5 1.5h6a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1z" />
+            <path d="M8 7.5v4M6 9.5h4" />
+          </svg>
+        </button>
+      {/if}
     {/if}
-    <button
-      class="ghost toggle"
-      title={collapsed ? t("tabs.expand") : t("tabs.collapse")}
-      aria-label={collapsed ? t("tabs.expand") : t("tabs.collapse")}
-      aria-expanded={!collapsed}
-      onclick={ontoggle}
-    >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        {#if collapsed}
-          <path d="M10 4L6 8l4 4" fill="none" stroke="currentColor" stroke-width="1.6" />
-        {:else}
-          <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" />
-        {/if}
-      </svg>
-    </button>
   </header>
 
   {#if collapsed}
@@ -459,7 +560,7 @@
           style:padding-left="{8 + row.depth * 14}px"
           title={tabGroups.path(g.id)}
           onclick={() => tabGroups.renaming !== g.id && tabGroups.toggle(g.id)}
-          ondblclick={() => (tabGroups.renaming = g.id)}
+          ondblclick={() => !tabGroups.isAutoId(g.id) && (tabGroups.renaming = g.id)}
           oncontextmenu={(e) => groupMenu(e, g)}
           onkeydown={(e) => {
             if (tabGroups.renaming === g.id) return;
@@ -468,7 +569,7 @@
               tabGroups.toggle(g.id);
             } else if (e.key === "ArrowRight") tabGroups.setCollapsed(g.id, false);
             else if (e.key === "ArrowLeft") tabGroups.setCollapsed(g.id, true);
-            else if (e.key === "F2") tabGroups.renaming = g.id;
+            else if (e.key === "F2" && !tabGroups.isAutoId(g.id)) tabGroups.renaming = g.id;
           }}
         >
           <svg class="caret" class:open={!g.collapsed || !!matches} viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
@@ -590,7 +691,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 10px 6px 8px 12px;
+    padding: 8px 6px 8px 8px;
     border-bottom: 1px solid var(--border);
     min-height: 41px;
   }
@@ -741,6 +842,10 @@
     display: flex;
     padding: 3px;
   }
+  .hbtn.on {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
   .folder {
     display: flex;
     align-items: center;
@@ -786,5 +891,30 @@
     min-width: 0;
     padding: 1px 4px;
     font-size: 12px;
+  }
+  .toggle {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 5px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  }
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .collapsed .toggle {
+    width: calc(100% - 10px);
+    padding: 6px 0;
   }
 </style>

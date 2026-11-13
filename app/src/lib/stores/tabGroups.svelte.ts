@@ -15,6 +15,10 @@ const LS_KEY = "ilixpatch.tabGroups";
 interface Saved {
   groups: TabGroup[];
   member: Record<string, string>;
+  /** D51: automatic grouping by project (manual folders are kept but hidden). */
+  auto: boolean;
+  /** Collapsed state of the automatic folders, by id ("auto:<project>", "auto:<project>:config"…). */
+  autoCollapsed: Record<string, boolean>;
 }
 
 function load(): Saved {
@@ -22,12 +26,17 @@ function load(): Saved {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const s = JSON.parse(raw) as Partial<Saved>;
-      return { groups: Array.isArray(s.groups) ? s.groups : [], member: s.member ?? {} };
+      return {
+        groups: Array.isArray(s.groups) ? s.groups : [],
+        member: s.member ?? {},
+        auto: s.auto === true,
+        autoCollapsed: s.autoCollapsed ?? {},
+      };
     }
   } catch {
     // ignore
   }
-  return { groups: [], member: {} };
+  return { groups: [], member: {}, auto: false, autoCollapsed: {} };
 }
 
 let seq = 0;
@@ -39,10 +48,16 @@ class TabGroups {
   member = $state<Record<string, string>>(load().member);
   /** Folder whose name is being edited (inline). */
   renaming = $state<string | null>(null);
+  /** D51: group tabs automatically by project. */
+  auto = $state(load().auto);
+  autoCollapsed = $state<Record<string, boolean>>(load().autoCollapsed);
 
   private save() {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({ groups: this.groups, member: this.member }));
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({ groups: this.groups, member: this.member, auto: this.auto, autoCollapsed: this.autoCollapsed }),
+      );
     } catch {
       // ignore
     }
@@ -135,7 +150,24 @@ class TabGroups {
     this.save();
   }
 
+  setAuto(on: boolean) {
+    this.auto = on;
+    this.renaming = null;
+    this.save();
+  }
+
+  isAutoId(id: string): boolean {
+    return id.startsWith("auto:");
+  }
+
   setCollapsed(id: string, collapsed: boolean) {
+    if (this.isAutoId(id)) {
+      if (!!this.autoCollapsed[id] !== collapsed) {
+        this.autoCollapsed[id] = collapsed;
+        this.save();
+      }
+      return;
+    }
     const g = this.get(id);
     if (g && g.collapsed !== collapsed) {
       g.collapsed = collapsed;
@@ -144,6 +176,7 @@ class TabGroups {
   }
 
   toggle(id: string) {
+    if (this.isAutoId(id)) return this.setCollapsed(id, !this.autoCollapsed[id]);
     const g = this.get(id);
     if (g) this.setCollapsed(id, !g.collapsed);
   }
