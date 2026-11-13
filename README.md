@@ -115,7 +115,8 @@ Or import your own work with **+ › Import from Postman…**.
 
 ## CLI (Newman-compatible runner and load testing)
 `ilixpatch run` runs a project, collection, folder or single request `.toml`,
-including pre-request and test scripts (`pm.*` API, like Postman/Newman):
+including pre-request and test scripts (`pm.*` API, like Postman/Newman).
+Full reference (in Spanish): [docs/CLI.md](docs/CLI.md).
 
 ```sh
 ilixpatch run examples/demo-project --env dev

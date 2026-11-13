@@ -114,7 +114,7 @@ ilixpatch run examples/demo-project --env dev -r cli,junit --reporter-junit-expo
 ilixpatch load examples/demo-project/jsonplaceholder --vus 5 --duration 30s --max-p95 500
 ilixpatch import postman coleccion.json --project ./mi-proyecto
 ```
-La tabla completa de flags, compatibles con Newman, está en el [README en inglés](README.md#cli-newman-compatible-runner-and-load-testing).
+Todos los comandos, flags (compatibles con Newman) y capacidades están explicados en **[docs/CLI.md](docs/CLI.md)**.
 
 ## Atajos de teclado
 | Atajo (macOS / Windows·Linux) | Acción |
