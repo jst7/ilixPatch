@@ -9,7 +9,7 @@ authors.workspace = true
 [dependencies]
 ilixpatch-core.workspace = true
 ilixpatch-auth.workspace = true
-getrandom = "0.3"
+getrandom = "0.4"
 ilixpatch-bodystore.workspace = true
 # Extra features on top of the workspace set: OS root certificates, SOCKS
 # proxies and the macOS system proxy configuration.
