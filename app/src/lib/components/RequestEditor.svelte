@@ -15,6 +15,7 @@
   import { unexportedAuth } from "$lib/curl";
   import MethodSelect from "./MethodSelect.svelte";
   import EnvSelect from "./EnvSelect.svelte";
+  import { envStore } from "$lib/stores/environments.svelte";
   import UrlInput from "./UrlInput.svelte";
   import ExtractPanel from "./ExtractPanel.svelte";
 
@@ -100,7 +101,7 @@
   async function copyCurl(mode: "resolved" | "raw" | "oneline") {
     let req = requestFromDraft(draft);
     req.auth = cleanAuth(ws.effectiveAuthFor(path).auth);
-    if (mode !== "raw" && collection) req = resolveRequest(req, ws.variablesFor(collection));
+    if (mode !== "raw" && (collection || !loc)) req = resolveRequest(req, ws.variablesFor(collection));
     const skipped = unexportedAuth(req.auth);
     try {
       await navigator.clipboard.writeText(toCurl(req, { multiline: mode !== "oneline" }));
@@ -227,6 +228,9 @@
       value={ws.resolveEnv(collection)?.choice ?? ws.envChoice(envProject)}
       onchange={(c) => envProject && ws.setEnvChoice(envProject, c)}
     />
+  {:else if !loc}
+    <!-- D55: requests outside any project (unsaved tabs, history of deleted requests): global environments only. -->
+    <EnvSelect projectPath={null} value={envStore.noProjectChoice} onchange={(c) => envStore.setNoProjectChoice(c)} />
   {/if}
 {/snippet}
 

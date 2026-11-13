@@ -1,16 +1,29 @@
 <script lang="ts">
-  // Header of a history tab inside RequestEditor: name, origin and "Save to collection…" with a folder picker.
+  // Header of a tab whose request has no file yet (D55) — a history entry or an unsaved request — inside
+  // RequestEditor: icon, editable name and "Save to collection…" with a project › collection › folder picker.
   import type { Folder } from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
-  import { historyKey, ws } from "$lib/stores/workspace.svelte";
-  import { dateTime } from "./historyUtil";
+  import { ws } from "$lib/stores/workspace.svelte";
 
-  let { id }: { id: number } = $props();
+  interface Props {
+    /** Key of the draft in ws.drafts ("history:12", "scratch:ab12cd34"). */
+    draftKey: string;
+    kind: "history" | "scratch";
+    /** Tooltip of the icon (e.g. when the history entry was recorded). */
+    iconTitle?: string;
+    /** Edited since it was opened (shows a dot). */
+    dirty: boolean;
+    /** Collection or folder preselected in the picker. */
+    defaultTarget: string | null;
+    /** Name proposed when the picker opens. */
+    defaultName?: string;
+    /** Save as a new request in `folder` of `project`; resolves to true on success. */
+    onsave: (folder: string, project: string, name: string) => Promise<boolean>;
+  }
 
-  const key = $derived(historyKey(id));
-  const draft = $derived(ws.drafts[key]);
-  const st = $derived(ws.historyTabs[id]);
-  const dirty = $derived(ws.isHistoryDirty(id));
+  let { draftKey, kind, iconTitle = "", dirty, defaultTarget, defaultName = "", onsave }: Props = $props();
+
+  const draft = $derived(ws.drafts[draftKey]);
 
   interface Target {
     path: string;
@@ -47,17 +60,11 @@
   let saving = $state(false);
   let root = $state<HTMLDivElement>();
 
-  function defaultTarget(): string | null {
-    const p = st?.entry?.request_path;
-    const loc = p ? ws.index.get(p) : undefined;
-    if (loc) return loc.folders.at(-1)?.path ?? loc.collection.path;
-    return targets.find((x) => x.kind !== "project")?.path ?? null;
-  }
-
   function show() {
     if (!draft) return;
-    target = defaultTarget();
-    name = draft.name || st?.entry?.name || "";
+    const preferred = defaultTarget && targets.some((x) => x.path === defaultTarget && x.kind !== "project");
+    target = preferred ? defaultTarget : (targets.find((x) => x.kind !== "project")?.path ?? null);
+    name = draft.name || defaultName;
     open = true;
   }
 
@@ -65,15 +72,15 @@
     const tgt = targets.find((x) => x.path === target && x.kind !== "project");
     if (!tgt || !name.trim() || saving) return;
     saving = true;
-    const ok = await ws.saveHistoryAs(id, tgt.path, tgt.projectPath, name);
+    const ok = await onsave(tgt.path, tgt.projectPath, name);
     saving = false;
     if (ok) open = false;
   }
 
-  // Cmd/Ctrl+S on a history tab asks for the picker.
+  // Cmd/Ctrl+S on this tab asks for the picker.
   $effect(() => {
-    if (ws.historySaveRequest !== id) return;
-    ws.historySaveRequest = null;
+    if (ws.saveAsRequest !== draftKey) return;
+    ws.saveAsRequest = null;
     show();
   });
 
@@ -91,9 +98,13 @@
 
 {#if draft}
   <div class="head">
-    <span class="icon" title={st?.entry ? dateTime(st.entry.timestamp) : ""}>
+    <span class="icon" title={iconTitle}>
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4">
-        <circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" />
+        {#if kind === "history"}
+          <circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" />
+        {:else}
+          <path d="M9.5 1.5h-5a1 1 0 00-1 1v11a1 1 0 001 1h7a1 1 0 001-1V4.5z" /><path d="M9.5 1.5v3h3M8 7.5v4M6 9.5h4" />
+        {/if}
       </svg>
     </span>
     <input
@@ -103,7 +114,7 @@
       aria-label={t("request.namePlaceholder")}
       spellcheck="false"
     />
-    {#if dirty}<span class="dirty-dot" title={t("history.edited")}></span>{/if}
+    {#if dirty}<span class="dirty-dot" title={kind === "history" ? t("history.edited") : t("scratch.unsaved")}></span>{/if}
     <div class="save" bind:this={root}>
       <button
         class="small"

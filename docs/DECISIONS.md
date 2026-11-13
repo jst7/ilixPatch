@@ -349,6 +349,28 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D55 · Peticiones sin proyecto ("peticiones rápidas") ✅
+- **Se puede crear una petición en cualquier momento sin elegir proyecto**, y **al guardarla se decide dónde va**: proyecto › colección › carpeta.
+- **Siempre a mano:**
+  - botón **+** en la cabecera del panel de pestañas, también cuando está plegado;
+  - atajo **⌘N / Ctrl+N**;
+  - **Nueva petición** en el menú **+** de la barra lateral;
+  - un botón en la pantalla vacía.
+- **Pestaña `scratch`:** un borrador en memoria (`scratch:<id>`) que se edita y se envía como cualquier petición.
+  - **⌘S** abre el selector de destino; **guardar** crea el fichero y convierte la pestaña en una petición normal, conservando la respuesta.
+  - Si se cierra con cambios, se pide confirmación.
+- **Reutiliza lo del historial:** las pestañas de historial ya eran peticiones sin fichero con "Guardar en una colección…".
+  - `HistoryHeader` pasa a ser `DraftHeader`, común a las dos, con el mismo selector.
+  - `saveHistoryAs` y `saveScratchAs` comparten `saveDraftAs`.
+  - El selector propone la carpeta de la última petición abierta.
+- **Sobreviven al reinicio,** como en Postman: los borradores se guardan en `localStorage` (`ilixpatch.scratch`) poco después de cada cambio, y se borran al cerrar o guardar la pestaña. Son datos locales del usuario, igual que el historial.
+- **Entorno "sin proyecto":** una petición fuera de proyecto solo puede usar **entornos globales** (y las variables globales).
+  - Tiene su propia selección (`ilixpatch.envSelection.noProject`).
+  - Se aplica también a las pestañas de historial cuya petición ya no existe; antes solo usaban las globales.
+  - Así el resaltado de `{{variables}}`, su edición, el envío y "Copiar como cURL" funcionan igual que en un proyecto.
+- **Auth:** no hay nada que heredar, así que "heredar" equivale a sin auth.
+- **Carpetas automáticas de pestañas (D50):** van en "General", con lo demás que no es de un proyecto.
+
 ## D54 · Aviso de versión nueva (comprobación contra GitHub) ✅
 - **Avisa y enlaza; no actualiza sola.** La app pregunta a GitHub cuál es la última release publicada (`/repos/jst7/ilixPatch/releases/latest`), compara versiones y, si hay una más nueva, muestra un aviso con **Descargar** (abre la página de la release) y **Omitir esta versión**.
   - **Por qué no actualización automática:** el *updater* de Tauri exige un par de claves de firma propio guardado como secreto (si se pierde, ninguna instalación podría volver a actualizarse) y en Linux solo sirve para AppImage, no para `.deb`/`.rpm`. Se puede añadir más adelante sin cambiar esto.

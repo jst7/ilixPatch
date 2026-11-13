@@ -35,7 +35,8 @@ export interface VarInfo {
 }
 
 export function varInfo(collection: Collection | null, name: string): VarInfo {
-  const env = collection ? ws.resolveEnv(collection) : null;
+  // Without a collection: the environment of requests outside projects (D55).
+  const env = ws.resolveEnv(collection);
   const layers: VarLayer[] = [];
   if (env) {
     layers.push({
@@ -106,7 +107,8 @@ export async function saveVar(
   for (const s of removeFrom) if (s !== target) edits.set(s, { kind: "remove" });
   edits.set(target, { kind: "set", value });
 
-  const env = collection ? ws.resolveEnv(collection) : null;
+  // Without a collection: the environment of requests outside projects (D55).
+  const env = ws.resolveEnv(collection);
   const projectPath = collection ? (ws.projectOf(collection)?.path ?? null) : null;
   let reloadProject = false;
   let reloadGlobal = false;

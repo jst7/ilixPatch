@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { t } from "$lib/i18n/index.svelte";
-  import { historyKey, ws } from "$lib/stores/workspace.svelte";
-  import HistoryHeader from "$lib/components/HistoryHeader.svelte";
+  import { draftOnlyKey, historyKey, scratchKey, ws } from "$lib/stores/workspace.svelte";
+  import DraftHeader from "$lib/components/DraftHeader.svelte";
   import { dateTime } from "$lib/components/historyUtil";
   import RequestEditor from "$lib/components/RequestEditor.svelte";
   import ResponsePanel from "$lib/components/ResponsePanel.svelte";
@@ -111,6 +111,17 @@
     });
   }
 
+  // D55: unsaved request tabs survive a restart; store their drafts shortly after each edit.
+  $effect(() => {
+    const snapshot = JSON.stringify(
+      ws.tabs.filter((tab) => tab.kind === "scratch").map((tab) => ws.drafts[scratchKey(tab.id)]),
+    );
+    // Nothing to store (closing a tab already updates it); also keeps the stored drafts before tabs are restored.
+    if (snapshot === "[]") return;
+    const timer = setTimeout(() => ws.persistScratch(), 400);
+    return () => clearTimeout(timer);
+  });
+
   onMount(() => {
     ws.init();
     void netlog.init();
@@ -148,7 +159,11 @@
         return;
       }
       if (e.altKey || e.shiftKey) return;
-      if (e.key === "p" || e.key === "P") {
+      if (e.key === "n" || e.key === "N") {
+        // D55: a new request that belongs to no project yet; it is saved to a collection with Cmd/Ctrl+S.
+        stop();
+        ws.newScratch();
+      } else if (e.key === "p" || e.key === "P") {
         // Quick find: focus the visible sidebar search (project tree or history).
         stop();
         searchFocus.sidebar++;
@@ -164,7 +179,8 @@
         e.preventDefault();
         e.stopPropagation();
         const tab = ws.activeTab;
-        if (tab?.kind === "history") ws.historySaveRequest = tab.id;
+        const draftKey = tab ? draftOnlyKey(tab) : null;
+        if (draftKey) ws.saveAsRequest = draftKey;
         else if (tab?.kind === "environments") void saveEnvTab(tab.project);
         else if (tab?.kind === "container") void containerSession(tab.path).save();
         else ws.save();
@@ -173,6 +189,7 @@
         e.stopPropagation();
         const tab = ws.activeTab;
         if (tab?.kind === "history") ws.sendHistory(tab.id);
+        else if (tab?.kind === "scratch") void ws.sendScratch(tab.id);
         else ws.send();
       } else if (e.key === ".") {
         // ⌘. / Ctrl+. aborts a hung request of the active tab.
@@ -226,7 +243,17 @@
               collection={ws.historyCollection(id)}
               onsend={() => ws.sendHistory(id)}
             >
-              {#snippet header()}<HistoryHeader {id} />{/snippet}
+              {#snippet header()}
+                <DraftHeader
+                  draftKey={historyKey(id)}
+                  kind="history"
+                  iconTitle={dateTime(hst.entry!.timestamp)}
+                  dirty={ws.isHistoryDirty(id)}
+                  defaultTarget={ws.historyDefaultTarget(id)}
+                  defaultName={hst.entry!.name ?? ""}
+                  onsave={(folder, project, name) => ws.saveHistoryAs(id, folder, project, name)}
+                />
+              {/snippet}
             </RequestEditor>
           </div>
           <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -253,6 +280,29 @@
           {/if}
         </div>
       {/if}
+    {:else if ws.activeTab?.kind === "scratch"}
+      {@const id = ws.activeTab.id}
+      {#if ws.drafts[scratchKey(id)]}
+        {#key id}
+          <div class="pane" style:flex-basis="{split * 100}%">
+            <RequestEditor draftKey={scratchKey(id)} onsend={() => ws.sendScratch(id)}>
+              {#snippet header()}
+                <DraftHeader
+                  draftKey={scratchKey(id)}
+                  kind="scratch"
+                  iconTitle={t("scratch.hint")}
+                  dirty={ws.isScratchDirty(id)}
+                  defaultTarget={ws.lastRequestFolder()}
+                  onsave={(folder, project, name) => ws.saveScratchAs(id, folder, project, name)}
+                />
+              {/snippet}
+            </RequestEditor>
+          </div>
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="gutter h" onpointerdown={resizeSplit} ondblclick={() => ((split = 0.5), saveLayout())}></div>
+          <div class="pane grow"><ResponsePanel path={scratchKey(id)} /></div>
+        {/key}
+      {/if}
     {:else if ws.selected}
       <div class="pane" style:flex-basis="{split * 100}%">
         <RequestEditor loc={ws.selected} />
@@ -266,6 +316,7 @@
       <div class="placeholder">
         <p class="ph-title">{t("main.emptyTitle")}</p>
         <p>{t("main.emptyBody")}</p>
+        <p><button class="primary" onclick={() => ws.newScratch()}>{t("scratch.new")}</button></p>
         <p class="keys">{t("main.shortcuts")}</p>
         <p class="keys">{t("main.shortcutsTabs")}</p>
         <p class="keys">{t("main.shortcutsSearch")}</p>

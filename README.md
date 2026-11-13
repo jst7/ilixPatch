@@ -164,6 +164,8 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish)
 - **Project environments** (shared via Git; secrets kept in a git-ignored `.secret.toml`) and **global environments** (per user),
   copyable both ways. Collection & environment variables with Postman precedence.
 - Open requests as tabs in a collapsible right sidebar; search the tree, the tabs and the history.
+- **Quick requests**: start a new request at any moment (`⌘/Ctrl+N` or the **+** in the tabs panel) without picking a
+  project first; decide where it goes when you save it (`⌘/Ctrl+S`). Unsaved ones survive a restart.
 - **History** of every call with its response (local SQLite, retention by days and size), restorable into a new tab.
 
 **Import**
@@ -416,9 +418,10 @@ Variables resolve with increasing priority: globals → collection → environme
 ## Keyboard shortcuts
 | Shortcut (macOS / Windows·Linux) | Action |
 |---|---|
+| `⌘ N` / `Ctrl N` | New request (not in any project until you save it) |
 | `⌘ Enter` / `Ctrl Enter` | Send the request (Enter in the URL field too) |
 | `⌘ .` / `Ctrl .` | Cancel the request in progress |
-| `⌘ S` / `Ctrl S` | Save |
+| `⌘ S` / `Ctrl S` | Save (a new request asks where to save it) |
 | `⌘ W` / `Ctrl W` | Close tab |
 | `Ctrl Tab` / `Ctrl Shift Tab` | Next / previous tab |
 | `⌘ \` / `Ctrl \` | Toggle the tabs sidebar |

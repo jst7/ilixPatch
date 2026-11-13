@@ -295,17 +295,32 @@ export type OpenTab =
   /** Postman import wizard (D31); single instance, not restored on restart. */
   | { kind: "import" }
   /** Settings (authorization, variables) of a collection or folder directory (D39). */
-  | { kind: "container"; path: string };
+  | { kind: "container"; path: string }
+  /** A request that is not in any project yet (D55); saved to a collection on demand. */
+  | { kind: "scratch"; id: string };
 
 /** Key of a history tab; also the key of its in-memory draft and response (not a file path). */
 export function historyKey(id: number): string {
   return `history:${id}`;
 }
 
+/** Key of an unsaved request tab (D55); also the key of its draft and response. */
+export function scratchKey(id: string): string {
+  return `scratch:${id}`;
+}
+
+/** Key of the in-memory draft of a tab that has no request file (history or unsaved request). */
+export function draftOnlyKey(tab: OpenTab): string | null {
+  if (tab.kind === "history") return historyKey(tab.id);
+  if (tab.kind === "scratch") return scratchKey(tab.id);
+  return null;
+}
+
 /** Stable identity of a tab (a request/target can only be open once per kind). */
 export function tabKey(tab: OpenTab): string {
   if (tab.kind === "request") return `request:${tab.path}`;
   if (tab.kind === "history") return historyKey(tab.id);
+  if (tab.kind === "scratch") return scratchKey(tab.id);
   if (tab.kind === "environments") return `env:${tab.project ?? "global"}`;
   if (tab.kind === "git") return `git:${tab.repo}`;
   if (tab.kind === "merge") return `merge:${tab.path}`;
@@ -317,6 +332,7 @@ export function tabKey(tab: OpenTab): string {
 /** Filesystem path a tab refers to (history tabs have none: their key is returned instead). */
 export function tabPath(tab: OpenTab): string {
   if (tab.kind === "history") return historyKey(tab.id);
+  if (tab.kind === "scratch") return scratchKey(tab.id);
   if (tab.kind === "environments") return tab.project ?? "env:global";
   if (tab.kind === "merge") return tab.path;
   if (tab.kind === "import") return "import";
@@ -359,6 +375,13 @@ function responseFromHistory(entry: HistoryEntry): ResponseState {
 }
 
 const LS_TABS = "ilixpatch.tabs";
+/** Drafts of unsaved request tabs (D55), by id: they survive a restart like the tabs themselves. */
+const LS_SCRATCH = "ilixpatch.scratch";
+
+/** An empty request for a new unsaved tab. */
+function blankRequest(name: string): Request {
+  return { name, method: "GET", url: "", headers: {}, query: {}, body: null };
+}
 
 /** Free a response body kept by the backend (D41), unless `next` still uses the same body. */
 function releaseBody(old: SendResult | null | undefined, next: SendResult | null = null) {
@@ -416,8 +439,10 @@ class Workspace {
   repos = $state<Record<string, GitRepoInfo[]>>({});
   /** Open history tabs by entry id. */
   historyTabs = $state<Record<number, HistoryTabState>>({});
-  /** Set to a history id to ask its tab header to open the "Save to collection" picker (Cmd/Ctrl+S). */
-  historySaveRequest = $state<number | null>(null);
+  /** Unsaved request tabs (D55): canonical form of the request they started from, to tell if they changed. */
+  scratchTabs = $state<Record<string, { original: string }>>({});
+  /** Set to a draft key (history / unsaved tab) to ask its header to open the "Save to collection" picker (Cmd/Ctrl+S). */
+  saveAsRequest = $state<string | null>(null);
   drafts = $state<Record<string, Draft>>({});
   responses = $state<Record<string, ResponseState>>({});
   expanded = $state<Record<string, boolean>>(lsGet(LS_EXPANDED, {}));
@@ -476,7 +501,9 @@ class Workspace {
   }
 
   /** The environment that applies to requests of `collection` (null = none / no longer exists). */
-  resolveEnv(collection: Collection): ResolvedEnv | null {
+  resolveEnv(collection: Collection | null): ResolvedEnv | null {
+    // D55: requests without a collection (unsaved tabs, history of deleted requests) use global environments.
+    if (!collection) return envStore.resolve(null, null, envStore.noProjectChoice);
     const project = this.projectOf(collection);
     let choice = this.envChoice(project?.path ?? null);
     // Before D28 the selection was per collection (legacy collection environments).
@@ -499,22 +526,22 @@ class Workspace {
   }
 
   /** Store the variable writes of a send in the runtime layer (environment writes go to the selected env). */
-  applyVarUpdates(collection: Collection, updates: VarUpdate[]) {
-    runtimeVars.apply(collection.path, this.resolveEnv(collection)?.id ?? null, updates);
+  applyVarUpdates(collection: Collection | null, updates: VarUpdate[]) {
+    runtimeVars.apply(collection?.path ?? "", this.resolveEnv(collection)?.id ?? null, updates);
   }
 
   /** Effective variables (file values + runtime overrides), flattened: globals < collection < environment. */
-  variablesFor(collection: Collection): Record<string, string> {
+  variablesFor(collection: Collection | null): Record<string, string> {
     const v = this.sendVariablesFor(collection);
     return { ...v.globals, ...v.collection, ...v.environment };
   }
 
   /** Scoped variables for a send, with the runtime layer applied (runtime value wins over file value). */
-  sendVariablesFor(collection: Collection): SendVariables {
+  sendVariablesFor(collection: Collection | null): SendVariables {
     const env = this.resolveEnv(collection);
     return runtimeVars.sendVariables(
-      collection.path,
-      collection.variables,
+      collection?.path ?? "",
+      collection?.variables ?? {},
       env?.id ?? null,
       env?.name ?? null,
       env?.variables ?? {},
@@ -589,6 +616,7 @@ class Workspace {
 
   isTabDirty(tab: OpenTab): boolean {
     if (tab.kind === "history") return this.isHistoryDirty(tab.id);
+    if (tab.kind === "scratch") return this.isScratchDirty(tab.id);
     if (tab.kind === "environments") return envSession(tab.project).dirty;
     if (tab.kind === "container") return containerSession(tab.path).dirty;
     return tab.kind === "request" && this.isDirty(tab.path);
@@ -624,9 +652,16 @@ class Workspace {
         this.dropResponse(key);
         delete this.historyTabs[tab.id];
       }
+      if (tab.kind === "scratch" && keys.has(tabKey(tab))) {
+        const key = scratchKey(tab.id);
+        delete this.drafts[key];
+        this.dropResponse(key);
+        delete this.scratchTabs[tab.id];
+      }
     }
     const before = this.tabs;
     this.tabs = before.filter((t) => !keys.has(tabKey(t)));
+    if (before.some((t) => t.kind === "scratch" && keys.has(tabKey(t)))) this.persistScratch();
     if (activeGoes || (this.activeKey && !this.tabs.some((t) => tabKey(t) === this.activeKey))) {
       // Prefer the first surviving tab after the closed one, else the last one before it.
       const after = before.slice(activeIndex + 1).find((t) => !keys.has(tabKey(t)));
@@ -696,7 +731,7 @@ class Workspace {
   /** Close tabs whose request/target no longer exists (inside `root`, if given). */
   private pruneTabs(root?: string) {
     const gone = this.tabs.filter((t) => {
-      if (t.kind === "history" || t.kind === "merge" || t.kind === "import") return false;
+      if (t.kind === "history" || t.kind === "scratch" || t.kind === "merge" || t.kind === "import") return false;
       if (t.kind === "environments" && t.project === null) return false;
       const p = tabPath(t);
       return (!root || isWithin(p, root)) && !this.nodes.has(p);
@@ -768,6 +803,13 @@ class Workspace {
     return !!st?.entry && !!draft && canonical(requestFromDraft(draft)) !== st.original;
   }
 
+  /** Folder (or collection) of the request a history entry came from, if it still exists: where to save it. */
+  historyDefaultTarget(id: number): string | null {
+    const p = this.historyTabs[id]?.entry?.request_path;
+    const loc = p ? this.index.get(p) : undefined;
+    return loc ? (loc.folders.at(-1)?.path ?? loc.collection.path) : null;
+  }
+
   /** Collection a history entry came from, if its request file still exists. */
   historyCollection(id: number): Collection | null {
     const p = this.historyTabs[id]?.entry?.request_path;
@@ -789,9 +831,7 @@ class Workspace {
     const draft = this.drafts[key];
     if (!st?.entry || !draft || this.responses[key]?.loading) return;
     const collection = this.historyCollection(id);
-    const variables = collection
-      ? this.sendVariablesFor(collection)
-      : runtimeVars.sendVariables("", {}, null, null, {}, envStore.globalVars);
+    const variables = this.sendVariablesFor(collection);
     const context = {
       project_path: st.entry.project_path,
       request_path: st.entry.request_path,
@@ -804,7 +844,7 @@ class Workspace {
       const request = requestFromDraft(draft);
       request.auth = cleanAuth(this.effectiveAuthFor(key).auth);
       const result = await api.sendRequest(request, variables, context, requestId);
-      if (collection) this.applyVarUpdates(collection, result.variable_updates ?? []);
+      this.applyVarUpdates(collection, result.variable_updates ?? []);
       releaseBody(previous, result);
       this.responses[key] = { loading: false, result, error: null };
     } catch (e) {
@@ -823,8 +863,28 @@ class Workspace {
    * Save a history tab's draft as a new request file in `folderPath` (collection or folder dir),
    * then turn the tab into a normal request tab for that file. Returns true on success.
    */
-  async saveHistoryAs(id: number, folderPath: string, projectPath: string, name: string): Promise<boolean> {
-    const key = historyKey(id);
+  saveHistoryAs(id: number, folderPath: string, projectPath: string, name: string): Promise<boolean> {
+    return this.saveDraftAs(historyKey(id), folderPath, projectPath, name, () => delete this.historyTabs[id]);
+  }
+
+  /** Save an unsaved request tab (D55) as a new request file, like {@link saveHistoryAs}. */
+  async saveScratchAs(id: string, folderPath: string, projectPath: string, name: string): Promise<boolean> {
+    const ok = await this.saveDraftAs(scratchKey(id), folderPath, projectPath, name, () => delete this.scratchTabs[id]);
+    if (ok) this.persistScratch();
+    return ok;
+  }
+
+  /**
+   * Write the draft at `key` (a tab without a file) as a new request in `folderPath`, then turn its tab
+   * into a normal request tab for that file, keeping the response. `forget` drops the tab's own state.
+   */
+  private async saveDraftAs(
+    key: string,
+    folderPath: string,
+    projectPath: string,
+    name: string,
+    forget: () => void,
+  ): Promise<boolean> {
     const draft = this.drafts[key];
     name = name.trim();
     if (!draft || !name) return false;
@@ -837,7 +897,7 @@ class Workspace {
       const response = this.responses[key];
       delete this.drafts[key];
       delete this.responses[key];
-      delete this.historyTabs[id];
+      forget();
       if (response) this.responses[file.path] = response;
       const i = this.tabs.findIndex((t) => tabKey(t) === key);
       if (i >= 0) this.tabs[i] = tab;
@@ -851,6 +911,74 @@ class Workspace {
       await this.reload(projectPath);
       return false;
     }
+  }
+
+  // ----- unsaved requests (D55) -----
+  /** Open a new, empty request that belongs to no project yet. */
+  newScratch() {
+    const id = crypto.randomUUID().slice(0, 8);
+    const request = blankRequest(translate("scratch.defaultName"));
+    this.drafts[scratchKey(id)] = draftFromRequest(request);
+    this.scratchTabs[id] = { original: canonical(request) };
+    this.openTab({ kind: "scratch", id });
+    this.persistScratch();
+  }
+
+  /** Changed since it was opened (closing it then asks for confirmation). */
+  isScratchDirty(id: string): boolean {
+    const draft = this.drafts[scratchKey(id)];
+    const st = this.scratchTabs[id];
+    return !!draft && !!st && canonical(requestFromDraft(draft)) !== st.original;
+  }
+
+  /** Store the drafts of all unsaved request tabs (called on changes, debounced by the page). */
+  persistScratch() {
+    const out: Record<string, Request> = {};
+    for (const tab of this.tabs) {
+      if (tab.kind !== "scratch") continue;
+      const draft = this.drafts[scratchKey(tab.id)];
+      if (draft) out[tab.id] = requestFromDraft(draft);
+    }
+    lsSet(LS_SCRATCH, out);
+  }
+
+  /** Send an unsaved request with the environment chosen for requests without a project. */
+  async sendScratch(id: string) {
+    const key = scratchKey(id);
+    const draft = this.drafts[key];
+    if (!draft || this.responses[key]?.loading) return;
+    const variables = this.sendVariablesFor(null);
+    const context = { project_path: null, request_path: null, environment: variables.environment_name };
+    const requestId = crypto.randomUUID();
+    const previous = this.responses[key]?.result ?? null;
+    this.responses[key] = { loading: true, result: previous, error: null, requestId, startedAt: Date.now() };
+    try {
+      const request = requestFromDraft(draft);
+      request.auth = cleanAuth(this.effectiveAuthFor(key).auth);
+      const result = await api.sendRequest(request, variables, context, requestId);
+      this.applyVarUpdates(null, result.variable_updates ?? []);
+      releaseBody(previous, result);
+      this.responses[key] = { loading: false, result, error: null };
+    } catch (e) {
+      const err = toRequestError(e);
+      if (err.kind !== "cancelled") releaseBody(previous);
+      this.responses[key] =
+        err.kind === "cancelled"
+          ? { loading: false, result: previous, error: null, cancelled: true }
+          : { loading: false, result: null, error: err };
+    }
+    this.persistScratch();
+  }
+
+  /** Folder or collection of the most recently used request tab: where an unsaved request is offered to go. */
+  lastRequestFolder(): string | null {
+    for (let i = this.tabs.length - 1; i >= 0; i--) {
+      const tab = this.tabs[i];
+      if (tab.kind !== "request") continue;
+      const loc = this.index.get(tab.path);
+      if (loc) return loc.folders.at(-1)?.path ?? loc.collection.path;
+    }
+    return null;
   }
 
   // ----- git -----
@@ -914,9 +1042,11 @@ class Workspace {
             (t.kind === "git" && typeof t.repo === "string") ||
             (t.kind === "merge" && typeof t.repo === "string" && typeof t.path === "string") ||
             (t.kind === "history" && typeof t.id === "number") ||
+            (t.kind === "scratch" && typeof t.id === "string") ||
             (t.kind === "environments" && (t.project === null || typeof t.project === "string"))) &&
           // Git tabs may point at a repo enclosing the project (not a tree node); GitView handles missing repos.
           (t.kind === "history" ||
+            t.kind === "scratch" ||
             t.kind === "git" ||
             t.kind === "merge" ||
             (t.kind === "environments" && t.project === null) ||
@@ -926,6 +1056,14 @@ class Workspace {
       this.tabs = valid.filter((t) => !seen.has(tabKey(t)) && !!seen.add(tabKey(t)));
       // History tabs are restored by id; the ones whose entry no longer exists are dropped.
       for (const tab of this.tabs) if (tab.kind === "history") void this.loadHistoryTab(tab.id, true);
+      // Unsaved request tabs get their stored draft back; without one there is nothing to restore.
+      const stored = lsGet<Record<string, Request>>(LS_SCRATCH, {});
+      this.tabs = this.tabs.filter((tab) => tab.kind !== "scratch" || !!stored[tab.id]);
+      for (const tab of this.tabs) {
+        if (tab.kind !== "scratch") continue;
+        this.drafts[scratchKey(tab.id)] = draftFromRequest(stored[tab.id]);
+        this.scratchTabs[tab.id] = { original: canonical(blankRequest(stored[tab.id].name)) };
+      }
       const active = this.tabs.find((t) => tabKey(t) === saved.active) ?? this.tabs[0];
       if (active) this.activateTab(tabKey(active));
       else this.persistTabs();
@@ -1056,6 +1194,7 @@ class Workspace {
     if (!tab) return null;
     if (tab.kind === "request") return tab.path;
     if (tab.kind === "history") return historyKey(tab.id);
+    if (tab.kind === "scratch") return scratchKey(tab.id);
     return null;
   }
 

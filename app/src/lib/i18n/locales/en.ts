@@ -546,8 +546,13 @@ const en = {
 
   // Main area
   "main.emptyTitle": "No request selected",
-  "main.emptyBody": "Pick a request in the sidebar, or create one from a collection's menu.",
-  "main.shortcuts": "⌘/Ctrl+S save · ⌘/Ctrl+Enter send",
+  "main.emptyBody": "Pick a request in the sidebar, create one from a collection's menu, or start a new one here.",
+  "main.shortcuts": "⌘/Ctrl+N new request · ⌘/Ctrl+S save · ⌘/Ctrl+Enter send",
+  "scratch.new": "New request",
+  "scratch.newHint": "New request, not in any project yet ({shortcut})",
+  "scratch.defaultName": "New request",
+  "scratch.hint": "Not saved in any project",
+  "scratch.unsaved": "Edited",
 
   // Request editor
   "request.breadcrumb": "Location",
@@ -1237,7 +1242,7 @@ const en = {
   "history.saveHint": "Save as a new request in a collection (⌘/Ctrl+S)",
   "history.saveName": "Name",
   "history.saveLocation": "Collection or folder",
-  "history.noCollections": "Create a collection first.",
+  "history.noCollections": "There are no collections yet: open or create a project with the + button on the left and add one.",
   "settings.history.title": "History",
   "settings.history.localOnly": "Sent requests are stored locally on this computer, never in your project or repository.",
   "settings.history.enabled": "Record history",

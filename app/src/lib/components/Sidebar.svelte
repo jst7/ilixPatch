@@ -28,6 +28,7 @@
       x: r.left,
       y: r.bottom + 2,
       items: [
+        { label: t("scratch.new"), action: () => ws.newScratch() },
         { label: t("sidebar.openFolder"), action: openFolder },
         { label: t("sidebar.cloneRepo"), action: () => (cloneOpen = true) },
         { label: t("sidebar.importPostman"), action: () => importer.open() },

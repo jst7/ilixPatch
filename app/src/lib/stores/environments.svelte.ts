@@ -29,6 +29,8 @@ function lsSet(key: string, value: unknown) {
 }
 
 const LS_SELECTION = "ilixpatch.envSelection";
+/** D55: environment of requests without a project (unsaved tabs, history of deleted requests). */
+const LS_NO_PROJECT = "ilixpatch.envSelection.noProject";
 const SEP = "\u0000";
 
 /** What the environment selector can pick: a project/global environment or a legacy collection one. */
@@ -61,6 +63,8 @@ class EnvStore {
   globals = $state<EnvVariable[]>([]);
   /** Selected environment by project path. */
   selection = $state<Record<string, EnvChoice | null>>(lsGet(LS_SELECTION, {}));
+  /** Environment of requests that belong to no project: only global environments apply (D55). */
+  noProjectChoice = $state<EnvChoice | null>(lsGet<EnvChoice | null>(LS_NO_PROJECT, null));
 
   globalVars = $derived(enabledVars(this.globals));
 
@@ -80,6 +84,11 @@ class EnvStore {
 
   choiceFor(projectPath: string | null): EnvChoice | null {
     return projectPath ? (this.selection[projectPath] ?? null) : null;
+  }
+
+  setNoProjectChoice(choice: EnvChoice | null) {
+    this.noProjectChoice = choice?.scope === "global" ? { scope: "global", name: choice.name } : null;
+    lsSet(LS_NO_PROJECT, this.noProjectChoice);
   }
 
   setChoice(projectPath: string, choice: EnvChoice | null) {

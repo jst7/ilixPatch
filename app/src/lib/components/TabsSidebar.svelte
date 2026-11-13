@@ -2,7 +2,7 @@
   import { tabGroups, type TabGroup } from "$lib/stores/tabGroups.svelte";
   import { suppressTextSelection } from "$lib/dragSelect";
   import { t } from "$lib/i18n/index.svelte";
-  import { ws, historyKey, isWithin, tabKey, tabPath, type MenuItem, type OpenTab } from "$lib/stores/workspace.svelte";
+  import { ws, historyKey, isWithin, scratchKey, tabKey, tabPath, type MenuItem, type OpenTab } from "$lib/stores/workspace.svelte";
   import GitIcon from "./GitIcon.svelte";
   import EnvIcon from "./EnvIcon.svelte";
   import { envSession } from "$lib/stores/environments.svelte";
@@ -58,6 +58,18 @@
         hint: "",
         method: null,
         dirty: envSession(tab.project).dirty,
+      };
+    }
+    if (tab.kind === "scratch") {
+      // D55: a request that is not in any project yet.
+      const draft = ws.drafts[scratchKey(tab.id)];
+      return {
+        key,
+        tab,
+        title: draft?.name || t("scratch.defaultName"),
+        hint: t("scratch.hint"),
+        method: draft?.method ?? "GET",
+        dirty: ws.isScratchDirty(tab.id),
       };
     }
     if (tab.kind === "history") {
@@ -252,6 +264,7 @@
       case "history":
         return inside(ws.historyTabs[tab.id]?.entry?.request_path);
       case "import":
+      case "scratch":
         return null;
       default:
         return inside(tabPath(tab));
@@ -355,6 +368,10 @@
   }
 
   function revealItem(v: TabView): MenuItem[] {
+    if (v.tab.kind === "scratch") {
+      const key = scratchKey(v.tab.id);
+      return [{ label: t("history.saveToCollection"), action: () => (ws.activateTab(v.key), (ws.saveAsRequest = key)) }];
+    }
     if (v.tab.kind !== "history") return [{ label: t("tabs.reveal"), action: () => ws.reveal(tabPath(v.tab)) }];
     const p = ws.historyTabs[v.tab.id]?.entry?.request_path;
     return p && ws.nodes.has(p) ? [{ label: t("tabs.reveal"), action: () => ws.reveal(p) }] : [];
@@ -472,6 +489,17 @@
         {:else}
           <path d="M4.5 6l2 2-2 2" />
         {/if}
+      </svg>
+    </button>
+    <!-- D55: always at hand, also with the panel collapsed. -->
+    <button
+      class="ghost hbtn new-request"
+      title={t("scratch.newHint", { shortcut: shortcutLabel("N") })}
+      aria-label={t("scratch.new")}
+      onclick={() => ws.newScratch()}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+        <path d="M8 3v10M3 8h10" />
       </svg>
     </button>
     {#if !collapsed}
@@ -627,7 +655,7 @@
           <span class="badge kind" aria-hidden="true">
             {#if v.tab.kind === "environments"}
               <EnvIcon size={13} />
-            {:else if v.tab.kind === "history"}
+            {:else if v.tab.kind === "history" || v.tab.kind === "scratch"}
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"
                 ><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></svg
               >
@@ -698,6 +726,9 @@
   .collapsed header {
     padding: 10px 0 8px;
     justify-content: center;
+    /* The rail is narrow: the toggle and the new-request button stack. */
+    flex-direction: column;
+    gap: 8px;
   }
   .title {
     font-weight: 600;

@@ -160,6 +160,7 @@ Todos los comandos y flags están en **[docs/CLI.md](docs/CLI.md)**.
 - **Entornos del proyecto**: se comparten por Git y los secretos van a un `.secret.toml` que git ignora.
 - **Entornos globales**: son del usuario. Se pueden copiar en ambos sentidos entre proyecto y global.
 - Peticiones abiertas como pestañas en una barra lateral derecha plegable, con buscadores en el árbol, las pestañas y el historial.
+- **Peticiones rápidas**: empieza una petición en cualquier momento (`⌘/Ctrl+N` o el **+** del panel de pestañas) sin elegir proyecto; decides dónde va al guardarla (`⌘/Ctrl+S`). Las que no guardes siguen ahí al reiniciar.
 - **Historial** de todas las llamadas con su respuesta, guardado en SQLite local con retención por días y tamaño. Cada entrada se puede recuperar en una pestaña nueva.
 
 **Importación**
@@ -250,9 +251,10 @@ Todos los comandos, flags (compatibles con Newman) y capacidades están explicad
 ## Atajos de teclado
 | Atajo (macOS / Windows·Linux) | Acción |
 |---|---|
+| `⌘ N` / `Ctrl N` | Nueva petición (sin proyecto hasta que la guardes) |
 | `⌘ Enter` / `Ctrl Enter` | Enviar (también Enter en la URL) |
 | `⌘ .` / `Ctrl .` | Cancelar la petición en curso |
-| `⌘ S` / `Ctrl S` | Guardar |
+| `⌘ S` / `Ctrl S` | Guardar (una petición nueva pregunta dónde guardarla) |
 | `⌘ W` / `Ctrl W` | Cerrar pestaña |
 | `⌘ P` / `Ctrl P` | Buscar en el árbol o en el historial |
 | `⌘ E` / `Ctrl E` | Buscar en las pestañas |
