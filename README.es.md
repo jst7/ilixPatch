@@ -132,13 +132,18 @@ La tabla completa de flags, compatibles con Newman, está en el [README en ingl�
 - **Comprobaciones locales:**
   ```sh
   cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
-  cd app && npm run check
+  cd app && npm run check && npm run build
+  for f in src/lib/*/selftest.mjs src/lib/curl.selftest.mjs; do node "$f" || break; done
   ```
 - **CI:** el workflow `ci.yml` lo ejecuta en Linux, macOS y Windows.
 - **Publicar una versión:**
-  1. Sube la versión en `Cargo.toml` y en `app/src-tauri/tauri.conf.json`.
-  2. Crea el tag y súbelo: `git tag v0.2.0 && git push origin v0.2.0`.
-  3. El workflow `release.yml` genera los instaladores y la CLI en un **borrador de release**. Revísalo y publícalo.
+  1. Sube la versión en `Cargo.toml`, `app/src-tauri/tauri.conf.json` y `app/package.json`.
+  2. Haz commit y push, y después crea el tag sobre ese commit y súbelo:
+     `git tag -a vX.Y.Z -m "ilixPatch X.Y.Z" && git push origin vX.Y.Z` (el tag tiene que coincidir con la versión).
+  3. El workflow `release.yml` ejecuta **primero el CI completo** (si falla un test, no se compila nada). Después genera
+     los instaladores y la CLI en un borrador de release y **lo publica solo** si todas las builds salen bien. Si alguna
+     falla, se queda en borrador.
+     Un tag con una letra al final (`vX.Y.Zb`) recompila la misma versión de la app.
 - **Decisiones de diseño:** [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Licencia

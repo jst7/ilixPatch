@@ -454,6 +454,10 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
 - **Error que se corrigió:** un secreto que no existe llega a GitHub Actions como **variable vacía**. Tauri intentaba importar un certificado vacío o notarizar sin Apple ID, y fallaba. Ahora un paso previo exporta las variables `APPLE_*` **solo si el secreto tiene valor**: certificado e identidad para firmar, y además Apple ID, contraseña y Team ID para notarizar.
 - **Windows y `result_large_err`:** en Windows un `PathBuf` ocupa 32 bytes, así que los errores con varias rutas pueden pasar el umbral de 128 bytes de clippy solo ahí. Regla: **meter en `Box` los errores grandes** (toml, serde, reqwest) dentro de los enums de error.
 - Windows vuelve a estar en `release.yml`, tanto el instalador `.msi`/`.exe` como `ilixpatch.exe`.
+- **Release con el CI como requisito y publicación automática** (desde v0.3.7):
+  - `ci.yml` es reutilizable (`workflow_call`) y `release.yml` lo ejecuta primero. Si algún test falla, no se compila nada.
+  - Cuando todas las builds de la app y de la CLI salen bien, el job `publish` publica el borrador (`gh release edit --draft=false --latest`). Si alguna falla, queda en borrador para revisarlo.
+  - Motivo: las releases se quedaban en borrador, así que el badge "Release" del README seguía mostrando una versión antigua, y un tag podía generar una release con tests rotos.
 
 ## D39 · Authorization con todos los métodos de Postman ✅
 - **Tipos soportados:**

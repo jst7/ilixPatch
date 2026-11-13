@@ -5,9 +5,12 @@ on:
     branches: [master, main]
   pull_request:
   workflow_dispatch:
+  # The Release workflow runs the whole CI first and only builds if it passes.
+  workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # github.workflow is the caller's name when called from Release: separate groups.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
