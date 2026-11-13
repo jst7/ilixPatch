@@ -5,6 +5,7 @@
   import { EnvSession, envSession, type EnvItem, type EnvRow } from "$lib/stores/environments.svelte";
   import { ws, type MenuItem } from "$lib/stores/workspace.svelte";
   import EnvIcon from "./EnvIcon.svelte";
+  import EnvStylePicker from "./EnvStylePicker.svelte";
   import { copyEnv, deleteEnv, saveEnvTab } from "./envActions";
 
   let { project }: { project: string | null } = $props();
@@ -257,6 +258,7 @@
             }}
             oncontextmenu={(e) => openMenu(e, it)}
           >
+            <EnvIcon size={13} icon={it.icon} color={it.color} />
             <span class="item-name" class:unsaved={it.original === null}>{it.name || t("env.unnamed")}</span>
             {#if session.isItemDirty(it)}<span class="dirty-dot"></span>{/if}
             <button
@@ -267,6 +269,40 @@
             >
           </div>
         {/each}
+        {#if session.scope === "global"}
+          <!-- D47: project environments are listed here too, so it's clear they exist. -->
+          {@const projects = ws.entries.filter((e) => e.project)}
+          <div class="group" role="presentation">{t("env.projectEnvironments")}</div>
+          {#if !projects.length}
+            <p class="hint">{t("env.linksNone")}</p>
+          {/if}
+          {#each projects as e (e.path)}
+            {@const envs = e.project!.environments ?? []}
+            <button
+              class="item project-link"
+              title={t("env.linksOpen", { name: e.project!.name })}
+              onclick={() => ws.openEnvironments(e.path)}
+            >
+              <span class="item-name">{e.project!.name}</span>
+              <span class="count">{envs.length}</span>
+              <span class="go" aria-hidden="true">↗</span>
+            </button>
+            {#each envs as env (env.name)}
+              <button
+                class="item project-env"
+                title={t("env.openProjectEnv", { env: env.name, name: e.project!.name })}
+                onclick={() => {
+                  envSession(e.path).selectByName(env.name);
+                  ws.openEnvironments(e.path);
+                }}
+              >
+                <EnvIcon size={12} icon={env.icon} color={env.color} />
+                <span class="item-name">{env.name}</span>
+                <span class="count">{Object.keys(env.variables).length}</span>
+              </button>
+            {/each}
+          {/each}
+        {/if}
       </div>
     </aside>
 
@@ -277,6 +313,7 @@
             <h3>{t("env.globals")}</h3>
             <span class="hint inline">{t("env.globalsHint")}</span>
           {:else if item}
+            <EnvStylePicker bind:icon={item.icon} bind:color={item.color} />
             <input
               bind:this={nameInput}
               class="name"
@@ -624,5 +661,30 @@
     margin: auto;
     text-align: center;
     color: var(--muted);
+  }
+  button.item {
+    width: calc(100% - 8px);
+    border: none;
+    background: none;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+  }
+  .project-link .go {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .project-link .count,
+  .project-env .count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .project-link .go {
+    margin-left: 6px;
+  }
+  .project-env {
+    padding-left: 24px !important;
+    color: var(--muted) !important;
   }
 </style>

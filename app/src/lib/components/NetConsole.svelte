@@ -6,11 +6,15 @@
   import { formatBytes } from "$lib/largebody/format";
   import { entryToCurl, maskValue, isSecretHeader, statusClass, timeOf } from "$lib/netlog/format";
   import { netlog } from "$lib/stores/netlog.svelte";
+  import { ws } from "$lib/stores/workspace.svelte";
+  import { suppressTextSelection } from "$lib/dragSelect";
 
   let filter = $state("");
   let onlyErrors = $state(false);
   let reveal = $state(false);
   let copied = $state(false);
+  /** Row whose cURL was just copied (feedback on the row button). */
+  let copiedId = $state<number | null>(null);
 
   const shown = $derived.by(() => {
     const f = filter.trim().toLowerCase();
@@ -68,19 +72,27 @@
     try {
       await navigator.clipboard.writeText(entryToCurl(e));
       copied = true;
-      setTimeout(() => (copied = false), 1500);
+      copiedId = e.id;
+      setTimeout(() => {
+        copied = false;
+        copiedId = null;
+      }, 1500);
     } catch {
       // ignore
     }
   }
 
   function resize(e: PointerEvent) {
+    // No text selection while resizing.
+    e.preventDefault();
+    const restoreSelection = suppressTextSelection();
     const startY = e.clientY;
     const startH = netlog.height;
     const move = (ev: PointerEvent) => {
       netlog.height = Math.min(Math.max(startH - (ev.clientY - startY), 120), window.innerHeight - 160);
     };
     const up = () => {
+      restoreSelection();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       netlog.save();
@@ -137,13 +149,27 @@
         <p class="muted pad">{netlog.entries.length ? t("netlog.noMatches") : t("netlog.empty")}</p>
       {/if}
       {#each shown as e (e.id)}
-        <button
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <div
           class="row"
           class:sel={netlog.selected === e.id}
           class:sub={e.phase !== null}
           role="option"
+          tabindex="-1"
           aria-selected={netlog.selected === e.id}
           onclick={() => (netlog.selected = e.id)}
+          oncontextmenu={(ev) => {
+            ev.preventDefault();
+            netlog.selected = e.id;
+            ws.menu = {
+              x: ev.clientX,
+              y: ev.clientY,
+              items: [
+                { label: t("netlog.copyCurl"), action: () => copyCurl(e) },
+                { label: t("netlog.copyUrl"), action: () => void navigator.clipboard.writeText(e.url).catch(() => {}) },
+              ],
+            };
+          }}
         >
           <span class="time">{timeOf(e.timestamp_ms)}</span>
           <span class="method">{e.method}</span>
@@ -152,7 +178,16 @@
           <span class="url" title={e.url}>{e.url}</span>
           <span class="label" title={e.label}>{e.label}</span>
           <span class="ms">{Math.round(e.elapsed_ms)} ms</span>
-        </button>
+          <button
+            class="rowcurl ghost"
+            title={t("netlog.copyCurl")}
+            aria-label={t("netlog.copyCurl")}
+            onclick={(ev) => {
+              ev.stopPropagation();
+              void copyCurl(e);
+            }}>{copiedId === e.id ? "✓" : "cURL"}</button
+          >
+        </div>
       {/each}
     </div>
 
@@ -288,6 +323,23 @@
   }
   .row:hover {
     background: var(--hover);
+  }
+  .row {
+    cursor: default;
+  }
+  .rowcurl {
+    flex: none;
+    visibility: hidden;
+    padding: 0 6px;
+    font-size: 10.5px;
+    font-family: var(--mono);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .row:hover .rowcurl,
+  .row.sel .rowcurl,
+  .rowcurl:focus-visible {
+    visibility: visible;
   }
   .row.sel {
     background: var(--selected);

@@ -16,6 +16,7 @@
   import MethodSelect from "./MethodSelect.svelte";
   import EnvSelect from "./EnvSelect.svelte";
   import UrlInput from "./UrlInput.svelte";
+  import ExtractPanel from "./ExtractPanel.svelte";
 
   interface Props {
     /** The request file being edited. Optional: history tabs edit an in-memory draft instead. */
@@ -43,7 +44,7 @@
     else ws.send(path);
   }
 
-  let tab = $state<"auth" | "params" | "headers" | "body" | "scripts" | "settings">("params");
+  let tab = $state<"auth" | "params" | "headers" | "body" | "scripts" | "extract" | "settings">("params");
 
   /** What this request gets from its folders/collection when set to "inherit" (D39). */
   const inheritedAuth = $derived(draft?.auth?.type === "inherit" ? ws.effectiveAuthFor(path) : null);
@@ -339,6 +340,11 @@
             title={t("request.scripts.hasScript")}
           ></span>{/if}
       </button>
+      <button class:active={tab === "extract"} onclick={() => (tab = "extract")} title={t("extract.tabHint")}>
+        {t("request.tab.extract")}{#if draft.extract.some((e) => e.enabled && e.var.trim())}<span class="count"
+            >{draft.extract.filter((e) => e.enabled && e.var.trim()).length}</span
+          >{/if}
+      </button>
       <button class:active={tab === "settings"} onclick={() => (tab = "settings")}>
         {t("request.tab.settings")}{#if draft.settings.verify_ssl === false}<span
             class="ssl-off"
@@ -424,6 +430,8 @@
         </div>
       {:else if tab === "settings"}
         <RequestSettingsPanel {draft} />
+      {:else if tab === "extract"}
+        <ExtractPanel {draft} {path} />
       {:else if tab === "scripts"}
         <ScriptsPanel
           {draft}

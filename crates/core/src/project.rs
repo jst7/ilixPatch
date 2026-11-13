@@ -241,6 +241,7 @@ pub fn create_request(folder: impl AsRef<Path>, name: &str) -> Result<RequestFil
         scripts: Default::default(),
         settings: Default::default(),
         auth: Default::default(),
+        extract: Default::default(),
     };
     storage::save_request(&path, &request)?;
     Ok(RequestFile { path, request })
@@ -481,6 +482,8 @@ mod tests {
                         ..EnvVariable::new("off", "x")
                     },
                 ],
+                color: None,
+                icon: None,
             };
             store.save(&doc, None).unwrap();
         }

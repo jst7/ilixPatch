@@ -208,8 +208,9 @@ pub async fn execute_request(
     };
 
     // 4. Send.
-    let needs_body =
-        ctx.keep_body || (ctx.run_scripts && has_code(&request.scripts.tests).is_some());
+    let needs_body = ctx.keep_body
+        || (ctx.run_scripts && has_code(&request.scripts.tests).is_some())
+        || crate::extract::needs_body(&request.extract);
     let opts = SendOptions {
         timeout: ctx.timeout,
         discard_body: !needs_body,
@@ -228,7 +229,22 @@ pub async fn execute_request(
         }
     };
 
-    // 5. Test script.
+    // 5. Variables from the response (D48), before the tests so they can use them.
+    if request.extract.iter().any(|r| r.enabled) {
+        let body = crate::extract::needs_body(&request.extract)
+            .then(|| script_body(&response, &mut res.logs));
+        let (updates, logs) = crate::extract::apply(
+            &request.extract,
+            response.status,
+            &response.headers,
+            body.as_deref(),
+        );
+        res.logs.extend(logs);
+        store.apply(&updates);
+        res.variable_updates.extend(updates);
+    }
+
+    // 6. Test script.
     if ctx.run_scripts
         && let Some(src) = has_code(&request.scripts.tests)
     {

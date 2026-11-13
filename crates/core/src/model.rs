@@ -65,6 +65,9 @@ pub struct Request {
     /// Authorization (D39), `[auth]` in the file. `Inherit` (the default) is omitted.
     #[serde(default, skip_serializing_if = "Auth::is_inherit")]
     pub auth: Auth,
+    /// Variables taken from the response after each send (D48), `[[extract]]`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extract: Vec<crate::Extract>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -92,6 +95,11 @@ pub struct Environment {
     pub name: String,
     #[serde(default)]
     pub variables: IndexMap<String, String>,
+    /// D49: UI colour and icon (from the environment file).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
 }
 
 /// A request together with the absolute path of the `.toml` file it lives in.

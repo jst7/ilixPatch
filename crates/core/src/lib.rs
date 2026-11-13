@@ -3,6 +3,7 @@
 
 pub mod auth;
 pub mod environments;
+pub mod extract;
 pub mod model;
 pub mod project;
 pub mod request_settings;
@@ -10,6 +11,7 @@ pub mod storage;
 pub mod vars;
 
 pub use auth::Auth;
+pub use extract::{Extract, ExtractFrom, ExtractScope};
 pub use model::{
     Body, Collection, Environment, Folder, HttpMethod, Project, Request, RequestFile, Scripts,
 };

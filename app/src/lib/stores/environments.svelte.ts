@@ -133,6 +133,9 @@ export interface EnvItem {
   saved: string;
   name: string;
   rows: EnvRow[];
+  /** D49: UI colour and icon (null = default). */
+  color: string | null;
+  icon: string | null;
 }
 
 const emptyRow = (): EnvRow => ({ key: "", value: "", secret: false, enabled: true });
@@ -147,8 +150,8 @@ export function varsFrom(rows: EnvRow[]): EnvVariable[] {
     .map((r) => ({ key: r.key.trim(), value: r.value, secret: r.secret, enabled: r.enabled }));
 }
 
-function canonical(name: string, vars: EnvVariable[]): string {
-  return JSON.stringify([name.trim(), vars.map((v) => [v.key, v.value, v.secret, v.enabled])]);
+function canonical(name: string, vars: EnvVariable[], color: string | null = null, icon: string | null = null): string {
+  return JSON.stringify([name.trim(), vars.map((v) => [v.key, v.value, v.secret, v.enabled]), color, icon]);
 }
 
 let nextUid = 1;
@@ -176,7 +179,7 @@ export class EnvSession {
   }
 
   isItemDirty(item: EnvItem): boolean {
-    return canonical(item.name, varsFrom(item.rows)) !== item.saved;
+    return canonical(item.name, varsFrom(item.rows), item.color, item.icon) !== item.saved;
   }
 
   globalsDirty = $derived(canonical("", varsFrom(this.globals)) !== this.globalsSaved);
@@ -185,7 +188,25 @@ export class EnvSession {
   }
 
   private itemFrom(doc: EnvironmentDoc, uid = nextUid++): EnvItem {
-    return { uid, original: doc.name, saved: canonical(doc.name, doc.variables), name: doc.name, rows: rowsFrom(doc.variables) };
+    return {
+      uid,
+      original: doc.name,
+      saved: canonical(doc.name, doc.variables, doc.color ?? null, doc.icon ?? null),
+      name: doc.name,
+      rows: rowsFrom(doc.variables),
+      color: doc.color ?? null,
+      icon: doc.icon ?? null,
+    };
+  }
+
+  /** Environment to select by name once loaded (opened from a link, D47). */
+  pendingName: string | null = null;
+
+  /** Select an environment by name now, or after the next load. */
+  selectByName(name: string) {
+    const it = this.items.find((i) => i.name === name);
+    if (it) this.selected = it.uid;
+    else this.pendingName = name;
   }
 
   async load() {
@@ -204,6 +225,11 @@ export class EnvSession {
     } finally {
       this.loading = false;
       this.loaded = true;
+    }
+    if (this.pendingName !== null) {
+      const it = this.items.find((i) => i.name === this.pendingName);
+      this.pendingName = null;
+      if (it) this.selected = it.uid;
     }
     if (this.selected === null || !this.exists(this.selected)) {
       this.selected = this.scope === "global" ? EnvSession.GLOBALS : (this.items[0]?.uid ?? null);
@@ -225,7 +251,7 @@ export class EnvSession {
   }
 
   add(name: string, rows: EnvRow[] = [emptyRow()]): EnvItem {
-    const item: EnvItem = { uid: nextUid++, original: null, saved: "", name: this.uniqueName(name), rows };
+    const item: EnvItem = { uid: nextUid++, original: null, saved: "", name: this.uniqueName(name), rows, color: null, icon: null };
     this.items.push(item);
     this.selected = item.uid;
     return item;
@@ -276,13 +302,15 @@ export class EnvSession {
           const doc = await api.envSave(
             this.scope,
             this.project,
-            { name: item.name.trim(), variables: varsFrom(item.rows) },
+            { name: item.name.trim(), variables: varsFrom(item.rows), color: item.color, icon: item.icon },
             item.original,
           );
           const reveal = new Set(item.rows.filter((r) => r.reveal).map((r) => r.key));
           item.original = doc.name;
           item.name = doc.name;
-          item.saved = canonical(doc.name, doc.variables);
+          item.color = doc.color ?? null;
+          item.icon = doc.icon ?? null;
+          item.saved = canonical(doc.name, doc.variables, item.color, item.icon);
           item.rows = rowsFrom(doc.variables).map((r) => (reveal.has(r.key) ? { ...r, reveal: true } : r));
         } catch (e) {
           error ??= String(e);

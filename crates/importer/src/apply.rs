@@ -510,6 +510,8 @@ pub fn apply(parsed: &Parsed, plan: &ImportPlan, ctx: &ApplyContext) -> Result<I
             doc: EnvironmentDoc {
                 name,
                 variables: mark_secrets(&env.variables, re.as_ref()),
+                color: None,
+                icon: None,
             },
         });
     }

@@ -42,6 +42,7 @@ fn request() -> Request {
         scripts: Scripts::default(),
         settings: Default::default(),
         auth: Default::default(),
+        extract: Default::default(),
     }
 }
 

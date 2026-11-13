@@ -381,6 +381,7 @@ mod tests {
             scripts: Default::default(),
             settings: Default::default(),
             auth: Default::default(),
+            extract: Default::default(),
         };
         save_request(root.join("users/list.toml"), &req).unwrap();
 

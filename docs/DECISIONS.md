@@ -348,6 +348,53 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D50 · Carpetas de pestañas (anidadas y plegables) ✅
+- **Para qué:** con muchas pestañas abiertas, poder agruparlas por niveles (por ejemplo "Clientes / Pedidos") y plegar lo que no se está usando.
+- **Modelo** (`stores/tabGroups.svelte.ts`): carpetas `{ id, name, parent, collapsed }` y la carpeta de cada pestaña por su clave. Solo es organización: el orden y las pestañas siguen en el workspace.
+  - Se guarda en `localStorage`, como las pestañas abiertas. Es del usuario, no del proyecto, y no va al repositorio.
+  - Al cerrar una pestaña sale de su carpeta. Las carpetas vacías se mantienen hasta borrarlas.
+- **Barra de pestañas:** primero las carpetas (con sus subcarpetas y pestañas, sangradas por nivel), después las pestañas sueltas.
+  - Clic, Intro o ←/→ pliegan o despliegan. Doble clic o F2 renombran. Cada carpeta muestra cuántas pestañas contiene, contando subcarpetas.
+  - En la cabecera: **"Nueva carpeta"** y **"Contraer/Expandir todo"**.
+  - **Arrastrar** una pestaña sobre una carpeta la mete dentro. Arrastrarla entre pestañas la reordena y la pasa a la carpeta de su vecina.
+  - **Clic derecho en una pestaña:** "Nueva carpeta con esta pestaña", "Mover a la carpeta: …" y "Sacar de la carpeta".
+  - **Clic derecho en una carpeta:** renombrar, nueva subcarpeta, plegar o desplegar, mover dentro de otra o al nivel superior (sin ciclos), cerrar sus pestañas, y eliminarla (sus pestañas y subcarpetas suben un nivel).
+  - Al **buscar** pestañas, las carpetas se abren para mostrar las coincidencias y se ocultan las que no tienen ninguna. Con la barra plegada (modo riel), la lista es plana.
+
+## D49 · Icono y color por entorno ✅
+- Cada entorno (de proyecto o global) puede tener **icono** y **color**. Se guardan en su archivo (`color = "ok"`, `icon = "rocket"`) y se omiten si no se han elegido, así que los archivos antiguos siguen cargando igual.
+- **Colores:** primero los del tema (`accent`, `ok`, `warn`, `err`, `syntax-*`, `muted`), que se adaptan al tema claro y oscuro. También se puede elegir un color libre `#rrggbb`.
+- **Iconos:** catálogo propio de SVG de 16×16 en `lib/env/style.ts` (capas, portátil, servidor, nube, matraz, cohete, bicho, escudo, globo, base de datos, bandera y estrella). Por defecto, capas.
+- **Dónde se elige:** el botón a la izquierda del nombre, en el editor del entorno (`EnvStylePicker`).
+- **Dónde se ve:** en el selector de entorno de las peticiones (botón y opciones), en la lista de la pestaña de entornos y en los enlaces a entornos de proyectos (D47). Así se distingue de un vistazo, por ejemplo, producción en rojo de local en verde.
+- Al copiar un entorno a otro ámbito se conservan el icono y el color.
+
+## D48 · Guardar en variables valores de la respuesta (sin scripts) ✅
+- **Para qué:** el caso típico es autenticarse y guardar el token en una variable para usarlo como `{{token}}` en el resto de peticiones, sin escribir `pm.environment.set(...)` en un script.
+- **Reglas declarativas** en el archivo de la petición (`crates/core/src/extract.rs`):
+  ```toml
+  [[extract]]
+  var = "token"
+  from = "json"              # json | header | status | body | regex
+  path = "data.access_token" # ruta JSON, nombre de cabecera o regex (primer grupo)
+  scope = "environment"      # environment | collection | global
+  ```
+  - Rutas JSON: `a.b[0].c`, `$.a`, `a["b.c"]`, `items.0.id`. Los strings van sin comillas y el resto como JSON.
+  - `enabled = false` desactiva la regla sin borrarla.
+- **Dónde se aplican:** en el runner (`crates/runner/src/extract.rs`), así que funcionan igual en la app, el Runner y la CLI.
+  - Se aplican tras la respuesta y **antes del script de tests**, para que los tests ya vean la variable.
+  - Generan `VarUpdate` como `pm.*.set`: son **valores de sesión** (capa runtime). Prevalecen sobre los de los archivos y se pueden restablecer.
+  - El body se lee aunque `keep_body` sea `false`, si alguna regla lo necesita.
+  - Cada regla deja una línea en la consola: `[extract] token ← JSON data.access_token`, o un aviso si no encuentra el valor.
+- **Interfaz:** pestaña **"Variables"** del editor de la petición, con una tabla de reglas (variable, origen, ruta, ámbito) y una **vista previa del valor** sobre la última respuesta.
+  - `lib/extract/eval.ts` replica la lógica de Rust; hay tests con los mismos casos en ambos lados.
+- 🗓️ **Más adelante:** opción de **persistir** el valor en el archivo del entorno (hoy solo es de sesión) y crear la regla desde la respuesta (clic sobre un valor del JSON).
+
+## D47 · La vista de entornos globales enlaza a los de los proyectos ✅
+- En la pestaña de **entornos globales**, la lista incluye el grupo **"Entornos de proyectos"**: cada proyecto con el número de entornos y, debajo, sus entornos con el número de variables.
+- Al pulsar un proyecto se abre su pestaña de entornos. Al pulsar un entorno, además, queda seleccionado (`EnvSession.selectByName`, que espera a que carguen si hace falta).
+- Así se ve de un vistazo qué entornos existen, aunque estén en otro ámbito.
+
 ## D46 · Consola de red: lo que se envía de verdad por debajo ✅
 - **Para qué:** depurar lo que no se ve en la pestaña de la petición: cabeceras finales, redirecciones, rondas de autenticación y peticiones de token.
 - **Qué registra** cada intercambio HTTP (`engine::netlog::NetExchange`):
@@ -361,7 +408,7 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
 - **Interfaz:** panel inferior **"Consola de red"** (⌘/Ctrl+Alt+C, o el botón del pie de la barra lateral), redimensionable.
   - Lista cronológica (hora, método, estado, fase, URL, origen y duración) con filtro y "Solo errores". Al lado, el detalle de la petición y la respuesta.
   - **Secretos ocultos por defecto:** `Authorization` (se ve el esquema: "Bearer ••••••"), cookies, `X-Api-Key`… Se muestran con "Mostrar secretos".
-  - **"Copiar como cURL"** de cualquier entrada, con los valores reales.
+  - **"Copiar como cURL"** de cualquier entrada, con los valores reales: desde el detalle, con un botón en cada fila (al pasar el ratón) o con el clic derecho (también "Copiar URL").
 - **Tiempos por intercambio** (`engine::timing`), mostrados como barra apilada en el detalle:
   - **DNS:** resolvedor propio (`dns_resolver`) sobre `getaddrinfo`, como el de reqwest por defecto, que mide la búsqueda.
   - **Conexión (TCP + TLS):** capa alrededor del conector de reqwest (`connector_layer`) que mide cada conexión nueva. Si no se llama, la conexión se **reutilizó** y se indica.
@@ -416,6 +463,8 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   2. ✅ v0.3.5: **SvelteKit 3 y adapter-static 4.**
      - La configuración pasa de `svelte.config.js` (que se elimina) a `sveltekit({ preprocess, adapter, alias })` en `vite.config.js`.
      - SvelteKit 3 sustituye `$lib` por `#lib`. Se mantiene `$lib` con `alias: { $lib: "src/lib" }`, la vía que ofrece SvelteKit, en vez de reescribir 304 imports en 83 archivos.
+     - **Corrección en v0.3.7:** `tsconfig.json` debe extender `$app/tsconfig` (lo genera `svelte-kit sync` en `node_modules/$app` al hacer `npm install`) y no `./.svelte-kit/tsconfig.json`. En un clon limpio, como el del CI, ese archivo no existe, así que las builds de release de v0.3.5 y v0.3.6 fallaban. En local no se veía porque quedaba de antes. Los autotests `*.mjs` se excluyen de la comprobación de tipos.
+     - SvelteKit avisa de que `alias` está obsoleto (pide `#lib` con *subpath imports*). Es solo un aviso; la migración queda pendiente.
   3. ✅ v0.3.5: **familia RustCrypto entera**: sha1/sha2/md-5/md4 0.11, hmac 0.13, rand_core 0.10, p256/p384/p521 0.14, pkcs8 0.11 y **rsa 0.10**.
      - El PR de Dependabot no compilaba porque no subía `rsa`, y mezclaba `digest` 0.10 y 0.11.
      - Cambios: `rsa` necesita la feature `pkcs1v15`; `RsaPrivateKey` pasa a `PrivateKey`; `pss::BlindedSigningKey` pasa a `pss::SigningKey` (ahora siempre aplica blinding); `Mac::new_from_slice` pasa a `KeyInit::new_from_slice`; el RNG propio implementa `TryRng<Error = Infallible>` y `TryCryptoRng` (rand_core 0.10); para claves PKCS#8 cifradas se usa `pkcs8::EncryptedPrivateKeyInfoRef`.

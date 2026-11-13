@@ -1,6 +1,7 @@
 // Central UI state: registered projects, tree expansion, selection, per-request drafts and responses.
 import {
   api,
+  type Extract,
   type Collection,
   type Folder,
   type HttpMethod,
@@ -22,6 +23,7 @@ import {
 import { ask } from "@tauri-apps/plugin-dialog";
 import { t as translate } from "$lib/i18n/index.svelte";
 import { runtimeVars } from "./runtimeVars.svelte";
+import { tabGroups } from "./tabGroups.svelte";
 import { toRequestError } from "$lib/requestError";
 import { history } from "./history.svelte";
 import { dropEnvSession, envSession, envStore, type EnvChoice, type ResolvedEnv } from "./environments.svelte";
@@ -79,6 +81,8 @@ export interface Draft {
   settings: DraftSettings;
   /** Authorization (D39); { type: "inherit" } = use the folder/collection auth. */
   auth: Auth;
+  /** Variables from the response (D48). */
+  extract: Extract[];
 }
 
 export interface DraftSettings {
@@ -135,6 +139,7 @@ export function draftFromRequest(r: Request): Draft {
     tests: r.scripts?.tests ?? "",
     settings: draftSettings(r.settings),
     auth: r.auth ? (JSON.parse(JSON.stringify(r.auth)) as Auth) : { type: "inherit" },
+    extract: (r.extract ?? []).map((e) => ({ ...e, path: e.path ?? "", enabled: e.enabled ?? true })),
   };
 }
 
@@ -152,6 +157,7 @@ export function requestFromDraft(d: Draft): Request {
     ...scriptsFromDraft(d),
     ...(requestSettings(d.settings) ? { settings: requestSettings(d.settings) } : {}),
     ...(d.auth && d.auth.type !== "inherit" ? { auth: cleanAuth(d.auth) } : {}),
+    ...(cleanExtract(d.extract).length ? { extract: cleanExtract(d.extract) } : {}),
   };
 }
 
@@ -184,7 +190,21 @@ function canonical(r: Request): string {
     r.scripts?.tests?.trim() ? r.scripts.tests : null,
     Object.entries(requestSettings(r.settings) ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
     canonicalAuth(r.auth),
+    cleanExtract(r.extract ?? []).map((e) => [e.var, e.from, e.path, e.scope, e.enabled]),
   ]);
+}
+
+/** Rules worth saving: with a variable name (the path is dropped where it is unused). */
+function cleanExtract(list: Extract[] | undefined): Extract[] {
+  return (list ?? [])
+    .filter((e) => e.var.trim())
+    .map((e) => ({
+      var: e.var.trim(),
+      from: e.from,
+      path: e.from === "status" || e.from === "body" ? "" : e.path,
+      scope: e.scope,
+      enabled: e.enabled,
+    }));
 }
 
 // ---------- Tree index ----------
@@ -586,6 +606,8 @@ class Workspace {
   /** Remove tabs without asking; if the active one goes, activate its nearest remaining neighbour. */
   private dropTabs(keys: Set<string>) {
     if (keys.size === 0) return;
+    // D50: a closed tab leaves its folder.
+    for (const k of keys) tabGroups.assign(k, null);
     const activeIndex = this.tabs.findIndex((t) => tabKey(t) === this.activeKey);
     const activeGoes = this.activeKey !== null && keys.has(this.activeKey);
     for (const tab of this.tabs) {

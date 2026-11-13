@@ -8,6 +8,7 @@
 
 pub mod auth;
 pub mod exec;
+pub mod extract;
 pub mod load;
 pub mod report;
 pub mod run;

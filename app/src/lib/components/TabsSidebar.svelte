@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tabGroups, type TabGroup } from "$lib/stores/tabGroups.svelte";
+  import { suppressTextSelection } from "$lib/dragSelect";
   import { t } from "$lib/i18n/index.svelte";
   import { ws, historyKey, tabKey, tabPath, type MenuItem, type OpenTab } from "$lib/stores/workspace.svelte";
   import GitIcon from "./GitIcon.svelte";
@@ -159,7 +161,116 @@
       { label: t("tabs.closeAll"), action: () => ws.closeAllTabs() },
       { label: t("tabs.closeSaved"), action: () => ws.closeSavedTabs() },
     ];
-    return [...list, ...revealItem(v)];
+    return [...list, ...revealItem(v), ...folderItems(v)];
+  }
+
+  // ----- tab folders (D50) -----
+
+  function folderItems(v: TabView): MenuItem[] {
+    const current = tabGroups.groupOf(v.key);
+    const out: MenuItem[] = [
+      {
+        label: t("tabs.folder.newWith"),
+        action: () => tabGroups.assign(v.key, tabGroups.create(t("tabs.folder.newName"), current)),
+      },
+    ];
+    for (const { group } of tabGroups.flat()) {
+      if (group.id === current) continue;
+      out.push({
+        label: t("tabs.folder.moveTo", { name: tabGroups.path(group.id) }),
+        action: () => tabGroups.assign(v.key, group.id),
+      });
+    }
+    if (current) out.push({ label: t("tabs.folder.moveOut"), action: () => tabGroups.assign(v.key, null) });
+    return out;
+  }
+
+  function groupMenu(e: MouseEvent, g: TabGroup) {
+    e.preventDefault();
+    e.stopPropagation();
+    const keysIn = () => {
+      const ids = tabGroups.subtree(g.id);
+      return views.filter((v) => ids.has(tabGroups.member[v.key])).map((v) => v.key);
+    };
+    const items: MenuItem[] = [
+      { label: t("tabs.folder.rename"), action: () => (tabGroups.renaming = g.id) },
+      { label: t("tabs.folder.newSub"), action: () => tabGroups.create(t("tabs.folder.newName"), g.id) },
+      {
+        label: g.collapsed ? t("tabs.folder.expand") : t("tabs.folder.collapse"),
+        action: () => tabGroups.toggle(g.id),
+      },
+    ];
+    if (g.parent) items.push({ label: t("tabs.folder.moveUp"), action: () => tabGroups.moveGroup(g.id, null) });
+    for (const { group } of tabGroups.flat()) {
+      if (tabGroups.subtree(g.id).has(group.id) || group.id === g.parent) continue;
+      items.push({
+        label: t("tabs.folder.moveInto", { name: tabGroups.path(group.id) }),
+        action: () => tabGroups.moveGroup(g.id, group.id),
+      });
+    }
+    items.push(
+      { label: t("tabs.folder.closeTabs"), action: () => void ws.closeTabs(keysIn()) },
+      { label: t("tabs.folder.delete"), danger: true, action: () => tabGroups.remove(g.id) },
+    );
+    ws.menu = { x: e.clientX, y: e.clientY, items };
+  }
+
+  type Row =
+    | { kind: "group"; g: TabGroup; depth: number; count: number }
+    | { kind: "tab"; v: TabView; i: number; depth: number };
+
+  /** The list as rows: folders first (with their subfolders and tabs), then top-level tabs.
+   *  While searching, folders open to show their matches; the collapsed rail is flat. */
+  const rows = $derived.by((): Row[] => {
+    const keys = views.map((v) => v.key);
+    if (collapsed || !tabGroups.groups.length) {
+      return views.flatMap((v, i) => (!matches || matches.has(v.key) ? [{ kind: "tab" as const, v, i, depth: 0 }] : []));
+    }
+    const byGroup = new Map<string | null, { v: TabView; i: number }[]>();
+    views.forEach((v, i) => {
+      const g = tabGroups.groupOf(v.key);
+      if (!byGroup.has(g)) byGroup.set(g, []);
+      byGroup.get(g)!.push({ v, i });
+    });
+    const hasMatch = (id: string) => {
+      const ids = tabGroups.subtree(id);
+      return views.some((v) => matches!.has(v.key) && ids.has(tabGroups.member[v.key]));
+    };
+    const out: Row[] = [];
+    const walk = (parent: string | null, depth: number) => {
+      for (const g of tabGroups.children(parent)) {
+        if (matches && !hasMatch(g.id)) continue;
+        out.push({ kind: "group", g, depth, count: tabGroups.count(g.id, keys) });
+        if (g.collapsed && !matches) continue;
+        walk(g.id, depth + 1);
+        for (const t of byGroup.get(g.id) ?? []) {
+          if (!matches || matches.has(t.v.key)) out.push({ kind: "tab", ...t, depth: depth + 1 });
+        }
+      }
+    };
+    walk(null, 0);
+    for (const t of byGroup.get(null) ?? []) {
+      if (!matches || matches.has(t.v.key)) out.push({ kind: "tab", ...t, depth: 0 });
+    }
+    return out;
+  });
+
+  function renameKey(e: KeyboardEvent, g: TabGroup) {
+    const el = e.currentTarget as HTMLInputElement;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      tabGroups.rename(g.id, el.value);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      tabGroups.renaming = null;
+    }
+  }
+
+  function focusSelect(el: HTMLInputElement) {
+    queueMicrotask(() => {
+      el.focus();
+      el.select();
+    });
   }
 
   function revealItem(v: TabView): MenuItem[] {
@@ -179,6 +290,8 @@
   let dragFrom = $state<number | null>(null);
   /** Insertion index (0..n) while dragging. */
   let dragOver = $state<number | null>(null);
+  /** Folder under the pointer while dragging (the tab goes into it). */
+  let dragGroup = $state<string | null>(null);
   let suppressClick = false;
 
   function insertionIndex(y: number): number {
@@ -195,23 +308,41 @@
     if ((e.target as Element).closest(".close")) return;
     const startY = e.clientY;
     let moved = false;
+    let restoreSelection: (() => void) | null = null;
     const move = (ev: PointerEvent) => {
       if (!moved && Math.abs(ev.clientY - startY) < 5) return;
+      // No text selection while dragging (the pointer leaves the row and crosses other text).
+      if (!moved) restoreSelection = suppressTextSelection();
+      ev.preventDefault();
       moved = true;
       dragFrom = index;
-      dragOver = insertionIndex(ev.clientY);
+      const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-group-id]");
+      dragGroup = over?.dataset.groupId ?? null;
+      dragOver = dragGroup ? null : insertionIndex(ev.clientY);
     };
     const up = () => {
+      restoreSelection?.();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      if (moved && dragOver !== null) {
+      const key = views[index]?.key;
+      if (moved && key && dragGroup) {
+        // Dropped on a folder: the tab goes into it.
+        tabGroups.assign(key, dragGroup);
+        tabGroups.setCollapsed(dragGroup, false);
+      } else if (moved && key && dragOver !== null) {
+        // Dropped between tabs: reorder, and take the folder of the tab it lands next to.
+        const target = views[dragOver] ?? views[dragOver - 1];
+        if (target && target.key !== key) tabGroups.assign(key, tabGroups.groupOf(target.key));
         ws.moveTab(index, dragOver > index ? dragOver - 1 : dragOver);
+      }
+      if (moved) {
         suppressClick = true;
         setTimeout(() => (suppressClick = false));
       }
       dragFrom = null;
       dragOver = null;
+      dragGroup = null;
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -247,6 +378,31 @@
     {#if !collapsed}
       <span class="title">{t("tabs.title")}</span>
       {#if ws.tabs.length}<span class="count">{ws.tabs.length}</span>{/if}
+      <span class="spacer"></span>
+      {#if tabGroups.groups.length}
+        {@const allCollapsed = tabGroups.groups.every((g) => g.collapsed)}
+        <button
+          class="ghost hbtn"
+          title={allCollapsed ? t("tabs.folder.expandAll") : t("tabs.folder.collapseAll")}
+          aria-label={allCollapsed ? t("tabs.folder.expandAll") : t("tabs.folder.collapseAll")}
+          onclick={() => tabGroups.setAllCollapsed(!allCollapsed)}
+        >
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            {#if allCollapsed}<path d="M4 6l4 4 4-4" />{:else}<path d="M4 10l4-4 4 4" />{/if}
+          </svg>
+        </button>
+      {/if}
+      <button
+        class="ghost hbtn"
+        title={t("tabs.folder.new")}
+        aria-label={t("tabs.folder.new")}
+        onclick={() => tabGroups.create(t("tabs.folder.newName"))}
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1.5 4.5a1 1 0 011-1h3.5l1.5 1.5h6a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1z" />
+          <path d="M8 7.5v4M6 9.5h4" />
+        </svg>
+      </button>
     {/if}
     <button
       class="ghost toggle"
@@ -290,8 +446,55 @@
     {:else if matches && matches.size === 0 && !collapsed}
       <p class="empty">{t("search.noTabMatches")}</p>
     {/if}
-    {#each views as v, i (v.key)}
-      {#if !matches || matches.has(v.key)}
+    {#each rows as row (row.kind === "group" ? `g:${row.g.id}` : row.v.key)}
+      {#if row.kind === "group"}
+        {@const g = row.g}
+        <div
+          class="folder"
+          class:drop-into={dragGroup === g.id}
+          role="button"
+          tabindex="0"
+          aria-expanded={!g.collapsed}
+          data-group-id={g.id}
+          style:padding-left="{8 + row.depth * 14}px"
+          title={tabGroups.path(g.id)}
+          onclick={() => tabGroups.renaming !== g.id && tabGroups.toggle(g.id)}
+          ondblclick={() => (tabGroups.renaming = g.id)}
+          oncontextmenu={(e) => groupMenu(e, g)}
+          onkeydown={(e) => {
+            if (tabGroups.renaming === g.id) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              tabGroups.toggle(g.id);
+            } else if (e.key === "ArrowRight") tabGroups.setCollapsed(g.id, false);
+            else if (e.key === "ArrowLeft") tabGroups.setCollapsed(g.id, true);
+            else if (e.key === "F2") tabGroups.renaming = g.id;
+          }}
+        >
+          <svg class="caret" class:open={!g.collapsed || !!matches} viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" />
+          </svg>
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1.5 4.5a1 1 0 011-1h3.5l1.5 1.5h6a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1z" />
+          </svg>
+          {#if tabGroups.renaming === g.id}
+            <input
+              class="rename"
+              value={g.name}
+              aria-label={t("tabs.folder.rename")}
+              use:focusSelect
+              onclick={(e) => e.stopPropagation()}
+              onkeydown={(e) => renameKey(e, g)}
+              onblur={(e) => tabGroups.rename(g.id, e.currentTarget.value)}
+            />
+          {:else}
+            <span class="fname">{g.name}</span>
+          {/if}
+          <span class="fcount">{row.count}</span>
+        </div>
+      {:else}
+      {@const v = row.v}
+      {@const i = row.i}
       {@const active = ws.activeKey === v.key}
       <div
         class="tab"
@@ -303,6 +506,7 @@
         aria-selected={active}
         tabindex="0"
         data-tab-index={i}
+        style:padding-left={row.depth ? `${8 + row.depth * 14}px` : undefined}
         title={v.hint ? `${v.title} — ${v.hint}` : v.title}
         onclick={() => activate(v)}
         onpointerdown={(e) => startDrag(e, i)}
@@ -529,5 +733,58 @@
   .tab:hover .close,
   .tab:focus-within .close {
     visibility: visible;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .hbtn {
+    display: flex;
+    padding: 3px;
+  }
+  .folder {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    margin: 1px 4px;
+    padding: 2px 6px 2px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .folder:hover {
+    background: var(--hover);
+  }
+  .folder.drop-into {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    outline: 1px dashed var(--accent);
+  }
+  .caret {
+    flex: none;
+    transition: transform 0.12s;
+  }
+  .caret.open {
+    transform: rotate(90deg);
+  }
+  .fname {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .fcount {
+    flex: none;
+    font-size: 11px;
+  }
+  .rename {
+    flex: 1;
+    min-width: 0;
+    padding: 1px 4px;
+    font-size: 12px;
   }
 </style>

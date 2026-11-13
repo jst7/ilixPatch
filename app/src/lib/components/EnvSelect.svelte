@@ -25,6 +25,9 @@
   interface Option {
     choice: EnvChoice | null;
     label: string;
+    /** D49 */
+    icon?: string | null;
+    color?: string | null;
     /** Group heading shown before this option. */
     group?: string;
   }
@@ -33,11 +36,20 @@
 
   const options = $derived.by(() => {
     const out: Option[] = [{ choice: null, label: t("request.noEnvironment") }];
-    const add = (group: string, scope: EnvChoice["scope"], names: string[]) =>
-      names.forEach((name, i) => out.push({ choice: { scope, name } as EnvChoice, label: name, group: i === 0 ? group : undefined }));
-    add(t("env.group.project"), "project", (project?.environments ?? []).map((e) => e.name));
-    add(t("env.group.global"), "global", envStore.globalEnvs.map((e) => e.name));
-    add(t("env.group.collection"), "collection", (collection?.environments ?? []).map((e) => e.name));
+    type Env = { name: string; icon?: string | null; color?: string | null };
+    const add = (group: string, scope: EnvChoice["scope"], envs: Env[]) =>
+      envs.forEach((e, i) =>
+        out.push({
+          choice: { scope, name: e.name } as EnvChoice,
+          label: e.name,
+          icon: e.icon,
+          color: e.color,
+          group: i === 0 ? group : undefined,
+        }),
+      );
+    add(t("env.group.project"), "project", project?.environments ?? []);
+    add(t("env.group.global"), "global", envStore.globalEnvs);
+    add(t("env.group.collection"), "collection", collection?.environments ?? []);
     return out;
   });
 
@@ -137,7 +149,7 @@
     onclick={() => (open ? hide() : show())}
     onkeydown={onbuttonkeydown}
   >
-    <EnvIcon size={13} />
+    <EnvIcon size={13} icon={current?.icon} color={current?.color} />
     <span class="label">{value?.name ?? t("request.noEnvironment")}</span>
     {#if value && current}<span class="scope">{scopeLabel(value)}</span>{/if}
     <svg class="caret" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
@@ -170,6 +182,7 @@
             onclick={() => choose(i)}
             onpointermove={() => (active = i)}
           >
+            {#if o.choice}<EnvIcon size={12} icon={o.icon} color={o.color} />{/if}
             <span class="opt-label">{o.label}</span>
             {#if i === currentIndex}
               <svg class="check" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">

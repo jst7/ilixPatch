@@ -423,6 +423,8 @@ fn project(base: &str) -> tempfile::TempDir {
                     secret: true,
                     ..ilixpatch_core::environments::EnvVariable::new("who", "project")
                 }],
+                color: None,
+                icon: None,
             },
             None,
         )
@@ -486,6 +488,8 @@ fn global_scope_and_globals_from_config_dir() {
             &EnvironmentDoc {
                 name: "Shared".into(),
                 variables: vec![EnvVariable::new("who", "global-env")],
+                color: None,
+                icon: None,
             },
             None,
         )
@@ -539,4 +543,66 @@ async fn run_uses_project_environment() {
         report.results[0].url
     );
     assert_eq!(report.environment_name.as_deref(), Some("Dev"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn extracted_variable_is_used_by_the_next_request() {
+    // D48: "login" saves a value of its JSON response; the next request uses it.
+    let base = server().await;
+    let mut store = VarStore {
+        environment: [("base".to_string(), base.clone())].into_iter().collect(),
+        ..Default::default()
+    };
+    let login: ilixpatch_core::Request = toml::from_str(
+        r#"
+name = "login"
+url = "{{base}}/token-abc"
+
+[[extract]]
+var = "token"
+from = "json"
+path = "path"
+
+[[extract]]
+var = "login_status"
+from = "status"
+scope = "collection"
+"#,
+    )
+    .unwrap();
+    // keep_body: false — the rules still get the body they need.
+    let ctx = ExecContext {
+        keep_body: false,
+        ..Default::default()
+    };
+    let res = execute_request(&Engine::new(), &login, &mut store, &ctx).await;
+    assert_eq!(
+        store.environment.get("token").map(String::as_str),
+        Some("/token-abc")
+    );
+    assert_eq!(
+        store.collection.get("login_status").map(String::as_str),
+        Some("200")
+    );
+    assert_eq!(
+        res.variable_updates.len(),
+        2,
+        "reported to the UI like pm.*.set"
+    );
+    assert!(res.logs.iter().any(|l| l.starts_with("[extract] token")));
+
+    // The tests script of the same request already sees the value.
+    let next: ilixpatch_core::Request = toml::from_str(
+        r#"
+name = "use"
+url = "{{base}}/use{{token}}"
+
+[scripts]
+tests = "pm.test('path', () => pm.expect(pm.response.json().path).to.eql('/use/token-abc'));"
+"#,
+    )
+    .unwrap();
+    let res = execute_request(&Engine::new(), &next, &mut store, &ExecContext::default()).await;
+    assert_eq!(res.tests.len(), 1);
+    assert!(res.tests[0].passed, "{:?}", res.tests);
 }

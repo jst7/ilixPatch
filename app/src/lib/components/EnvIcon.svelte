@@ -1,10 +1,26 @@
 <script lang="ts">
-  let { size = 14 }: { size?: number } = $props();
+  // Environment icon (D49): the environment's own icon and colour, or stacked layers in the text colour.
+  import { envColor, envIconPaths } from "$lib/env/style";
+
+  let {
+    size = 14,
+    icon = null,
+    color = null,
+  }: { size?: number; icon?: string | null; color?: string | null } = $props();
 </script>
 
-<!-- Environment icon (stacked layers); inherits the text colour. -->
-<svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
-  <path d="M8 2l6 3-6 3-6-3z" />
-  <path d="M2 8l6 3 6-3" />
-  <path d="M2 11l6 3 6-3" />
+<svg
+  viewBox="0 0 16 16"
+  width={size}
+  height={size}
+  aria-hidden="true"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.4"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  style:color={envColor(color)}
+  style:flex="none"
+>
+  {#each envIconPaths(icon) as d, i (i)}<path {d} />{/each}
 </svg>

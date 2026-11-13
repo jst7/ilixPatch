@@ -28,6 +28,18 @@ export interface Request {
   settings?: RequestSettings;
   /** Authorization (D39). Omitted = inherit from folder/collection. */
   auth?: Auth;
+  /** Variables taken from the response after each send (D48). Omitted when empty. */
+  extract?: Extract[];
+}
+
+/** D48: save a value of the response in a variable (`[[extract]]` in the request file). */
+export interface Extract {
+  var: string;
+  from: "json" | "header" | "status" | "body" | "regex";
+  /** JSON path, header name or regex, depending on `from` ("" for status/body). */
+  path: string;
+  scope: "environment" | "collection" | "global";
+  enabled: boolean;
 }
 
 /** null/undefined = use the global NetworkSettings value. */
@@ -63,6 +75,8 @@ export interface Folder {
 export interface Environment {
   name: string;
   variables: Record<string, string>;
+  color?: string | null;
+  icon?: string | null;
 }
 
 export interface Collection {
@@ -506,6 +520,10 @@ export interface EnvVariable {
 export interface EnvironmentDoc {
   name: string;
   variables: EnvVariable[];
+  /** D49: theme colour token ("ok", "warn"…) or "#rrggbb". */
+  color?: string | null;
+  /** D49: icon id (lib/env/style.ts). */
+  icon?: string | null;
 }
 
 export type EnvScope = "project" | "global";

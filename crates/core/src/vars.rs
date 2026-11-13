@@ -97,6 +97,8 @@ impl Scope {
             scripts: req.scripts.clone(),
             settings: req.settings,
             auth: self.resolve_auth(&req.auth)?,
+            // Variable names and paths are not templated.
+            extract: req.extract.clone(),
         })
     }
 

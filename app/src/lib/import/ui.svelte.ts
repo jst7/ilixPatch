@@ -1,6 +1,7 @@
 // UI helpers of the import wizard: pointer-based drag & drop (HTML5 DnD conflicts with Tauri's file drop),
 // the keyboard "Place into…" menu and warning labels.
 import type { Folder, ImportWarning } from "$lib/api";
+import { suppressTextSelection } from "$lib/dragSelect";
 import { LOCALES, t, type MessageKey } from "$lib/i18n/index.svelte";
 import { importer } from "$lib/stores/import.svelte";
 import { ws, type MenuItem } from "$lib/stores/workspace.svelte";
@@ -24,14 +25,20 @@ export function startDrag(e: PointerEvent, id: string, label: string) {
   const sx = e.clientX;
   const sy = e.clientY;
   let active = false;
+  let restoreSelection: (() => void) | null = null;
   const move = (ev: PointerEvent) => {
     if (!active && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
+    // No text selection while dragging over the trees.
+    restoreSelection ??= suppressTextSelection();
+    ev.preventDefault();
     active = true;
     const el = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-drop]");
     const target = el?.dataset.drop ? { path: el.dataset.drop, kind: el.dataset.kind as DestKind } : null;
     dnd.drag = { id, label, x: ev.clientX, y: ev.clientY, target };
   };
   const cleanup = () => {
+    restoreSelection?.();
+    restoreSelection = null;
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
     window.removeEventListener("keydown", key, true);

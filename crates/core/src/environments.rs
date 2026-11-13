@@ -76,6 +76,12 @@ pub struct EnvironmentDoc {
     pub name: String,
     #[serde(default)]
     pub variables: Vec<EnvVariable>,
+    /// D49: colour of the environment in the UI (`#rrggbb` or a theme token name).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// D49: icon id of the environment in the UI (see `envIcons.ts`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
 }
 
 impl EnvironmentDoc {
@@ -84,6 +90,8 @@ impl EnvironmentDoc {
         Environment {
             name: self.name.clone(),
             variables: enabled_map(&self.variables),
+            color: self.color.clone(),
+            icon: self.icon.clone(),
         }
     }
 }
@@ -135,12 +143,20 @@ struct FileIn {
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
+    color: Option<String>,
+    #[serde(default)]
+    icon: Option<String>,
+    #[serde(default)]
     variables: FileVars,
 }
 
 #[derive(Debug, Serialize)]
 struct FileOut<'a> {
     name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    color: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<&'a str>,
     variables: Vec<FileVar>,
 }
 
@@ -305,6 +321,8 @@ impl EnvStore {
         Ok(EnvironmentDoc {
             name: file.name.unwrap_or_else(|| stem.to_string()),
             variables,
+            color: file.color,
+            icon: file.icon,
         })
     }
 
@@ -365,6 +383,8 @@ impl EnvStore {
         let inline = self.kind == Kind::Global;
         let out = FileOut {
             name: &doc.name,
+            color: doc.color.as_deref(),
+            icon: doc.icon.as_deref(),
             variables: write_vars(&doc.variables, inline),
         };
         write_file(
@@ -423,6 +443,8 @@ impl EnvStore {
         let name = validate_name(&doc.name)?;
         let doc = EnvironmentDoc {
             name,
+            color: doc.color.clone().filter(|c| !c.trim().is_empty()),
+            icon: doc.icon.clone().filter(|c| !c.trim().is_empty()),
             variables: doc
                 .variables
                 .iter()
@@ -582,6 +604,8 @@ mod tests {
                 },
                 EnvVariable::new("a_last", "1"),
             ],
+            color: None,
+            icon: None,
         }
     }
 
@@ -657,6 +681,8 @@ mod tests {
         let staging = EnvironmentDoc {
             name: "Staging".into(),
             variables: vec![],
+            color: None,
+            icon: None,
         };
         store.save(&staging, None).unwrap();
         // Renaming onto another name (case-insensitive) is refused.
@@ -690,6 +716,8 @@ mod tests {
             let d = EnvironmentDoc {
                 name: bad.into(),
                 variables: vec![],
+                color: None,
+                icon: None,
             };
             assert!(
                 matches!(store.save(&d, None), Err(StorageError::InvalidName(_))),
@@ -716,6 +744,8 @@ mod tests {
                     &EnvironmentDoc {
                         name: name.into(),
                         variables: vec![],
+                        color: None,
+                        icon: None,
                     },
                     None,
                 )
@@ -794,14 +824,46 @@ mod tests {
             Environment {
                 name: "dev".into(),
                 variables: Default::default(),
+                color: None,
+                icon: None,
             },
             Environment {
                 name: "Dev".into(),
                 variables: Default::default(),
+                color: None,
+                icon: None,
             },
         ];
         assert_eq!(find_environment(&envs, "Dev").unwrap().name, "Dev");
         assert_eq!(find_environment(&envs, "DEV").unwrap().name, "dev");
         assert!(find_environment(&envs, "prod").is_none());
+    }
+
+    #[test]
+    fn color_and_icon_round_trip() {
+        // D49: kept in the file, absent when unset (older files keep loading).
+        let tmp = tempfile::tempdir().unwrap();
+        let store = EnvStore::project(tmp.path());
+        let doc = EnvironmentDoc {
+            color: Some("ok".into()),
+            icon: Some("rocket".into()),
+            ..dev()
+        };
+        store.save(&doc, None).unwrap();
+        let back = &store.list().unwrap()[0];
+        assert_eq!(
+            (back.color.as_deref(), back.icon.as_deref()),
+            (Some("ok"), Some("rocket"))
+        );
+        assert_eq!(back.to_environment().icon.as_deref(), Some("rocket"));
+        // Empty strings are not stored.
+        let doc = EnvironmentDoc {
+            color: Some(" ".into()),
+            icon: None,
+            ..dev()
+        };
+        store.save(&doc, Some("Dev")).unwrap();
+        let back = &store.list().unwrap()[0];
+        assert_eq!((back.color.as_deref(), back.icon.as_deref()), (None, None));
     }
 }

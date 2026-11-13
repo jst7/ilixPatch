@@ -363,7 +363,12 @@ pub fn load_environment_file(path: impl AsRef<Path>) -> Result<Environment, RunE
         } else {
             return Err(err(&"not a Postman environment (missing \"values\")"));
         }
-        Ok(Environment { name, variables })
+        Ok(Environment {
+            name,
+            variables,
+            color: None,
+            icon: None,
+        })
     } else {
         let mut env: Environment = toml::from_str(&text).map_err(|e| err(&e))?;
         env.name = stem;
