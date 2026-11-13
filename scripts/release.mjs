@@ -5,6 +5,11 @@
 //   node scripts/release.mjs minor        # or: major | medium | minor | 1.2.3
 //   node scripts/release.mjs minor --yes  # no questions (CI-like)
 //   node scripts/release.mjs --dry-run    # show what would happen, change nothing
+//   node scripts/release.mjs --skip-ci    # don't require a green CI on the current commit
+//
+// Before bumping, the script checks (with the GitHub CLI `gh`) that the CI workflow passed
+// on the commit being released, so a release never starts from a broken main. Workflow:
+// push to main → wait for CI to be green → run this script.
 //
 // "major" → X.0.0, "medium" → x.Y.0, "minor" → x.y.Z.
 // Pushing the tag starts the Release workflow: CI first, then the builds, and the
@@ -28,6 +33,7 @@ const FILES = {
 const args = argv.slice(2);
 const yes = args.includes("--yes") || args.includes("-y");
 const dryRun = args.includes("--dry-run");
+const skipCi = args.includes("--skip-ci");
 const wanted = args.find((a) => !a.startsWith("-"));
 
 const c = (code) => (s) => (stdout.isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -118,6 +124,58 @@ function preflight() {
   return ahead;
 }
 
+// ---------- CI status of the commit being released ----------
+
+function hasGh() {
+  try {
+    run("gh", ["--version"]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Latest run of the CI workflow for `sha`: { status, conclusion, url } or null. */
+function ciRun(sha) {
+  const out = run("gh", [
+    "run", "list", "--workflow", "ci.yml", "--commit", sha, "--limit", "1",
+    "--json", "status,conclusion,url",
+  ]);
+  const runs = JSON.parse(out || "[]");
+  return runs[0] ?? null;
+}
+
+async function checkCi(ahead) {
+  if (skipCi) {
+    console.log(yellow("! CI check skipped (--skip-ci)."));
+    return;
+  }
+  if (ahead > 0) {
+    fail(
+      `${ahead} local commit(s) not pushed: CI hasn't tested them.\n` +
+        `  Push first (git push origin ${BRANCH}), wait for CI to be green, then run this again (or use --skip-ci).`,
+    );
+  }
+  if (!hasGh()) {
+    console.log(yellow("! GitHub CLI (gh) not found: can't check that CI passed on this commit."));
+    if (!(await confirm("Release anyway?", false))) fail("cancelled (install gh, or use --skip-ci)");
+    return;
+  }
+  const sha = run("git", ["rev-parse", "HEAD"]);
+  let r;
+  try {
+    r = ciRun(sha);
+  } catch (e) {
+    console.log(yellow(`! Could not read the CI status with gh: ${e.message.split("\n")[0]}`));
+    if (!(await confirm("Release anyway?", false))) fail("cancelled");
+    return;
+  }
+  if (!r) fail(`no CI run found for ${sha.slice(0, 7)}. Push to ${BRANCH} and wait for CI (or use --skip-ci).`);
+  if (r.status !== "completed") fail(`CI is still running on ${sha.slice(0, 7)} (${r.status}). Wait for it: ${r.url}`);
+  if (r.conclusion !== "success") fail(`CI failed on ${sha.slice(0, 7)} (${r.conclusion}). Fix it first: ${r.url}`);
+  console.log(green(`✔ CI passed on ${sha.slice(0, 7)}`));
+}
+
 // ---------- bump ----------
 
 function writeVersion(next) {
@@ -142,7 +200,7 @@ async function main() {
   console.log(bold(`ilixPatch release — current version ${current}`));
 
   const ahead = preflight();
-  if (ahead > 0) console.log(yellow(`! ${ahead} local commit(s) not pushed yet; they go out with the release.`));
+  await checkCi(ahead);
 
   let next;
   if (wanted && /^\d+\.\d+\.\d+$/.test(wanted)) next = wanted;

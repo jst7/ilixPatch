@@ -136,7 +136,10 @@ La tabla completa de flags, compatibles con Newman, está en el [README en ingl�
   for f in src/lib/*/selftest.mjs src/lib/curl.selftest.mjs; do node "$f" || break; done
   ```
 - **CI:** el workflow `ci.yml` lo ejecuta en Linux, macOS y Windows.
-- **Publicar una versión:**
+- **Publicar una versión con el script** (recomendado): sube tus commits a `main`, espera a que el CI esté en verde
+  y ejecuta `node scripts/release.mjs`. Pregunta *major / medium / minor*, comprueba con `gh` que el CI pasó en ese
+  commit, sube la versión en todos los archivos, hace commit, tag y push. `--dry-run` enseña lo que haría.
+- **Publicar una versión a mano:**
   1. Sube la versión en `Cargo.toml`, `app/src-tauri/tauri.conf.json` y `app/package.json`.
   2. Haz commit y push, y después crea el tag sobre ese commit y súbelo:
      `git tag -a vX.Y.Z -m "ilixPatch X.Y.Z" && git push origin vX.Y.Z` (el tag tiene que coincidir con la versión).

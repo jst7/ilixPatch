@@ -73,7 +73,7 @@ pub fn new_repo(dir: &Path) -> PathBuf {
     fs::create_dir_all(dir).unwrap();
     sh(dir, &["init", "-q", "-b", "main"]);
     configure(dir);
-    dir.canonicalize().unwrap()
+    dunce::canonicalize(dir).unwrap()
 }
 
 pub fn write(path: &Path, s: impl AsRef<[u8]>) {
@@ -90,7 +90,7 @@ pub fn commit_all(dir: &Path, msg: &str) {
 
 pub fn tmp() -> (tempfile::TempDir, PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let p = t.path().canonicalize().unwrap();
+    let p = dunce::canonicalize(t.path()).unwrap();
     (t, p)
 }
 

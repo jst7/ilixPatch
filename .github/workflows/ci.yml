@@ -60,7 +60,8 @@ jobs:
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: tests
-        run: cargo test --workspace
+        # --no-fail-fast: report every failing test binary in one run, not just the first.
+        run: cargo test --workspace --no-fail-fast
       - name: THIRD_PARTY_LICENSES is up to date
         if: runner.os == 'Linux'
         run: node scripts/third-party-licenses.mjs --check

@@ -1,0 +1,6 @@
+# Same line endings on every OS (Windows checkouts would otherwise get CRLF and
+# break tests that compare file contents). Binary files are detected automatically.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary

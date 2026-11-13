@@ -300,6 +300,11 @@ for f in src/lib/*/selftest.mjs src/lib/curl.selftest.mjs; do node "$f" || break
 - **App icon**: edit `app/src-tauri/icons/icon.svg`, then `cd app && npx tauri icon src-tauri/icons/icon.svg`.
 
 ### Releasing
+**With the script** (recommended): push your commits to `main`, wait for CI to be green, then run
+`node scripts/release.mjs` — it asks *major / medium / minor*, checks (with `gh`) that CI passed on
+that commit, bumps the version everywhere, commits, tags and pushes. `--dry-run` shows what it would do.
+
+**By hand:**
 1. Bump the version in `Cargo.toml` (`[workspace.package]`), `app/src-tauri/tauri.conf.json` and `app/package.json`.
 2. Commit and push, then tag that commit and push the tag:
    `git tag -a vX.Y.Z -m "ilixPatch X.Y.Z" && git push origin vX.Y.Z` (the tag must match the version).

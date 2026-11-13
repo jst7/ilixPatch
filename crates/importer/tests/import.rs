@@ -45,10 +45,11 @@ fn find<'a>(nodes: &'a [ImportNode], name: &str) -> Option<&'a ImportNode> {
 
 fn new_project() -> (tempfile::TempDir, PathBuf, PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let root = t.path().canonicalize().unwrap().join("proj");
+    // dunce: no \\?\ prefix on Windows, like the paths the code returns.
+    let root = dunce::canonicalize(t.path()).unwrap().join("proj");
     fs::create_dir_all(&root).unwrap();
     project::init_project(&root).unwrap();
-    let global = t.path().canonicalize().unwrap().join("config");
+    let global = dunce::canonicalize(t.path()).unwrap().join("config");
     fs::create_dir_all(&global).unwrap();
     (t, root, global)
 }

@@ -60,7 +60,7 @@ fn new_repo(dir: &Path) -> PathBuf {
     fs::create_dir_all(dir).unwrap();
     sh(dir, &["init", "-q", "-b", "main"]);
     configure(dir);
-    dir.canonicalize().unwrap()
+    dunce::canonicalize(dir).unwrap()
 }
 
 fn write(path: &Path, s: &str) {
@@ -77,7 +77,7 @@ fn commit_all(dir: &Path, msg: &str) {
 
 fn tmp() -> (tempfile::TempDir, PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let p = t.path().canonicalize().unwrap();
+    let p = dunce::canonicalize(t.path()).unwrap();
     (t, p)
 }
 
@@ -112,7 +112,7 @@ fn discovers_nested_and_enclosing_repos() {
     fs::create_dir_all(proj.join("plain/deeper")).unwrap();
 
     let roots = git::discover_repos(&proj).unwrap();
-    let c = proj.join("c").canonicalize().unwrap();
+    let c = dunce::canonicalize(proj.join("c")).unwrap();
     assert_eq!(roots, [a.clone(), a_sub.clone(), b.clone(), c]);
     // The broken `.git` file can't be opened and is left out of `repos`.
     let infos = git::repos(&proj).unwrap();
@@ -492,7 +492,7 @@ fn fetch_pull_push_with_local_remote() {
     git::push(&a).unwrap();
 
     sh(&base, &["clone", "-q", &url, "b"]);
-    let b = base.join("b").canonicalize().unwrap();
+    let b = dunce::canonicalize(base.join("b")).unwrap();
     configure(&b);
     write(&b.join("x.toml"), "3");
     commit_all(&b, "three");

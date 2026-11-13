@@ -348,6 +348,15 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D52 · Script de publicación y pruebas multiplataforma antes de publicar ✅
+- **`scripts/release.mjs`** (Node, funciona igual en macOS, Linux y Windows): pregunta *major / medium / minor* (X.0.0, x.Y.0 o x.y.Z), o se le pasa la parte o la versión exacta.
+  - **Antes de tocar nada** comprueba: rama `main`, sin cambios sin commit, al día con `origin`, **sin commits sin subir** y que **el CI pasó en verde en ese commit** (con `gh run list`). Si no hay `gh`, avisa y pide confirmación. `--skip-ci` salta la comprobación.
+  - Sube la versión en `Cargo.toml`, `tauri.conf.json`, `package.json`, `package-lock.json` y `Cargo.lock`, y regenera las licencias. Opcionalmente ejecuta las comprobaciones locales. Hace commit "Release X.Y.Z", el tag `vX.Y.Z` y, tras confirmar, el push, que lanza el workflow de release (D40).
+  - `--dry-run` enseña lo que haría sin cambiar nada. Las respuestas se guardan en cola, así que también se le pueden pasar por tubería.
+- **Flujo:** push a `main` → CI en verde (los tres sistemas) → `node scripts/release.mjs`. Así una release nunca parte de un `main` roto y no hace falta sacar versiones para descubrir fallos.
+- **CI con `cargo test --no-fail-fast`:** antes, en cuanto fallaba un binario de tests no se ejecutaban los siguientes, y los fallos de Windows aparecían de uno en uno, release a release.
+- **Tests y Windows:** las rutas de los tests se canonicalizan con `dunce` (como el código), porque `std::fs::canonicalize` añade `\\?\` en Windows. El test de TLS con certificado de cliente acepta en Windows "conexión cerrada", porque el sistema corta el socket antes de leer la alerta de TLS 1.3. `.gitattributes` fija `eol=lf` para que los tests no vean `\r\n`.
+
 ## D51 · Agrupado automático de pestañas (interruptor) ✅
 - **Interruptor** en la cabecera de la barra de pestañas ("Agrupar automáticamente por proyecto"). Se guarda con las carpetas (D50), en `localStorage`.
 - **Encendido:** las carpetas se calculan solas en cada momento, sin moverlas a mano:

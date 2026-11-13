@@ -210,7 +210,7 @@ fn pull_with_merge_and_rebase_against_local_remote() {
     git::push(&a).unwrap();
 
     sh(&base, &["clone", "-q", &url, "b"]);
-    let b = base.join("b").canonicalize().unwrap();
+    let b = dunce::canonicalize(base.join("b")).unwrap();
     configure(&b);
     write(&b.join("req.toml"), "a\nremote\nc\n");
     commit_all(&b, "remote change");

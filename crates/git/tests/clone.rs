@@ -29,7 +29,7 @@ fn bare_remote(base: &Path) -> PathBuf {
     }
     sh(&work, &["switch", "-q", "main"]);
     sh(base, &["clone", "-q", "--bare", "work", "remote.git"]);
-    let bare = base.join("remote.git").canonicalize().unwrap();
+    let bare = dunce::canonicalize(base.join("remote.git")).unwrap();
     sh(&bare, &["update-server-info"]);
     bare
 }
