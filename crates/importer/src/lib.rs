@@ -1,4 +1,4 @@
-//! Postman (D31) and OpenAPI / Swagger (D53) importer.
+//! Postman (D31) and OpenAPI / Swagger (D53) importer, and Postman exporter (D58).
 //!
 //! 1. [`parse_paths`] reads collection / environment / globals `.json` files,
 //!    "Export data" `.zip` dumps, OpenAPI 3.x / Swagger 2.0 specs (JSON or
@@ -16,6 +16,7 @@
 mod apply;
 mod auth_map;
 mod convert;
+mod export;
 mod openapi;
 mod parse;
 mod session;
@@ -28,6 +29,10 @@ use serde::{Deserialize, Serialize};
 
 pub use apply::{ApplyContext, apply, default_plan};
 pub use convert::ConvertOptions;
+pub use export::{
+    ExportError, ExportOptions, ExportReport, ExportWarning, POSTMAN_SCHEMA_V21, collection_json,
+    environment_json, export_collection_file, export_postman,
+};
 pub use openapi::GroupBy;
 pub use parse::{MAX_FILE, Parsed, parse_paths, parse_paths_with};
 pub use session::Sessions;

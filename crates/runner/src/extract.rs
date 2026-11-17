@@ -1,5 +1,6 @@
 //! D48: apply the `[[extract]]` rules of a request to its response.
 
+use ilixpatch_core::extract::{PathStep as Step, parse_json_path as parse_path};
 use ilixpatch_core::{Extract, ExtractFrom, ExtractScope};
 use ilixpatch_scripting::{VarScope, VarUpdate};
 use serde_json::Value;
@@ -13,73 +14,6 @@ pub fn needs_body(rules: &[Extract]) -> bool {
                 ExtractFrom::Json | ExtractFrom::Body | ExtractFrom::Regex
             )
     })
-}
-
-/// One step of a JSON path.
-#[derive(Debug, PartialEq)]
-enum Step {
-    Key(String),
-    Index(usize),
-}
-
-/// `data.items[0].id`, `$.a["b.c"]`, `[2].name` (a leading `$` is optional).
-fn parse_path(path: &str) -> Result<Vec<Step>, String> {
-    let p = path.trim();
-    let p = p.strip_prefix('$').unwrap_or(p);
-    let mut steps = Vec::new();
-    let mut chars = p.chars().peekable();
-    let mut key = String::new();
-    let flush = |key: &mut String, steps: &mut Vec<Step>| {
-        if !key.is_empty() {
-            steps.push(Step::Key(std::mem::take(key)));
-        }
-    };
-    while let Some(c) = chars.next() {
-        match c {
-            '.' => flush(&mut key, &mut steps),
-            '[' => {
-                flush(&mut key, &mut steps);
-                let mut inner = String::new();
-                let mut closed = false;
-                let quoted = matches!(chars.peek(), Some('"' | '\''));
-                if quoted {
-                    let q = chars.next().unwrap_or('"');
-                    for c in chars.by_ref() {
-                        if c == q {
-                            break;
-                        }
-                        inner.push(c);
-                    }
-                    if chars.next() == Some(']') {
-                        closed = true;
-                    }
-                    if !closed {
-                        return Err(format!("unclosed [ in path `{path}`"));
-                    }
-                    steps.push(Step::Key(inner));
-                } else {
-                    for c in chars.by_ref() {
-                        if c == ']' {
-                            closed = true;
-                            break;
-                        }
-                        inner.push(c);
-                    }
-                    if !closed {
-                        return Err(format!("unclosed [ in path `{path}`"));
-                    }
-                    let i = inner.trim();
-                    match i.parse::<usize>() {
-                        Ok(n) => steps.push(Step::Index(n)),
-                        Err(_) => steps.push(Step::Key(i.to_string())),
-                    }
-                }
-            }
-            c => key.push(c),
-        }
-    }
-    flush(&mut key, &mut steps);
-    Ok(steps)
 }
 
 /// The value at `path` (strings unquoted; objects, arrays, numbers… as JSON).

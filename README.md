@@ -126,6 +126,7 @@ client certificates and proxies, and descriptive errors when something fails.
    `pm.variables`, `postman.setNextRequest`, Chai…
 3. In CI, replace `newman run` with `ilixpatch run`: the flags (`-e`, `-d`, `-n`, `-r cli,junit,html`, `--bail`,
    `--folder`, `--env-var`, `--ssl-client-cert`…) and the exit codes are the same.
+4. Going back, or sharing with someone who uses Postman? Right-click a project or collection › **Export to Postman…**.
 
 ## Run it in CI
 The CLI is a single binary. In GitHub Actions:
@@ -175,6 +176,10 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish)
 - **OpenAPI 3.0 / 3.1 and Swagger 2.0**: JSON or YAML, from a file or a URL. Folders by tag or by URL path, parameter and
   body examples (generated from the schema when missing), auth from the security schemes.
 - A wizard shows what will be created and lets you **drag each item wherever you want** in your project.
+
+**Export**
+- **To Postman**: a project (every collection and its environments) or a single collection, as Collection v2.1 and
+  environment files that Postman imports directly. Secret values are left empty unless you choose to include them.
 
 **Scripts, tests and automation**
 - Pre-request and test scripts with the Postman `pm.*` API on an embedded QuickJS engine (Chai `expect`, `pm.response`,
@@ -349,6 +354,14 @@ ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --proj
 OpenAPI 3.0/3.1 and Swagger 2.0 (JSON or YAML, files or URLs): one collection per spec with a `baseUrl` variable, one
 request per operation (folders by tag or by URL path), parameter and body examples (generated from the schema when
 missing) and auth from `security`. Details in [docs/CLI.md](docs/CLI.md#ilixpatch-import-openapi).
+
+### Exporting to Postman
+In the app: right-click a project or a collection › **Export to Postman…**. From the command line:
+```sh
+ilixpatch export postman ./my-project --out ./postman-export [--include-secrets]
+```
+Writes one `*.postman_collection.json` (v2.1) per collection and one `*.postman_environment.json` per environment.
+Details in [docs/CLI.md](docs/CLI.md#ilixpatch-export-postman).
 
 ## Project format
 Everything is plain TOML in your repo: **Project > Collection > Folder > Request**.

@@ -1,5 +1,6 @@
 mod auth_commands;
 mod env_commands;
+mod export_commands;
 mod git_commands;
 mod history_commands;
 mod import_commands;
@@ -568,6 +569,8 @@ pub fn run() {
             git_commands::git_checkout_commit,
             import_commands::import_preview,
             import_commands::import_apply,
+            export_commands::export_postman_project,
+            export_commands::export_postman_collection,
             update_commands::update_check,
             oauth2_commands::oauth2_get_token,
             oauth2_commands::oauth2_cancel_flow,

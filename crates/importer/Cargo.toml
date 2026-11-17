@@ -1,6 +1,6 @@
 [package]
 name = "ilixpatch-importer"
-description = "Import Postman collections, environments and data dumps into ilixPatch projects"
+description = "Import Postman collections, environments, data dumps and OpenAPI specs into ilixPatch projects, and export projects to Postman"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

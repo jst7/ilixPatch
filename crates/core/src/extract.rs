@@ -55,3 +55,70 @@ pub enum ExtractScope {
     Collection,
     Global,
 }
+
+/// One step of a JSON path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathStep {
+    Key(String),
+    Index(usize),
+}
+
+/// `data.items[0].id`, `$.a["b.c"]`, `[2].name` (a leading `$` is optional).
+pub fn parse_json_path(path: &str) -> Result<Vec<PathStep>, String> {
+    let p = path.trim();
+    let p = p.strip_prefix('$').unwrap_or(p);
+    let mut steps = Vec::new();
+    let mut chars = p.chars().peekable();
+    let mut key = String::new();
+    let flush = |key: &mut String, steps: &mut Vec<PathStep>| {
+        if !key.is_empty() {
+            steps.push(PathStep::Key(std::mem::take(key)));
+        }
+    };
+    while let Some(c) = chars.next() {
+        match c {
+            '.' => flush(&mut key, &mut steps),
+            '[' => {
+                flush(&mut key, &mut steps);
+                let mut inner = String::new();
+                let mut closed = false;
+                let quoted = matches!(chars.peek(), Some('"' | '\''));
+                if quoted {
+                    let q = chars.next().unwrap_or('"');
+                    for c in chars.by_ref() {
+                        if c == q {
+                            break;
+                        }
+                        inner.push(c);
+                    }
+                    if chars.next() == Some(']') {
+                        closed = true;
+                    }
+                    if !closed {
+                        return Err(format!("unclosed [ in path `{path}`"));
+                    }
+                    steps.push(PathStep::Key(inner));
+                } else {
+                    for c in chars.by_ref() {
+                        if c == ']' {
+                            closed = true;
+                            break;
+                        }
+                        inner.push(c);
+                    }
+                    if !closed {
+                        return Err(format!("unclosed [ in path `{path}`"));
+                    }
+                    let i = inner.trim();
+                    match i.parse::<usize>() {
+                        Ok(n) => steps.push(PathStep::Index(n)),
+                        Err(_) => steps.push(PathStep::Key(i.to_string())),
+                    }
+                }
+            }
+            c => key.push(c),
+        }
+    }
+    flush(&mut key, &mut steps);
+    Ok(steps)
+}

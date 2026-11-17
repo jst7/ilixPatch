@@ -1,3 +1,4 @@
+mod export_cmd;
 mod fmt;
 mod hints;
 mod import_cmd;
@@ -31,6 +32,11 @@ enum Command {
     Import {
         #[command(subcommand)]
         cmd: import_cmd::ImportCmd,
+    },
+    /// Export to other tools (Postman)
+    Export {
+        #[command(subcommand)]
+        cmd: export_cmd::ExportCmd,
     },
     /// List the requests and environments of a collection or project
     Ls {
@@ -183,6 +189,7 @@ async fn main() -> ExitCode {
         Command::Ls { path } => ls_cmd(&path),
         Command::CheckUpdate => check_update_cmd().await,
         Command::Import { cmd } => import_cmd::run(cmd).await,
+        Command::Export { cmd } => export_cmd::run(cmd),
         Command::Run(args) => run_cmd::run(args).await,
         Command::Load(args) => load_cmd::run(args).await,
     };

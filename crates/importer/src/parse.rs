@@ -222,6 +222,13 @@ fn parse_item(item: &Value, ctx: &Ctx<'_>, path: &str) -> SrcNode {
             Some(r) => r.clone(),
             None => serde_json::json!({}),
         };
+        // Request settings live on the item; keep them with the request for `convert`.
+        let mut request = request;
+        if let (Some(b @ Value::Object(_)), Value::Object(r)) =
+            (item.get("protocolProfileBehavior"), &mut request)
+        {
+            r.insert("protocolProfileBehavior".into(), b.clone());
+        }
         let own_auth = auth.or_else(|| auth_of(&request));
         let effective_auth = match &own_auth {
             Some(a) if auth_type(a) != "inherit" => Some(a.clone()),

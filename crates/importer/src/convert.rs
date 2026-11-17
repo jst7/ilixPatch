@@ -1,7 +1,7 @@
 //! Postman request item → ilixPatch [`Request`].
 
 use ilixpatch_core::auth::Auth;
-use ilixpatch_core::{Body, HttpMethod, Request, Scripts};
+use ilixpatch_core::{Body, HttpMethod, Request, RequestSettings, Scripts};
 use indexmap::IndexMap;
 use serde_json::Value;
 
@@ -318,6 +318,22 @@ fn join_scripts(parts: Vec<String>) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("\n\n"))
 }
 
+/// Postman `protocolProfileBehavior` → request settings (D29). What has no
+/// equivalent (cookies, header encoding…) is ignored.
+fn settings_of(req: &Value) -> RequestSettings {
+    let b = req.get("protocolProfileBehavior");
+    let flag = |k: &str| b.and_then(|b| b.get(k)).and_then(Value::as_bool);
+    RequestSettings {
+        follow_redirects: flag("followRedirects"),
+        max_redirects: b
+            .and_then(|b| b.get("maxRedirects"))
+            .and_then(Value::as_u64)
+            .and_then(|n| u32::try_from(n).ok()),
+        verify_ssl: flag("strictSSL"),
+        ..Default::default()
+    }
+}
+
 /// Convert one request node. Warnings are appended to `out`.
 /// `use_effective`: give the request its inherited Postman auth (when it is
 /// placed without the ancestors it inherited from) instead of its own.
@@ -425,7 +441,7 @@ pub(crate) fn convert(
             pre_request: join_scripts(pre),
             tests: join_scripts(tests),
         },
-        settings: Default::default(),
+        settings: settings_of(req),
         auth,
         extract: Default::default(),
     }

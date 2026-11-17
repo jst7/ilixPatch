@@ -707,6 +707,28 @@ export interface ImportReport {
   warnings: ImportWarning[];
 }
 
+// ---------- Exporter: Postman (D58) ----------
+
+export interface ExportWarning {
+  /** What it is about: "Collection/folder/Request". */
+  item: string;
+  /** Stable code: "extract_script", "setting_timeout", "setting_http_version". */
+  code: string;
+  /** Human-readable English detail (the UI may translate by `code`). */
+  message: string;
+}
+
+export interface ExportReport {
+  /** Absolute paths of the files written. */
+  files: string[];
+  collections: number;
+  requests: number;
+  environments: number;
+  /** Secret values written empty (include_secrets off). */
+  secrets_omitted: number;
+  warnings: ExportWarning[];
+}
+
 // ---------- Update check (D54) ----------
 
 /** The latest published release on GitHub (drafts and pre-releases never count). */
@@ -1197,6 +1219,14 @@ export const api = {
   importPreview: (paths: string[], urls: string[], options: ParseOptions) =>
     invoke<ImportPreview>("import_preview", { paths, urls, options }),
   importApply: (plan: ImportPlan) => invoke<ImportReport>("import_apply", { plan }),
+
+  // Exporter: Postman (D58)
+  /** Every collection and the project environments as Postman v2.1 / environment files in `outDir`. */
+  exportPostmanProject: (projectPath: string, outDir: string, includeSecrets: boolean) =>
+    invoke<ExportReport>("export_postman_project", { projectPath, outDir, includeSecrets }),
+  /** One collection into `file` (its legacy collection environments go next to it). */
+  exportPostmanCollection: (collectionPath: string, file: string, includeSecrets: boolean) =>
+    invoke<ExportReport>("export_postman_collection", { collectionPath, file, includeSecrets }),
 
   // Update check (D54): asks GitHub with the app's network settings; nothing is downloaded or installed.
   updateCheck: () => invoke<UpdateCheck>("update_check"),

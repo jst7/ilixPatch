@@ -350,6 +350,30 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D58 · Exportar a Postman ✅
+- **Qué:** un proyecto (todas sus colecciones y sus entornos) o una sola colección se exportan a ficheros que Postman importa
+  directamente: `<colección>.postman_collection.json` (**Collection v2.1**) y `<entorno>.postman_environment.json`.
+  - **App:** clic derecho en un proyecto › **Exportar a Postman…** (se elige una carpeta) o en una colección (se elige el
+    fichero). Al terminar, un resumen con lo escrito y los avisos.
+  - **CLI:** `ilixpatch export postman <proyecto|colección> --out <dir> [--include-secrets]`.
+- **Por qué:** quien viene de Postman debe poder volver, o compartir con alguien que lo usa. Saber que no quedas atrapado
+  hace más fácil probar la app.
+- **Es el inverso del importador (D31)** y vive en el mismo crate (`crates/importer/src/export.rs`), con la
+  misma correspondencia de auth (todos los tipos, D39), bodies, scripts y URLs. Un test exporta un proyecto, lo vuelve a
+  importar y comprueba que las peticiones salen iguales.
+- **Lo que Postman no tiene:**
+  - Variables de la respuesta (D48) → un **script de tests equivalente** (`pm.environment.set`, `pm.collectionVariables.set`,
+    `pm.globals.set`) que recorre la misma ruta JSON. Se avisa.
+  - Ajustes de la petición (D29): las redirecciones y la verificación SSL van a `protocolProfileBehavior`. El timeout
+    y la versión HTTP no tienen equivalente: se avisa. Para que el viaje de ida y vuelta funcione, el importador ahora
+    también lee `protocolProfileBehavior`.
+- **Secretos:** por defecto las variables secretas se exportan **vacías** (con tipo `secret`), porque el fichero
+  exportado suele acabar compartido. La app pregunta si se quieren incluir, solo cuando el proyecto tiene alguno; en la
+  CLI se piden con `--include-secrets`. Los tokens de OAuth 2.0 solo se exportan con esa opción.
+- **No se exportan** los entornos globales ni las globales: son del usuario, no del proyecto.
+- El lector de rutas JSON de D48 se movió a `ilixpatch-core` (`extract::parse_json_path`) para que el runner y el
+  exportador recorran las rutas igual.
+
 ## D57 · Interfaz más compacta con una escala tipográfica única ✅
 - **Cinco tamaños de letra y ninguno más**, como variables en `app/src/lib/styles/global.css`: `--fs-xs` 11px (insignias y contadores), `--fs-sm` 12px (texto secundario, etiquetas y tablas), `--fs-md` 13px (texto base, controles y editores), `--fs-lg` 15px (títulos de sección y de diálogo) y `--fs-xl` 18px (títulos grandes). Antes había 13 tamaños distintos, entre 10 y 20px.
   - **Por qué:** la mezcla de tamaños daba una sensación desigual. El mínimo pasa a 11px porque 10px no se leía bien; el texto base baja de 14 a 13px, el tamaño habitual en herramientas densas (IDEs, clientes de API).

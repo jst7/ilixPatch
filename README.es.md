@@ -237,7 +237,8 @@ cd .. && cargo build --release -p ilixpatch-cli   # → target/release/ilixpatch
 2. Selecciona el entorno `dev`.
 3. Pulsa `⌘/Ctrl+Enter`.
 
-Para traer tu trabajo de Postman o una especificación OpenAPI, usa **+ › Importar (Postman, OpenAPI)…**.
+Para traer tu trabajo de Postman o una especificación OpenAPI, usa **+ › Importar (Postman, OpenAPI)…**. Para llevarlo
+a Postman, haz clic derecho en un proyecto o una colección › **Exportar a Postman…**.
 
 ## CLI
 ```sh
@@ -245,6 +246,7 @@ ilixpatch run examples/demo-project --env dev -r cli,junit --reporter-junit-expo
 ilixpatch load examples/demo-project/jsonplaceholder --vus 5 --duration 30s --max-p95 500
 ilixpatch import postman coleccion.json --project ./mi-proyecto
 ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --project ./mi-proyecto
+ilixpatch export postman ./mi-proyecto --out ./exportacion-postman
 ```
 Todos los comandos, flags (compatibles con Newman) y capacidades están explicados en **[docs/CLI.md](docs/CLI.md)**.
 

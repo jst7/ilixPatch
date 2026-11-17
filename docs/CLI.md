@@ -24,6 +24,7 @@ Comandos:
 - [`ilixpatch load`](#ilixpatch-load)
 - [`ilixpatch import postman`](#ilixpatch-import-postman)
 - [`ilixpatch import openapi`](#ilixpatch-import-openapi)
+- [`ilixpatch export postman`](#ilixpatch-export-postman)
 - [`ilixpatch ls`](#ilixpatch-ls)
 - [`ilixpatch check-update`](#ilixpatch-check-update)
 - [Opciones de red (TLS, mTLS, proxy)](#opciones-de-red-tls-mtls-proxy)
@@ -245,6 +246,30 @@ Qué se obtiene:
 
 La descarga sigue redirecciones, falla con estados que no son 2xx y admite hasta 200 MB. La especificación de GitHub
 (11 MB de YAML, 1.280 operaciones) se importa en menos de un segundo.
+
+## `ilixpatch export postman`
+Exporta un proyecto o una colección a **Postman**: el inverso de `import postman`.
+
+```sh
+ilixpatch export postman ./my-project --out ./postman-export
+ilixpatch export postman ./my-project/shop-api --out ./postman-export --include-secrets
+```
+
+| Argumento / flag | Descripción |
+|---|---|
+| `<dir>` | Un proyecto (todas sus colecciones y sus entornos) o una colección |
+| `-o`, `--out <dir>` | Carpeta de salida. Se crea si no existe; los ficheros con el mismo nombre se sobrescriben |
+| `--include-secrets` | Escribe los valores de las variables secretas. Por defecto se exportan vacíos (con tipo `secret`) |
+
+Qué se obtiene:
+- **Una `<colección>.postman_collection.json` (v2.1) por colección**, con carpetas, variables de colección, auth de
+  colección, carpeta y petición (todos los tipos), headers, query, bodies (JSON, texto y formulario) y scripts.
+- **Un `<entorno>.postman_environment.json` por entorno** del proyecto, con las variables desactivadas aún desactivadas.
+- Las **variables de la respuesta** (`[[extract]]`) se convierten en un script de tests equivalente (`pm.environment.set`…).
+- Los ajustes de la petición pasan a `protocolProfileBehavior` (redirecciones y verificación SSL). El timeout y la
+  versión HTTP no tienen equivalente en Postman: se avisa.
+
+Lo exportado se puede volver a importar con `ilixpatch import postman` sin perder nada.
 
 ## `ilixpatch ls`
 Lista el contenido de un proyecto o colección sin ejecutar nada:

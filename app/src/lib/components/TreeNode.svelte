@@ -7,6 +7,7 @@
   import EnvIcon from "./EnvIcon.svelte";
   import { git } from "$lib/stores/git.svelte";
   import { importer } from "$lib/stores/import.svelte";
+  import { exportCollectionToPostman, exportProjectToPostman } from "$lib/export/postman";
   import { stateColor } from "$lib/git/status";
   import InlineInput from "./InlineInput.svelte";
   import RequestRow from "./RequestRow.svelte";
@@ -90,6 +91,7 @@
         list.push(
           { label: t("tree.newCollection"), action: () => ws.startCreate("collection", path, projectPath) },
           { label: t("tree.importPostman"), action: () => importer.open(projectPath) },
+          { label: t("tree.exportPostman"), action: () => exportProjectToPostman(projectPath) },
           gitItem(),
         );
       }
@@ -104,6 +106,9 @@
       { label: t("tree.authorization"), action: () => ws.openContainer(path) },
       { label: t("tree.run"), action: () => ws.openTab({ kind: "runner", target: path }) },
       { label: t("tree.loadTest"), action: () => ws.openTab({ kind: "load", target: path }) },
+      ...(props.kind === "collection"
+        ? [{ label: t("tree.exportPostman"), action: () => exportCollectionToPostman(path, name) }]
+        : []),
       gitItem(),
       { label: t("tree.delete"), danger: true, action: () => confirmDelete(path, name, projectPath) },
     ];
