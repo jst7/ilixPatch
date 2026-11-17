@@ -208,7 +208,7 @@
     background: var(--hover);
   }
   .chip {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 4px;

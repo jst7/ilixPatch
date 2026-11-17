@@ -420,9 +420,9 @@
   .history-banner {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 12px;
-    padding: 4px 12px;
-    font-size: 12px;
+    gap: 4px 10px;
+    padding: 4px 10px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     background: var(--surface-2);
     border-bottom: 1px solid var(--border);
@@ -439,16 +439,16 @@
     text-align: center;
     color: var(--muted);
     max-width: 360px;
-    padding: 16px;
+    padding: 12px;
   }
   .ph-title {
     color: var(--text);
     font-weight: 600;
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
   .keys {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .notice {
     position: fixed;
@@ -462,11 +462,11 @@
     color: var(--err);
     border: 1px solid var(--err);
     border-radius: 8px;
-    padding: 8px 8px 8px 12px;
+    padding: 8px 8px 8px 10px;
     box-shadow: var(--shadow);
     z-index: 60;
     word-break: break-word;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .notice button {
     padding: 0 6px;

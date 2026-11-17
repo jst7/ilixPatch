@@ -724,7 +724,7 @@
     min-height: 41px;
   }
   .collapsed header {
-    padding: 10px 0 8px;
+    padding: 8px 0 8px;
     justify-content: center;
     /* The rail is narrow: the toggle and the new-request button stack. */
     flex-direction: column;
@@ -732,7 +732,7 @@
   }
   .title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
@@ -741,7 +741,7 @@
     text-overflow: ellipsis;
   }
   .count {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .toggle {
@@ -765,19 +765,19 @@
     flex: 1;
     overflow: auto;
     padding: 6px 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .empty {
     color: var(--muted);
-    font-size: 12px;
-    margin: 8px 12px;
+    font-size: var(--fs-sm);
+    margin: 8px 10px;
   }
   .tab {
     position: relative;
     display: flex;
     align-items: center;
     gap: 6px;
-    min-height: 36px;
+    min-height: 32px;
     margin: 1px 4px;
     padding: 3px 4px 3px 8px;
     border-radius: 5px;
@@ -787,7 +787,7 @@
   .collapsed .tab {
     justify-content: center;
     padding: 3px 0;
-    min-height: 30px;
+    min-height: 26px;
   }
   .tab:hover {
     background: var(--hover);
@@ -820,7 +820,7 @@
   .badge {
     flex: none;
     width: 34px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .collapsed .badge {
@@ -846,7 +846,7 @@
     white-space: nowrap;
   }
   .hint {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .rail-dot {
@@ -881,14 +881,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    min-height: 28px;
+    min-height: 24px;
     margin: 1px 4px;
     padding: 2px 6px 2px 8px;
     border-radius: 5px;
     cursor: pointer;
     user-select: none;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .folder:hover {
     background: var(--hover);
@@ -915,13 +915,13 @@
   }
   .fcount {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .rename {
     flex: 1;
     min-width: 0;
     padding: 1px 4px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .toggle {
     flex: none;

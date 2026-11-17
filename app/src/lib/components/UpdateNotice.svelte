@@ -47,14 +47,14 @@
     z-index: 60;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 10px 8px 10px 14px;
+    gap: 10px;
+    padding: 8px 8px 8px 10px;
     max-width: min(440px, calc(100vw - 32px));
     background: var(--surface);
     border: 1px solid var(--accent);
     border-radius: 8px;
     box-shadow: var(--shadow);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .text {
     display: flex;
@@ -64,7 +64,7 @@
   }
   .muted {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .buttons {
     display: flex;

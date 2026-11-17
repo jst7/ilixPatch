@@ -483,7 +483,7 @@
   .o2 {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
   }
   section {
     display: flex;
@@ -491,13 +491,13 @@
     gap: 8px;
   }
   .token {
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface-2);
   }
   .sec-title {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -507,13 +507,13 @@
     display: grid;
     grid-template-columns: 170px 1fr;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .row.top {
     align-items: start;
   }
   .lbl {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--muted);
   }
   .ctl {
@@ -532,13 +532,13 @@
   }
   input:not([type="checkbox"]),
   select {
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
     min-width: 0;
   }
   .small {
-    font-size: 12px;
-    padding: 4px 10px;
+    font-size: var(--fs-sm);
+    padding: 4px 8px;
   }
   .muted {
     color: var(--muted);
@@ -550,8 +550,8 @@
   .details {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 14px;
-    font-size: 12px;
+    gap: 4px 10px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     padding-left: 182px;
   }
@@ -568,25 +568,25 @@
     flex-wrap: wrap;
   }
   .waiting {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--warn);
   }
   .err-text {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
     word-break: break-word;
   }
   .ok-text {
     color: var(--ok);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
   }
   .check-row {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .check-row input {
     accent-color: var(--accent);
@@ -597,7 +597,7 @@
     border: none;
     background: none;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 0;
   }
   .adv-toggle:hover {
@@ -625,7 +625,7 @@
     border-radius: 10px;
     background: var(--surface);
     color: var(--text);
-    padding: 14px 16px;
+    padding: 10px 12px;
   }
   .manage::backdrop {
     background: color-mix(in srgb, var(--bg) 60%, transparent);
@@ -637,7 +637,7 @@
   }
   .tok-list {
     list-style: none;
-    margin: 10px 0;
+    margin: 8px 0;
     padding: 0;
   }
   .tok-list li {
@@ -647,12 +647,12 @@
   .tok-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
   }
   .tok-name {
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .spacer {
     flex: 1;
@@ -665,7 +665,7 @@
     padding: 8px;
     max-height: 240px;
     overflow: auto;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;

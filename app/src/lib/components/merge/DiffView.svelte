@@ -201,13 +201,13 @@
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
   .bar button.nav {
     padding: 2px 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .count,
   .muted {
@@ -222,8 +222,8 @@
   }
   .head,
   .gap {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
     color: var(--text);
     background: var(--surface-2);
     border-bottom: 1px solid var(--border);

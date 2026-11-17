@@ -207,7 +207,7 @@
     flex: 1 1 140px;
     min-width: 80px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: var(--fs-md);
     border-color: transparent;
     background: none;
     padding: 4px 6px;
@@ -219,8 +219,8 @@
     border-color: var(--accent);
   }
   .small {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
   }
   .save {
     position: relative;
@@ -235,7 +235,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px;
+    padding: 8px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -251,7 +251,7 @@
   }
   .field span,
   .label {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .field input {
@@ -263,10 +263,10 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .proj {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--muted);
     text-transform: uppercase;
@@ -300,7 +300,7 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 6px 8px;
   }
   .actions {

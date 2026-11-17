@@ -173,22 +173,22 @@
     display: flex;
     flex-direction: column;
     height: min(640px, calc(100vh - 80px));
-    padding: 14px 16px 16px;
+    padding: 10px 12px 12px;
     box-sizing: border-box;
     gap: 8px;
   }
   .licenses header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .licenses h2 {
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
   .hint {
     margin: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .viewer {
     flex: 1;
@@ -200,7 +200,7 @@
   .credits {
     margin: 6px 0 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   button.link {
     border: none;
@@ -226,7 +226,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 24px 18px;
+    padding: 16px 16px 14px;
     text-align: center;
   }
   .logo {
@@ -234,31 +234,31 @@
   }
   h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--fs-xl);
   }
   .tagline {
     margin: 4px 0 0;
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .update {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    margin: -6px 0 14px;
+    margin: -6px 0 10px;
   }
   .update-result {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .update-result.err {
     color: var(--err);
     white-space: pre-wrap;
   }
   .version {
-    margin: 10px 0 14px;
-    font-size: 13px;
+    margin: 8px 0 10px;
+    font-size: var(--fs-md);
   }
   .version strong {
     font-family: ui-monospace, monospace;
@@ -266,15 +266,15 @@
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 6px 14px;
+    gap: 6px 10px;
     margin: 0;
     width: 100%;
-    padding: 12px 14px;
+    padding: 10px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface-2);
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-md);
     box-sizing: border-box;
   }
   dt {
@@ -295,14 +295,14 @@
     text-decoration: underline;
   }
   .copyright {
-    margin: 12px 0 0;
+    margin: 10px 0 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .actions {
     display: flex;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 12px;
   }
   button {
     font: inherit;
@@ -310,7 +310,7 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 6px 10px;
     cursor: pointer;
   }
   button.primary {

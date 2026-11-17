@@ -325,10 +325,10 @@
     background: color-mix(in srgb, var(--bg) 55%, transparent);
   }
   .content {
-    padding: 16px 20px 20px;
+    padding: 12px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
   header {
     display: flex;
@@ -337,13 +337,13 @@
   }
   h2 {
     margin: 0;
-    font-size: 17px;
+    font-size: var(--fs-lg);
   }
   .field {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .field > span:first-child {
     color: var(--muted);
@@ -368,7 +368,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     cursor: pointer;
   }
   .check input {
@@ -376,7 +376,7 @@
     accent-color: var(--accent);
   }
   .depth {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--muted);
   }
   .depth input {
@@ -384,22 +384,22 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
     word-break: break-all;
   }
   .invalid {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   details {
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 6px 10px;
+    padding: 6px 8px;
   }
   summary {
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .creds {
     display: flex;
@@ -439,13 +439,13 @@
     }
   }
   .phase {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .error {
     margin: 0;
     color: var(--err);
-    font-size: 13px;
+    font-size: var(--fs-md);
     white-space: pre-wrap;
     word-break: break-word;
     max-height: 160px;

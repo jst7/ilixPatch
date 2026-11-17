@@ -189,9 +189,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .chip-text {
     flex: 1;
@@ -210,10 +210,10 @@
     outline-offset: -1px;
   }
   .row {
-    padding: 5px 12px;
+    padding: 5px 10px;
     border-bottom: 1px solid var(--border);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .row:hover {
     background: var(--hover);
@@ -229,7 +229,7 @@
     min-width: 0;
   }
   .line2 {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     margin-top: 2px;
   }
@@ -242,7 +242,7 @@
   }
   .ref {
     flex: none;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 5px;
     border-radius: 4px;
     border: 1px solid var(--accent);
@@ -267,11 +267,11 @@
   .more {
     display: flex;
     justify-content: center;
-    padding: 10px;
+    padding: 8px;
   }
   .small {
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .muted {
     color: var(--muted);
@@ -282,7 +282,7 @@
     word-break: break-word;
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .center {
     text-align: center;

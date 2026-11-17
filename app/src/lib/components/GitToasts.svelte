@@ -32,12 +32,12 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    padding: 8px 8px 8px 12px;
+    padding: 8px 8px 8px 10px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: var(--shadow);
-    font-size: 13px;
+    font-size: var(--fs-md);
     white-space: pre-wrap;
     word-break: break-word;
   }

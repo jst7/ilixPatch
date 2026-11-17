@@ -129,10 +129,10 @@
   .bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 10px;
+    gap: 8px;
+    padding: 4px 8px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     min-height: 28px;
   }
   .what {
@@ -145,8 +145,8 @@
     margin-left: auto;
   }
   .note {
-    margin: 10px;
-    font-size: 12px;
+    margin: 8px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .note.warn {
@@ -196,7 +196,7 @@
     background: #fff;
   }
   audio {
-    margin: 24px;
+    margin: 16px;
     width: min(520px, 90%);
   }
   video {

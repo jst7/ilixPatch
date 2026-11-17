@@ -119,20 +119,20 @@
 
 <style>
   .extract {
-    padding: 8px 10px;
+    padding: 8px 8px;
     overflow: auto;
     min-height: 0;
   }
   .hint {
     margin: 0 0 8px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     line-height: 1.45;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   th {
     text-align: left;
@@ -152,7 +152,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 3px 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .mono {
     font-family: var(--mono);
@@ -179,7 +179,7 @@
     margin-top: 8px;
   }
   .small {
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 3px 8px;
+    font-size: var(--fs-sm);
   }
 </style>

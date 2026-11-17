@@ -350,6 +350,16 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D57 · Interfaz más compacta con una escala tipográfica única ✅
+- **Cinco tamaños de letra y ninguno más**, como variables en `app/src/lib/styles/global.css`: `--fs-xs` 11px (insignias y contadores), `--fs-sm` 12px (texto secundario, etiquetas y tablas), `--fs-md` 13px (texto base, controles y editores), `--fs-lg` 15px (títulos de sección y de diálogo) y `--fs-xl` 18px (títulos grandes). Antes había 13 tamaños distintos, entre 10 y 20px.
+  - **Por qué:** la mezcla de tamaños daba una sensación desigual. El mínimo pasa a 11px porque 10px no se leía bien; el texto base baja de 14 a 13px, el tamaño habitual en herramientas densas (IDEs, clientes de API).
+  - Los componentes y CodeMirror usan siempre las variables, nunca píxeles sueltos.
+- **Legibilidad:** `line-height` base de 1.35, suavizado de fuentes y cifras tabulares (las columnas de números, tiempos y tamaños quedan alineadas).
+- **Menos espacio vacío:**
+  - Controles con un relleno de `4px 8px` (antes `6px 10px`).
+  - Filas de árbol y listas de 24px (antes 26–28px); pestañas laterales de 32px (antes 36px).
+  - Los rellenos, márgenes y huecos grandes se reducen un escalón: 10→8, 12→10, 14→10, 16→12, 20→14 y 24→16px. Los pequeños (≤8px) no cambian.
+
 ## D56 · Body de formulario editable y ajuste de líneas en la respuesta ✅
 - **Body "Formulario (x-www-form-urlencoded)"**, el *x-www-form-urlencoded* de Postman, se puede **elegir y editar** con la misma tabla clave-valor que los parámetros y las cabeceras.
   - El modelo, el motor (`Body::Form`, que se envía como `application/x-www-form-urlencoded`), el importador de Postman y "Copiar como cURL" ya lo soportaban. Solo faltaba la interfaz, que lo mostraba como "no editable".

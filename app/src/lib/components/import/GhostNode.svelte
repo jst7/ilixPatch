@@ -139,7 +139,7 @@
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     cursor: grab;
     user-select: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .ghost:not(.root) {
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -168,7 +168,7 @@
   .badge {
     flex: none;
     width: 30px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .kind {
@@ -187,11 +187,11 @@
     min-width: 0;
     padding: 0 6px;
     height: 20px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .new {
     flex: none;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 5px;
     border-radius: 4px;
     background: var(--accent);

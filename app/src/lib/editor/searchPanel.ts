@@ -539,7 +539,7 @@ export const findPanelTheme = EditorView.theme({
     alignItems: "flex-start",
     gap: "4px",
     padding: "6px 8px",
-    fontSize: "12px",
+    fontSize: "var(--fs-sm)",
     fontFamily: "inherit",
     color: "var(--text)",
   },
@@ -562,7 +562,7 @@ export const findPanelTheme = EditorView.theme({
     minHeight: "26px",
     fontFamily:
       'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-    fontSize: "12px",
+    fontSize: "var(--fs-sm)",
     color: "var(--text)",
     backgroundColor: "var(--surface)",
     border: "1px solid var(--border)",
@@ -593,7 +593,7 @@ export const findPanelTheme = EditorView.theme({
     color: "var(--muted)",
     cursor: "pointer",
     fontFamily: "inherit",
-    fontSize: "12px",
+    fontSize: "var(--fs-sm)",
     lineHeight: "1",
   },
   ".cm-pm-btn:hover:not(:disabled)": { color: "var(--text)", backgroundColor: "var(--surface)" },
@@ -605,7 +605,7 @@ export const findPanelTheme = EditorView.theme({
     padding: "0 4px",
     fontFamily:
       'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-    fontSize: "11px",
+    fontSize: "var(--fs-xs)",
     fontWeight: "600",
   },
   ".cm-pm-toggle.cm-pm-on, .cm-pm-toggle.cm-pm-on:hover:not(:disabled)": {
@@ -638,6 +638,6 @@ export const findPanelTheme = EditorView.theme({
   },
   ".cm-pm-noresults .cm-pm-counter": { color: "var(--err)" },
   ".cm-pm-close": { marginLeft: "4px" },
-  ".cm-pm-error": { display: "none", color: "var(--err)", fontSize: "11px", paddingLeft: "2px" },
+  ".cm-pm-error": { display: "none", color: "var(--err)", fontSize: "var(--fs-xs)", paddingLeft: "2px" },
   ".cm-pm-invalid .cm-pm-error": { display: "block" },
 });

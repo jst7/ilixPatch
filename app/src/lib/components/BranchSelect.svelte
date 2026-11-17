@@ -306,7 +306,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .caret {
     flex: none;
@@ -345,7 +345,7 @@
     padding: 4px 6px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   li.active {
     background: var(--hover);
@@ -357,7 +357,7 @@
   li.hint {
     cursor: default;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding-top: 8px;
@@ -375,14 +375,14 @@
   }
   .upstream {
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     white-space: nowrap;
   }
   .merge-btn {
     visibility: hidden;
     flex: none;
     padding: 0 6px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   li.active .merge-btn {
     visibility: visible;
@@ -393,7 +393,7 @@
   }
   .error {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: pre-wrap;
     word-break: break-word;
     max-height: 120px;

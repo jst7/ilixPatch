@@ -4,8 +4,19 @@
   --selected: var(--selection);
   --shadow: 0 8px 28px color-mix(in srgb, var(--text) 18%, transparent);
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  /* Type scale (D57): the only five sizes in the app. */
+  --fs-xs: 11px; /* badges, counters, captions */
+  --fs-sm: 12px; /* secondary text, labels, tables */
+  --fs-md: 13px; /* body text, controls, editors */
+  --fs-lg: 15px; /* section and dialog titles */
+  --fs-xl: 18px; /* big headings (About, empty states) */
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: var(--fs-md);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--bg);
 }
@@ -33,8 +44,8 @@ button {
   color: inherit;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 5px;
+  padding: 4px 8px;
 }
 input:focus,
 select:focus,
@@ -77,7 +88,7 @@ button.ghost:hover:not(:disabled) {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  padding: 8px 12px;
+  padding: 6px 10px;
 }
 .tabs > button.active {
   color: var(--text);
@@ -85,7 +96,7 @@ button.ghost:hover:not(:disabled) {
 }
 .tabs .count {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   margin-left: 4px;
 }
 .dirty-dot {

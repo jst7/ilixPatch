@@ -50,24 +50,24 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0 0 6px;
   }
   .err {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .hex {
     flex: 1;
     min-height: 0;
     overflow: auto;
     margin: 0;
-    padding: 8px 10px;
+    padding: 8px 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--surface);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     line-height: 1.5;
     color: var(--text);
   }

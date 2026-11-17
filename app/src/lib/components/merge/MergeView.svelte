@@ -761,7 +761,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
@@ -775,26 +775,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 14px;
+    gap: 6px 10px;
   }
   .group {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .group.end {
     margin-left: auto;
   }
   .group button {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .group button.nav {
     padding: 3px 6px;
@@ -829,12 +829,12 @@
     font-family: var(--mono);
   }
   .pad {
-    padding: 16px;
+    padding: 12px;
   }
   .error {
     color: var(--err);
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: pre-wrap;
   }
   .grid {
@@ -845,8 +845,8 @@
     grid-template-rows: auto minmax(0, 1fr);
   }
   .head {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     background: var(--surface-2);
     border-bottom: 1px solid var(--border);
@@ -869,10 +869,10 @@
     overflow: hidden;
   }
   .panel {
-    padding: 20px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     max-width: 720px;
   }
   .panel p {
@@ -892,7 +892,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 12px 14px;
+    padding: 10px 10px;
     border: 1px solid var(--ok);
     border-radius: 8px;
     background: var(--surface);
@@ -916,6 +916,6 @@
   }
   .files button {
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 </style>

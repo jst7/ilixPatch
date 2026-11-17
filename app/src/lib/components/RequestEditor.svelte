@@ -472,8 +472,8 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    padding: 12px 12px 0;
-    gap: 10px;
+    padding: 10px 10px 0;
+    gap: 8px;
   }
   .head {
     display: flex;
@@ -487,7 +487,7 @@
     align-items: center;
     gap: 6px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     white-space: nowrap;
     overflow: hidden;
   }
@@ -507,7 +507,7 @@
     min-width: 80px;
     color: var(--text);
     font-weight: 600;
-    font-size: 14px;
+    font-size: var(--fs-md);
     border-color: transparent;
     background: none;
     padding: 4px 6px;
@@ -529,8 +529,8 @@
     flex: none;
   }
   .small {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
   }
   .bar {
     display: flex;
@@ -573,7 +573,7 @@
     line-height: 14px;
     border-radius: 7px;
     text-align: center;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     color: var(--bg);
     background: var(--warn);
@@ -590,14 +590,14 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .annotate {
     margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .annotate.on {
     color: var(--accent);
@@ -613,7 +613,7 @@
     border: none;
     background: none;
     padding: 0 2px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--blame-text);
     white-space: nowrap;
     overflow: hidden;
@@ -640,7 +640,7 @@
     align-items: center;
     gap: 5px;
     padding: 3px 9px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     background: none;
     border: 1px solid var(--border);
@@ -657,12 +657,12 @@
   .curl-notice {
     position: relative;
     margin: 6px 0 0;
-    padding: 6px 30px 6px 10px;
+    padding: 6px 30px 6px 8px;
     border: 1px solid var(--border);
     border-left: 3px solid var(--ok);
     border-radius: 6px;
     background: var(--surface-2);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .curl-notice.error {
     border-left-color: var(--err);
@@ -670,7 +670,7 @@
   }
   .curl-notice ul {
     margin: 4px 0 0;
-    padding-left: 18px;
+    padding-left: 14px;
     color: var(--muted);
   }
   .curl-notice .close {

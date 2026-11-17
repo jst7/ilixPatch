@@ -52,6 +52,6 @@
   input {
     width: 100%;
     padding: 3px 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
 </style>

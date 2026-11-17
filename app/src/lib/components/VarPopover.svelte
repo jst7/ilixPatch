@@ -177,8 +177,8 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: var(--shadow);
-    padding: 10px 12px;
-    font-size: 12px;
+    padding: 8px 10px;
+    font-size: var(--fs-sm);
   }
   .head {
     display: flex;
@@ -189,7 +189,7 @@
   }
   .name {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -200,7 +200,7 @@
     margin-left: auto;
     border-radius: 10px;
     padding: 1px 8px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .badge.ok {
     color: var(--accent);
@@ -233,7 +233,7 @@
   }
   input.mono {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--text);
   }
   select {

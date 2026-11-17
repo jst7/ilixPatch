@@ -433,8 +433,8 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px 10px;
-    padding: 12px 12px 10px;
+    gap: 6px 8px;
+    padding: 10px 10px 8px;
     border-bottom: 1px solid var(--border);
   }
   header .icon {
@@ -443,11 +443,11 @@
   }
   h2 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-lg);
   }
   .where {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -456,11 +456,11 @@
   }
   .flash {
     color: var(--ok);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .small {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
   }
   .body {
     flex: 1;
@@ -484,27 +484,27 @@
     flex: 1;
     min-width: 0;
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .items {
     flex: 1;
     overflow: auto;
     padding-bottom: 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .group {
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 10px 12px 4px;
+    padding: 8px 10px 4px;
   }
   .item {
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 28px;
+    height: 24px;
     margin: 0 4px;
     padding: 0 4px 0 8px;
     border-radius: 5px;
@@ -547,7 +547,7 @@
     min-width: 0;
     min-height: 0;
     overflow: auto;
-    padding: 12px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -559,7 +559,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-md);
   }
   .name {
     flex: 0 1 280px;
@@ -589,7 +589,7 @@
     border-top: none;
   }
   .tr.th {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     background: var(--surface-2);
   }
@@ -605,7 +605,7 @@
     border-radius: 0;
     background: none;
     padding: 6px 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .tr input:not([type="checkbox"]):focus {
     box-shadow: inset 0 0 0 1px var(--accent);
@@ -644,12 +644,12 @@
     min-height: 240px;
     flex: 1;
     resize: vertical;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
-    margin: 6px 12px;
+    font-size: var(--fs-sm);
+    margin: 6px 10px;
   }
   .hint.inline {
     margin: 0;
@@ -672,19 +672,19 @@
   }
   .project-link .go {
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .project-link .count,
   .project-env .count {
     margin-left: auto;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .project-link .go {
     margin-left: 6px;
   }
   .project-env {
-    padding-left: 24px !important;
+    padding-left: 16px !important;
     color: var(--muted) !important;
   }
 </style>

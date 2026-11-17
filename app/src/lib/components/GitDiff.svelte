@@ -68,9 +68,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
+    padding: 6px 8px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     min-height: 36px;
   }
   .letter {
@@ -92,11 +92,11 @@
     color: var(--muted);
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .error {
     color: var(--err);
-    padding: 0 12px;
+    padding: 0 10px;
     white-space: pre-wrap;
   }
 </style>

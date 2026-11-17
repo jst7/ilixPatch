@@ -114,7 +114,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     margin-bottom: 2px;
   }
@@ -146,7 +146,7 @@
   }
   .axis {
     fill: var(--muted);
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-variant-numeric: tabular-nums;
   }
   .line {

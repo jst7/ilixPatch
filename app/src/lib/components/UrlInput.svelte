@@ -149,13 +149,13 @@
     box-sizing: border-box;
     margin: 0;
     border: 1px solid transparent;
-    padding: 6px 10px;
+    padding: 6px 8px;
     line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-all;
     overflow-wrap: anywhere;
     font-family: ui-monospace, monospace;
-    font-size: 13px;
+    font-size: var(--fs-md);
     letter-spacing: normal;
     scrollbar-gutter: stable;
   }

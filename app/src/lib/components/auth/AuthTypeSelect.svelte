@@ -85,10 +85,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     min-width: 220px;
-    font-size: 13px;
-    padding: 5px 10px;
+    font-size: var(--fs-md);
+    padding: 5px 8px;
   }
   .trigger svg {
     color: var(--muted);
@@ -110,7 +110,7 @@
     flex-direction: column;
   }
   .group {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -125,8 +125,8 @@
     text-align: left;
     border: none;
     background: none;
-    font-size: 13px;
-    padding: 5px 10px;
+    font-size: var(--fs-md);
+    padding: 5px 8px;
     border-radius: 5px;
     white-space: nowrap;
   }

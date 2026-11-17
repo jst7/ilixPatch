@@ -65,7 +65,7 @@
     border: none;
     background: none;
     text-align: left;
-    padding: 6px 10px;
+    padding: 6px 8px;
     border-radius: 5px;
   }
   button:hover {

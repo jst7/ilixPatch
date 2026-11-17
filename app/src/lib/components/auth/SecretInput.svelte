@@ -63,7 +63,7 @@
   input {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
   }
   .eye {

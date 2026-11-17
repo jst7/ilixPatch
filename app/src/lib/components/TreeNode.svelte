@@ -282,7 +282,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    height: 28px;
+    height: 24px;
     padding-right: 4px;
     margin: 0 4px;
     border-radius: 5px;
@@ -362,7 +362,7 @@
     border-radius: 4px;
     background: none;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 400;
   }
   .git:hover {
@@ -394,13 +394,13 @@
   }
   .error {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 2px 8px 4px 0;
     word-break: break-word;
   }
   .empty {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 8px 4px 0;
   }
   .link {
@@ -408,7 +408,7 @@
     background: none;
     padding: 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .link:hover {
     text-decoration: underline;

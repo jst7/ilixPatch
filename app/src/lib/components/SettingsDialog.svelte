@@ -431,14 +431,14 @@
   nav {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px 10px;
+    gap: 10px;
+    padding: 12px 8px;
     background: var(--surface-2);
     border-right: 1px solid var(--border);
     overflow-y: auto;
   }
   nav h2 {
-    font-size: 15px;
+    font-size: var(--fs-lg);
     padding: 0 8px;
   }
   [role="tablist"] {
@@ -451,7 +451,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 7px 10px;
+    padding: 7px 8px;
     border: none;
     border-radius: 6px;
     background: none;
@@ -469,10 +469,10 @@
     box-shadow: inset 3px 0 0 var(--accent);
   }
   .content {
-    padding: 16px 20px 20px;
+    padding: 12px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     overflow-y: auto;
     min-width: 0;
   }
@@ -480,12 +480,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
+    gap: 10px;
+    padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface-2);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   button.link {
     border: none;
@@ -518,18 +518,18 @@
     margin: 0;
   }
   h3 {
-    font-size: 15px;
+    font-size: var(--fs-lg);
   }
   section {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .row {
     display: grid;
     grid-template-columns: 160px 1fr;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .actions {
     display: flex;
@@ -546,7 +546,7 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 6px 8px;
   }
   button {
     cursor: pointer;
@@ -566,7 +566,7 @@
   }
   textarea {
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     resize: vertical;
   }
   fieldset {
@@ -574,15 +574,15 @@
     border-radius: 8px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 6px 16px;
-    padding: 8px 12px 12px;
+    gap: 6px 12px;
+    padding: 8px 10px 10px;
   }
   fieldset:disabled {
     opacity: 0.7;
   }
   legend {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 0 4px;
   }
   .color {
@@ -590,7 +590,7 @@
     grid-template-columns: 28px 1fr 90px;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .color input[type="color"] {
     width: 28px;
@@ -601,12 +601,12 @@
   }
   .hex {
     font-family: ui-monospace, monospace;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 3px 6px;
   }
   .hint {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     margin: 0;
   }
   .error {
@@ -618,7 +618,7 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .inline {
     display: flex;
@@ -630,7 +630,7 @@
   }
   .unit {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   input.toggle {
     justify-self: start;

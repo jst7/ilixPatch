@@ -264,17 +264,17 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    padding: 8px 12px 12px;
+    padding: 8px 10px 10px;
   }
   .head {
     display: flex;
     align-items: baseline;
-    gap: 14px;
+    gap: 10px;
     padding: 4px 0 6px;
   }
   .title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
@@ -288,7 +288,7 @@
   }
   .meta {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .tools {
     margin-left: auto;
@@ -302,7 +302,7 @@
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .content {
     flex: 1;
@@ -325,12 +325,12 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   th {
     text-align: left;
     font-weight: 500;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     padding: 6px 8px;
     border-bottom: 1px solid var(--border);
@@ -354,7 +354,7 @@
     background: color-mix(in srgb, var(--err) 10%, transparent);
     border: 1px solid var(--err);
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 6px 8px;
     margin-bottom: 6px;
     max-height: 30%;
     overflow: auto;
@@ -365,7 +365,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .tests-count.pass {
     color: var(--ok);
@@ -377,7 +377,7 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     margin: 4px 0 8px;
   }
   .tests {
@@ -392,11 +392,11 @@
     gap: 8px;
     padding: 5px 4px;
     border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .tests .badge {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -429,10 +429,10 @@
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .console {
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .log {
     margin: 0;
@@ -446,7 +446,7 @@
     color: var(--err);
     border: 1px solid var(--err);
     border-radius: 6px;
-    padding: 8px 12px;
+    padding: 8px 10px;
     overflow: auto;
   }
   .error pre {
@@ -454,7 +454,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .empty {
     color: var(--muted);
@@ -473,7 +473,7 @@
     border-radius: 5px;
     padding: 1px 8px;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     cursor: pointer;
   }
   .cancel-link:hover {
@@ -495,8 +495,8 @@
     border: none;
     border-radius: 0;
     background: none;
-    padding: 2px 10px;
-    font-size: 12px;
+    padding: 2px 8px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .viewtoggle button.active {

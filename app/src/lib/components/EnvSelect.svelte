@@ -236,7 +236,7 @@
   }
   .scope {
     flex: none;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--muted);
@@ -272,7 +272,7 @@
     outline: none;
   }
   .group {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -312,7 +312,7 @@
     background: none;
     text-align: left;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--accent);
   }
   .manage:hover {

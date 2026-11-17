@@ -108,7 +108,7 @@
   th {
     text-align: left;
     font-weight: 500;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     padding: 6px 4px;
   }
@@ -120,7 +120,7 @@
   }
   input {
     width: 100%;
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
     border-color: transparent;
     background: var(--surface-2);
@@ -138,7 +138,7 @@
     border: none;
     background: none;
     padding: 0 4px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--blame-text);
     white-space: nowrap;
     overflow: hidden;
@@ -153,7 +153,7 @@
   }
   .remove {
     padding: 0 6px;
-    font-size: 16px;
+    font-size: var(--fs-lg);
     line-height: 22px;
   }
 </style>

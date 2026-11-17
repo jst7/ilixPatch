@@ -216,7 +216,7 @@
     border: none;
     background: none;
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     border-radius: 5px;
     color: var(--muted);
   }
@@ -230,19 +230,19 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 8px 8px 12px;
+    padding: 8px 8px 8px 10px;
     border-bottom: 1px solid var(--border);
   }
   .title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .title-wrap {
     display: flex;
@@ -254,7 +254,7 @@
     flex: none;
     padding: 0 6px;
     height: 18px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     border-radius: 9px;
@@ -272,7 +272,7 @@
     gap: 2px;
   }
   .add {
-    font-size: 16px;
+    font-size: var(--fs-lg);
     font-weight: 600;
     line-height: 1;
     padding: 2px 8px;
@@ -285,19 +285,19 @@
     flex: 1;
     overflow: auto;
     padding: 6px 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
-    margin: 8px 12px;
+    font-size: var(--fs-sm);
+    margin: 8px 10px;
   }
   .empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 32px 16px;
+    padding: 32px 12px;
     gap: 4px;
   }
   .empty-title {
@@ -305,7 +305,7 @@
     margin: 0;
   }
   .empty .hint {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
   }
   footer {
     display: flex;

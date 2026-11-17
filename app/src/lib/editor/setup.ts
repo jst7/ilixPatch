@@ -61,7 +61,7 @@ const chrome = EditorView.theme({
     height: "100%",
     color: "var(--text)",
     backgroundColor: "var(--surface)",
-    fontSize: "13px",
+    fontSize: "var(--fs-md)",
   },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": {
@@ -102,7 +102,7 @@ const chrome = EditorView.theme({
     color: "var(--muted)",
   },
   ".cm-foldGutter .cm-gutterElement:hover": { color: "var(--text)" },
-  ".cm-foldGutter .cm-gutterElement span": { fontSize: "10px" },
+  ".cm-foldGutter .cm-gutterElement span": { fontSize: "var(--fs-xs)" },
   ".cm-foldPlaceholder": {
     display: "inline-block",
     margin: "0 1px",
@@ -111,7 +111,7 @@ const chrome = EditorView.theme({
     borderRadius: "4px",
     backgroundColor: "var(--surface-2)",
     color: "var(--muted)",
-    fontSize: "11px",
+    fontSize: "var(--fs-xs)",
     lineHeight: "1.4",
     cursor: "pointer",
   },
@@ -134,7 +134,7 @@ const chrome = EditorView.theme({
   ".cm-tooltip.cm-tooltip-autocomplete > ul": {
     fontFamily:
       'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-    fontSize: "12px",
+    fontSize: "var(--fs-sm)",
     maxHeight: "16em",
   },
   ".cm-tooltip.cm-tooltip-autocomplete > ul > li": { padding: "2px 8px 2px 4px" },
@@ -149,7 +149,7 @@ const chrome = EditorView.theme({
     backgroundColor: "var(--surface-2)",
     borderRadius: "6px",
     padding: "4px 8px",
-    fontSize: "12px",
+    fontSize: "var(--fs-sm)",
   },
 });
 

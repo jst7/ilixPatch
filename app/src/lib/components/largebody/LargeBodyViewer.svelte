@@ -443,7 +443,7 @@
     gap: 2px;
   }
   .seg button {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 2px 8px;
     color: var(--muted);
   }
@@ -467,12 +467,12 @@
   }
   .search input {
     width: 220px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 3px 8px;
   }
   .toggle {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     padding: 2px 6px;
     color: var(--muted);
   }
@@ -485,7 +485,7 @@
     padding: 2px 6px;
   }
   .count {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     margin-left: 4px;
     white-space: nowrap;
@@ -495,18 +495,18 @@
   }
   .goto {
     width: 110px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 3px 8px;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 3px 8px;
   }
   .err {
     color: var(--err);
   }
   .banner {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0 0 6px;
     word-break: break-word;
   }
@@ -519,7 +519,7 @@
     border-radius: 6px;
     background: var(--surface);
     font-family: var(--mono);
-    font-size: 12.5px;
+    font-size: var(--fs-sm);
     outline: none;
   }
   .spacer-v {
@@ -551,7 +551,7 @@
     box-sizing: content-box;
   }
   .code {
-    padding-right: 12px;
+    padding-right: 10px;
   }
   .pending {
     color: var(--muted);
@@ -586,7 +586,7 @@
   .more {
     margin-left: 6px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     padding: 0 6px;
     color: var(--accent);
     background: var(--surface-2);
@@ -601,7 +601,7 @@
     gap: 8px;
     color: var(--muted);
     font-family: system-ui, sans-serif;
-    font-size: 13px;
+    font-size: var(--fs-md);
     z-index: 1;
   }
   .spinner {

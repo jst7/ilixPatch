@@ -93,7 +93,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 28px;
+    height: 24px;
     padding-right: 4px;
     cursor: pointer;
     border-radius: 5px;
@@ -113,7 +113,7 @@
     flex: none;
     width: 36px;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .name {
@@ -130,7 +130,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .more {

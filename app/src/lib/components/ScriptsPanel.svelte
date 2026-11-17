@@ -98,8 +98,8 @@
     gap: 4px;
   }
   .kinds button {
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 3px 8px;
+    font-size: var(--fs-sm);
     border-radius: 999px;
     color: var(--muted);
     background: none;
@@ -122,7 +122,7 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 10px;
+    gap: 8px;
   }
   .editor-col {
     flex: 1;
@@ -134,7 +134,7 @@
   .hint {
     margin: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .code {
     flex: 1;
@@ -148,17 +148,17 @@
     flex: none;
     overflow: auto;
     border-left: 1px solid var(--border);
-    padding-left: 10px;
+    padding-left: 8px;
   }
   .snip-title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
   }
   .snip-hint {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     margin: 2px 0 6px;
   }
@@ -173,7 +173,7 @@
     border: none;
     background: none;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 6px;
     border-radius: 4px;
   }

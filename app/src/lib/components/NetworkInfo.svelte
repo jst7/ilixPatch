@@ -140,11 +140,11 @@
     position: relative;
     display: inline-flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   }
   .meta {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .mono {
     font-family: var(--mono);
@@ -157,7 +157,7 @@
     background: none;
     padding: 1px 4px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     align-self: center;
   }
   .trigger:hover {
@@ -181,16 +181,16 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: var(--shadow);
-    padding: 10px 12px;
+    padding: 8px 10px;
     z-index: 40;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .sec-title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin-bottom: 4px;
   }
   .sec-title.ok {
@@ -202,7 +202,7 @@
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 3px 10px;
+    gap: 3px 8px;
     margin: 0;
   }
   dt {
@@ -213,7 +213,7 @@
     word-break: break-word;
   }
   .fp {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     word-break: break-all;
   }
   .exp {
@@ -229,7 +229,7 @@
     margin: 0;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     word-break: break-all;
   }
   .chain {

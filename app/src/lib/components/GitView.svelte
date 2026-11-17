@@ -536,7 +536,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
@@ -555,12 +555,12 @@
   .sync,
   .upstream {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: nowrap;
   }
   .conflict {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .spacer {
     flex: 1;
@@ -569,7 +569,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 4px 8px;
   }
   .ghost {
     display: flex;
@@ -578,10 +578,10 @@
   }
   .small {
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .small-text {
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .muted {
     color: var(--muted);
@@ -592,14 +592,14 @@
     word-break: break-word;
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .center {
     text-align: center;
     margin-top: 32px;
   }
   .empty {
-    padding: 16px;
+    padding: 12px;
   }
   .changes {
     flex: 1;
@@ -644,9 +644,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 10px;
+    padding: 3px 8px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     cursor: pointer;
   }
   .dir-name {
@@ -657,20 +657,20 @@
   }
   .count {
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     margin-left: 4px;
   }
   .file {
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 26px;
-    padding: 0 10px 0 28px;
+    height: 24px;
+    padding: 0 8px 0 28px;
     margin: 0 4px;
     border-radius: 5px;
     cursor: pointer;
     user-select: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .file:hover {
     background: var(--hover);
@@ -688,13 +688,13 @@
   .letter {
     flex: none;
     width: 12px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .badge {
     flex: none;
     width: 30px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .fname {
@@ -710,7 +710,7 @@
     flex: 1;
     min-width: 0;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -736,7 +736,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 4px 8px;
   }
   .spinner {
     flex: none;
@@ -768,7 +768,7 @@
   .merge-banner {
     border-bottom: 1px solid var(--border);
     background: color-mix(in srgb, var(--warn) 12%, var(--surface));
-    padding: 8px 12px;
+    padding: 8px 10px;
   }
   .merge-head {
     display: flex;
@@ -780,7 +780,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 4px 8px;
   }
   .danger-btn {
     color: var(--err);
@@ -803,7 +803,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .cpath {
     flex: 1;

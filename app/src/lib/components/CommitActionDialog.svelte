@@ -138,15 +138,15 @@
     background: color-mix(in srgb, var(--bg) 55%, transparent);
   }
   .content {
-    padding: 16px 20px 20px;
+    padding: 12px 14px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    font-size: 13px;
+    gap: 8px;
+    font-size: var(--fs-md);
   }
   h2 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
   p {
     margin: 0;
@@ -180,7 +180,7 @@
   .mode {
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 8px 8px;
   }
   .mode.active {
     border-color: var(--accent);
@@ -198,12 +198,12 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .warning {
     border: 1px solid var(--err);
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 8px 8px;
     color: var(--err);
     display: flex;
     flex-direction: column;

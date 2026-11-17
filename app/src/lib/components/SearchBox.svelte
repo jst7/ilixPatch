@@ -85,7 +85,7 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
-    height: 28px;
+    height: 26px;
     padding: 0 4px 0 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -105,14 +105,14 @@
     border: none;
     background: none;
     padding: 2px 2px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   input:focus {
     outline: none;
   }
   .count {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -132,7 +132,7 @@
   .hint {
     flex: none;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     border: 1px solid var(--border);
     border-radius: 4px;

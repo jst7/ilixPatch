@@ -168,16 +168,16 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 4px 8px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .spacer {
     flex: 1;
   }
   .small {
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .seg {
     display: inline-flex;
@@ -203,12 +203,12 @@
     color: var(--muted);
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .notice {
-    margin: 8px 12px;
+    margin: 8px 10px;
     color: var(--warn);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .plus {
     color: var(--ok);
@@ -220,7 +220,7 @@
     flex: none;
     max-height: 40%;
     overflow: auto;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
   }
   .semantic.grow {
@@ -241,7 +241,7 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .semantic li.added .mark {
     color: var(--ok);
@@ -260,7 +260,7 @@
     display: inline-flex;
     flex-wrap: wrap;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     word-break: break-all;
   }
   .values .old {
@@ -285,7 +285,7 @@
     overflow: auto;
   }
   .lines {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     line-height: 18px;
     min-width: max-content;
     padding-bottom: 8px;
@@ -322,7 +322,7 @@
   }
   .code {
     white-space: pre;
-    padding-right: 12px;
+    padding-right: 10px;
   }
   .gap {
     display: block;
@@ -332,8 +332,8 @@
     border-radius: 0;
     background: var(--surface-2);
     color: var(--muted);
-    padding: 2px 12px 2px 110px;
-    font-size: 12px;
+    padding: 2px 10px 2px 110px;
+    font-size: var(--fs-sm);
   }
   .gap:hover {
     color: var(--text);

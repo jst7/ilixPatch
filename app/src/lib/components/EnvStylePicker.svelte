@@ -114,7 +114,7 @@
     left: 0;
     z-index: 50;
     width: 236px;
-    padding: 8px 10px 10px;
+    padding: 8px 8px 8px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -122,7 +122,7 @@
   }
   .label {
     margin: 4px 0 6px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .grid {

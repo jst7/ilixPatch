@@ -270,20 +270,20 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 0 12px;
+    padding: 0 10px;
   }
   h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-md);
   }
   h4 {
-    margin: 10px 12px 4px;
-    font-size: 12px;
+    margin: 8px 10px 4px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .hint {
-    margin: 4px 12px 6px;
-    font-size: 12px;
+    margin: 4px 10px 6px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   .tree {
@@ -293,12 +293,12 @@
     padding-bottom: 8px;
   }
   .project {
-    margin: 6px 12px 0;
+    margin: 6px 10px 0;
   }
   .envs {
     list-style: none;
     margin: 0;
-    padding: 0 12px;
+    padding: 0 10px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -316,13 +316,13 @@
   }
   .envs select {
     padding: 2px 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .check {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     cursor: pointer;
   }
   .check input {
@@ -339,12 +339,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
-    padding: 4px 12px;
+    font-size: var(--fs-md);
+    padding: 4px 10px;
   }
   .row-field select {
     padding: 2px 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .bottom {
     flex: none;
@@ -358,16 +358,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 10px 0;
+    padding: 8px 0;
   }
   .options .check {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .secret {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 12px;
+    padding: 0 10px;
     flex-wrap: wrap;
   }
   .secret .check {
@@ -377,7 +377,7 @@
     flex: 1;
     min-width: 140px;
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   input[aria-invalid="true"] {
     border-color: var(--err);
@@ -385,13 +385,13 @@
   .invalid,
   .error {
     color: var(--err);
-    font-size: 12px;
-    margin: 0 12px;
+    font-size: var(--fs-sm);
+    margin: 0 10px;
     white-space: pre-wrap;
   }
   .summary {
     border-left: 1px solid var(--border);
-    padding: 10px 12px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -404,20 +404,20 @@
   .warn-text {
     margin: 0;
     color: var(--warn);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .warnings summary {
     cursor: pointer;
     color: var(--warn);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .wgroup {
     margin: 6px 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .wgroup ul {
     margin: 2px 0 0;
-    padding-left: 16px;
+    padding-left: 12px;
   }
   .wgroup li {
     display: flex;
@@ -429,7 +429,7 @@
     background: none;
     padding: 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .link:hover {
     text-decoration: underline;
@@ -447,16 +447,16 @@
   }
   .small {
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .small-text {
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .muted {
     color: var(--muted);
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .drag-label {
     position: fixed;
@@ -466,7 +466,7 @@
     border-radius: 5px;
     background: var(--accent);
     color: var(--accent-text);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     box-shadow: var(--shadow);
   }
   .spinner {

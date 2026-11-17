@@ -248,22 +248,22 @@
   header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 10px 16px;
+    gap: 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
   h2 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
   .steps {
     display: flex;
-    gap: 14px;
+    gap: 10px;
     list-style: none;
     margin: 0;
     padding: 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--muted);
   }
   .steps li {
@@ -283,7 +283,7 @@
     height: 18px;
     border-radius: 50%;
     border: 1px solid currentColor;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .steps li.current .num {
     background: var(--accent);
@@ -294,16 +294,16 @@
   .report {
     flex: 1;
     overflow: auto;
-    padding: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     max-width: 760px;
   }
   .drop {
     border: 2px dashed var(--border);
     border-radius: 10px;
-    padding: 24px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -348,7 +348,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .path {
     min-width: 0;
@@ -362,7 +362,7 @@
   }
   .error {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: pre-wrap;
   }
   .found {
@@ -375,7 +375,7 @@
     gap: 8px;
   }
   .help {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--muted);
   }
   .help summary {
@@ -383,7 +383,7 @@
   }
   .help ul {
     margin: 6px 0 0;
-    padding-left: 18px;
+    padding-left: 14px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -392,13 +392,13 @@
     color: var(--muted);
   }
   .small-text {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
   }
   .done {
     margin: 0;
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--fs-lg);
   }
   .warn-text {
     color: var(--warn);
@@ -406,12 +406,12 @@
   }
   h3 {
     margin: 4px 0 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .list {
     margin: 0;
-    padding-left: 18px;
-    font-size: 12px;
+    padding-left: 14px;
+    font-size: var(--fs-sm);
   }
   .files {
     list-style: none;
@@ -424,7 +424,7 @@
     background: none;
     padding: 1px 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-align: left;
   }
   .link:hover {

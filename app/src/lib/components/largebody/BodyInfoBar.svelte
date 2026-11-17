@@ -69,10 +69,10 @@
   .bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     padding: 4px 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .size {
     font-weight: 600;
@@ -89,26 +89,26 @@
     border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .spacer {
     flex: 1;
   }
   .small {
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 3px 8px;
+    font-size: var(--fs-sm);
   }
   .incomplete {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     color: var(--warn);
     border: 1px solid var(--warn);
     background: color-mix(in srgb, var(--warn) 10%, transparent);
     border-radius: 6px;
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: var(--fs-sm);
     margin-bottom: 6px;
   }
   .link {
@@ -116,7 +116,7 @@
     background: none;
     padding: 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .link:hover {
     text-decoration: underline;
@@ -124,7 +124,7 @@
   .ok,
   .err {
     margin: 0 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     word-break: break-all;
   }
   .ok {

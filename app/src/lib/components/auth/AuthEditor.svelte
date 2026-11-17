@@ -192,8 +192,8 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 16px;
-    padding: 10px 2px;
+    gap: 12px;
+    padding: 8px 2px;
     overflow: auto;
   }
   .help {
@@ -202,8 +202,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 12px;
-    padding-right: 14px;
+    font-size: var(--fs-sm);
+    padding-right: 10px;
     border-right: 1px solid var(--border);
   }
   .help p {
@@ -211,7 +211,7 @@
     line-height: 1.45;
   }
   .lbl-top {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -221,7 +221,7 @@
     color: var(--muted);
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
   }
   .form {
@@ -234,7 +234,7 @@
   }
   .info {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .link {
     align-self: flex-start;
@@ -242,7 +242,7 @@
     background: none;
     padding: 0;
     color: var(--accent);
-    font-size: 13px;
+    font-size: var(--fs-md);
     cursor: pointer;
   }
   .link:hover {
@@ -252,13 +252,13 @@
     display: grid;
     grid-template-columns: 170px 1fr;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .row.top {
     align-items: start;
   }
   .lbl {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--muted);
   }
   .ctl {
@@ -270,7 +270,7 @@
   .ctl > input:not(.check),
   .ctl select,
   textarea {
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
     min-width: 0;
   }
@@ -292,7 +292,7 @@
   }
   textarea {
     resize: vertical;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .json {
     height: 110px;
@@ -305,18 +305,18 @@
   }
   .err-text {
     color: var(--err);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .warn-text {
     color: var(--warn);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .adv-toggle {
     align-self: flex-start;
     border: none;
     background: none;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 0;
     margin-top: 4px;
   }

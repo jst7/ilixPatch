@@ -254,7 +254,7 @@
     min-height: 0;
     border-top: 1px solid var(--border);
     background: var(--surface);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .grip {
     position: absolute;
@@ -268,7 +268,7 @@
   header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 4px 8px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
@@ -278,7 +278,7 @@
     min-width: 120px;
     max-width: 320px;
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .opt {
     display: flex;
@@ -294,7 +294,7 @@
     color: var(--err);
   }
   .pad {
-    padding: 10px;
+    padding: 8px;
     margin: 0;
   }
   .split {
@@ -318,7 +318,7 @@
     padding: 2px 8px;
     text-align: left;
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
     white-space: nowrap;
   }
   .row:hover {
@@ -331,7 +331,7 @@
     flex: none;
     visibility: hidden;
     padding: 0 6px;
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     font-family: var(--mono);
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -345,7 +345,7 @@
     background: var(--selected);
   }
   .row.sub {
-    padding-left: 20px;
+    padding-left: 14px;
   }
   .time {
     color: var(--muted);
@@ -375,7 +375,7 @@
   .phase {
     flex: none;
     font-family: inherit;
-    font-size: 10.5px;
+    font-size: var(--fs-xs);
     padding: 0 6px;
     border-radius: 8px;
     color: var(--accent);
@@ -403,7 +403,7 @@
   }
   .detail {
     overflow: auto;
-    padding: 6px 10px 12px;
+    padding: 6px 8px 10px;
   }
   .dhead {
     display: flex;
@@ -420,8 +420,8 @@
     flex: none;
   }
   h4 {
-    margin: 10px 0 4px;
-    font-size: 11px;
+    margin: 8px 0 4px;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--muted);
@@ -430,12 +430,12 @@
     border-collapse: collapse;
     width: 100%;
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
   }
   .kv th {
     text-align: left;
     font-weight: 600;
-    padding: 1px 10px 1px 0;
+    padding: 1px 8px 1px 0;
     vertical-align: top;
     white-space: nowrap;
     width: 1%;
@@ -456,7 +456,7 @@
     border: 1px solid var(--border);
     border-radius: 4px;
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
     white-space: pre-wrap;
     word-break: break-all;
   }

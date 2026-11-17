@@ -322,29 +322,29 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 8px;
   }
   .head {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .title {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   }
   .kind {
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--fs-lg);
     flex: none;
   }
   .crumbs {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -357,7 +357,7 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 14px;
+    gap: 10px;
   }
   .config {
     width: 250px;
@@ -365,14 +365,14 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-right: 12px;
+    gap: 8px;
+    padding-right: 10px;
     border-right: 1px solid var(--border);
   }
   .section-title,
   .summary-head {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
@@ -382,12 +382,12 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   label input:not([type="checkbox"]) {
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
   }
   label.check {
@@ -395,7 +395,7 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   label.check input {
     accent-color: var(--accent);
@@ -413,18 +413,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .results {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     min-height: 0;
   }
   .empty {
@@ -433,12 +433,12 @@
     text-align: center;
   }
   .small-empty {
-    margin: 16px auto;
+    margin: 12px auto;
   }
   .progress-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .bar {
     flex: 1;
@@ -457,7 +457,7 @@
     background: var(--warn);
   }
   .progress-text {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -465,11 +465,11 @@
     color: var(--err);
     border: 1px solid var(--err);
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 6px 8px;
   }
   .error pre,
   .err-kind {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -479,7 +479,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .err-desc strong {
     color: var(--err);
@@ -489,7 +489,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--err);
   }
   .cards {
@@ -501,17 +501,17 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 8px 10px;
+    padding: 8px 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
   }
   .card span {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .card strong {
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-variant-numeric: tabular-nums;
   }
   .card.good strong {
@@ -525,8 +525,8 @@
     gap: 4px;
   }
   .filters button {
-    padding: 3px 10px;
-    font-size: 12px;
+    padding: 3px 8px;
+    font-size: var(--fs-sm);
     border-radius: 999px;
     background: none;
     color: var(--muted);
@@ -560,11 +560,11 @@
     z-index: 1;
     background: var(--surface-2);
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    padding: 4px 10px;
+    padding: 4px 8px;
     border-bottom: 1px solid var(--border);
   }
   .item {
@@ -577,26 +577,26 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     border: none;
     border-radius: 0;
     background: none;
-    padding: 5px 10px;
+    padding: 5px 8px;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .row:hover {
     background: var(--hover);
   }
   .chev {
     color: var(--muted);
-    font-size: 10px;
+    font-size: var(--fs-xs);
     width: 10px;
     flex: none;
   }
   .method {
     font-weight: 700;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     width: 38px;
     flex: none;
   }
@@ -612,7 +612,7 @@
     flex: 1;
     min-width: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -627,7 +627,7 @@
   }
   .meta {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     flex: none;
     min-width: 56px;
     text-align: right;
@@ -637,7 +637,7 @@
     flex: none;
     min-width: 40px;
     text-align: right;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     font-weight: 600;
   }
@@ -648,14 +648,14 @@
     color: var(--err);
   }
   .detail {
-    padding: 4px 10px 10px 40px;
+    padding: 4px 8px 8px 40px;
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
   .muted {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0;
   }
   .test-list {
@@ -665,7 +665,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .test-list li {
     display: flex;
@@ -678,7 +678,7 @@
     margin-left: 80px;
   }
   .badge {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     padding: 1px 6px;
@@ -699,20 +699,20 @@
     background: var(--surface-2);
   }
   .logs-title {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
   .log {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: pre-wrap;
     word-break: break-word;
   }
   .more {
     display: block;
     margin: 8px auto;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 </style>

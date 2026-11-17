@@ -129,13 +129,13 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 26px;
+    height: 24px;
     padding-right: 6px;
     margin: 0 4px;
     border-radius: 5px;
     cursor: grab;
     user-select: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .row:hover {
     background: var(--hover);
@@ -170,7 +170,7 @@
   .badge {
     flex: none;
     width: 30px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .kind {
@@ -188,19 +188,19 @@
     flex: none;
     display: flex;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .warn {
     flex: none;
     color: var(--warn);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .spacer {
     flex: 1;
   }
   .chip {
     flex: none;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 5px;
     border-radius: 4px;
     border: 1px solid var(--border);

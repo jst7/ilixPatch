@@ -119,7 +119,7 @@
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .has {
     color: var(--text);
@@ -130,7 +130,7 @@
     border-radius: 999px;
     background: var(--accent);
     color: var(--accent-text);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .pop {
     position: absolute;
@@ -143,9 +143,9 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: var(--shadow);
-    padding: 10px 12px;
+    padding: 8px 10px;
     z-index: 40;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .pop-head {
     display: flex;
@@ -156,12 +156,12 @@
     flex: 1;
   }
   .close {
-    font-size: 16px;
+    font-size: var(--fs-lg);
     line-height: 1;
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 6px 0;
   }
   .group {
@@ -172,7 +172,7 @@
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     border-bottom: 1px solid var(--border);
     padding-bottom: 2px;
@@ -187,7 +187,7 @@
     border-bottom: 1px solid var(--border);
     word-break: break-all;
     vertical-align: top;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .key {
     width: 38%;

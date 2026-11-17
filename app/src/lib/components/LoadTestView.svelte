@@ -266,29 +266,29 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 8px;
   }
   .head {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .title {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
   }
   .kind {
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--fs-lg);
     flex: none;
   }
   .crumbs {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -305,7 +305,7 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 14px;
+    gap: 10px;
   }
   .config {
     width: 250px;
@@ -313,13 +313,13 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-right: 12px;
+    gap: 8px;
+    padding-right: 10px;
     border-right: 1px solid var(--border);
   }
   .section-title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--muted);
@@ -329,12 +329,12 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
   }
   label input:not([type="checkbox"]) {
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
   }
   label.check {
@@ -342,7 +342,7 @@
     align-items: center;
     gap: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   label.check input {
     accent-color: var(--accent);
@@ -354,7 +354,7 @@
     gap: 4px;
   }
   .seg button {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 6px;
     color: var(--muted);
   }
@@ -389,7 +389,7 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
   .empty {
     color: var(--muted);
@@ -400,14 +400,14 @@
     color: var(--err);
     border: 1px solid var(--err);
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 6px 8px;
   }
   .error pre {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .tiles {
     display: grid;
@@ -418,18 +418,18 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 8px 10px;
+    padding: 8px 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
   }
   .tile span,
   .tile small {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
   }
   .tile strong {
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-variant-numeric: tabular-nums;
   }
   .tile.bad strong {
@@ -438,8 +438,8 @@
   .charts {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    gap: 8px;
+    padding: 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
@@ -447,12 +447,12 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   th {
     text-align: left;
     font-weight: 500;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     padding: 6px 8px;
     border-bottom: 1px solid var(--border);
@@ -471,7 +471,7 @@
   }
   .method {
     font-weight: 700;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     display: inline-block;
     width: 38px;
   }

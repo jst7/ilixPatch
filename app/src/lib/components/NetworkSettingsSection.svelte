@@ -494,8 +494,8 @@
   .net {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    font-size: 14px;
+    gap: 8px;
+    font-size: var(--fs-md);
   }
   .status {
     min-height: 0;
@@ -505,26 +505,26 @@
     margin: 0;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .note {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     border-left: 2px solid var(--border);
     padding-left: 8px;
   }
   .ok {
     color: var(--ok);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .err-box,
   .warn-box {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 10px;
+    gap: 6px 8px;
     align-items: center;
     border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
+    padding: 6px 8px;
+    font-size: var(--fs-md);
     margin: 0;
     word-break: break-word;
   }
@@ -542,20 +542,20 @@
     display: grid;
     grid-template-columns: 180px 1fr;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .row.top {
     align-items: start;
   }
   .row > span:first-child {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   input,
   select,
   textarea,
   button {
     font: inherit;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--text);
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -564,7 +564,7 @@
   }
   textarea {
     resize: vertical;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .mono {
     font-family: var(--mono);
@@ -611,7 +611,7 @@
   .group {
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -620,11 +620,11 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
   }
   .group-title {
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .files {
     list-style: none;
@@ -641,7 +641,7 @@
   .path {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -649,13 +649,13 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--fs-md);
     table-layout: fixed;
   }
   th {
     text-align: left;
     font-weight: 500;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     padding: 4px 6px;
     border-bottom: 1px solid var(--border);
@@ -688,7 +688,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px;
+    padding: 8px;
     border-radius: 6px;
     background: var(--surface-2);
     border: 1px solid var(--border);

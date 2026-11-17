@@ -185,7 +185,7 @@ const blameTheme = EditorView.theme({
     boxSizing: "border-box",
     padding: "0 8px",
     color: "var(--blame-text)",
-    fontSize: "11px",
+    fontSize: "var(--fs-xs)",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",

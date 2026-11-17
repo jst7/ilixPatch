@@ -95,14 +95,14 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 26px;
+    height: 24px;
     padding-right: 6px;
     margin: 0 4px;
     border-radius: 5px;
     border: 1px solid transparent;
     cursor: pointer;
     user-select: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .row:hover {
     background: var(--hover);
@@ -143,7 +143,7 @@
     white-space: nowrap;
   }
   .count {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--accent);
   }
   .req {
@@ -151,14 +151,14 @@
     align-items: center;
     gap: 5px;
     height: 22px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     opacity: 0.75;
   }
   .badge {
     flex: none;
     width: 30px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 </style>

@@ -85,29 +85,29 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 8px;
   }
   .head {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .title {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .kind {
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--fs-lg);
     flex: none;
   }
   .crumbs {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-md);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -117,15 +117,15 @@
     gap: 6px;
   }
   .small {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
   }
   .error {
     color: var(--err);
     border: 1px solid var(--err);
     border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
+    padding: 6px 8px;
+    font-size: var(--fs-md);
     word-break: break-word;
   }
   .content {
@@ -136,7 +136,7 @@
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 8px 0 0;
   }
   .scroll {

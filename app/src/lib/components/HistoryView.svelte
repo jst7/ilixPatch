@@ -315,7 +315,7 @@
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .danger-btn {
     color: var(--err);
@@ -328,7 +328,7 @@
     flex: 1;
     overflow: auto;
     padding: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .list:focus {
     outline: none;
@@ -339,11 +339,11 @@
     z-index: 1;
     background: var(--surface);
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 8px 12px 4px;
+    padding: 8px 10px 4px;
   }
   .entry {
     display: flex;
@@ -381,7 +381,7 @@
   .badge {
     flex: none;
     width: 34px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .main {
@@ -399,7 +399,7 @@
   .meta {
     display: flex;
     gap: 8px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
@@ -421,8 +421,8 @@
   }
   .empty,
   .error {
-    font-size: 12px;
-    margin: 8px 12px;
+    font-size: var(--fs-sm);
+    margin: 8px 10px;
     color: var(--muted);
   }
   .error {

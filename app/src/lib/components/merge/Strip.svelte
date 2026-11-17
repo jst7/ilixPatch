@@ -83,7 +83,7 @@
     margin: 0;
     display: grid;
     place-items: center;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     line-height: 1;
     border: 1px solid var(--border);
     border-radius: 3px;

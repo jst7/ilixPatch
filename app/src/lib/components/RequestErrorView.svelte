@@ -157,13 +157,13 @@
     border: 1px solid var(--err);
     border-left-width: 3px;
     border-radius: 6px;
-    padding: 10px 14px;
+    padding: 8px 10px;
     overflow: auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
     background: color-mix(in srgb, var(--err) 5%, var(--surface));
-    font-size: 13px;
+    font-size: var(--fs-md);
     min-height: 0;
   }
   .title-row {
@@ -174,10 +174,10 @@
   }
   h4 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-lg);
   }
   .label {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -190,7 +190,7 @@
   }
   ul {
     margin: 0;
-    padding-left: 18px;
+    padding-left: 14px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -200,7 +200,7 @@
   }
   .url {
     display: block;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 4px 8px;
     border-radius: 4px;
     background: var(--surface-2);
@@ -213,7 +213,7 @@
     gap: 4px;
   }
   .var {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     padding: 1px 6px;
     border-radius: 4px;
     color: var(--err);
@@ -228,17 +228,17 @@
     display: none;
   }
   .actions button {
-    font-size: 12px;
-    padding: 4px 10px;
+    font-size: var(--fs-sm);
+    padding: 4px 8px;
   }
   .done {
     color: var(--ok);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   details summary {
     cursor: pointer;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .detail-box {
     position: relative;
@@ -246,21 +246,21 @@
   }
   .detail-box pre {
     margin: 0;
-    padding: 8px 10px;
+    padding: 8px 8px;
     padding-right: 70px;
     border-radius: 4px;
     background: var(--surface-2);
     border: 1px solid var(--border);
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--text);
   }
   .copy {
     position: absolute;
     top: 4px;
     right: 4px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     padding: 2px 8px;
   }
 </style>

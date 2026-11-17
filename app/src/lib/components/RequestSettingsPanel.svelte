@@ -112,24 +112,24 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 2px;
+    padding: 8px 2px;
     max-width: 560px;
   }
   .hint {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-sm);
     margin: 0 0 4px;
   }
   .row {
     display: grid;
     grid-template-columns: 200px 1fr;
     align-items: center;
-    gap: 12px;
-    font-size: 13px;
+    gap: 10px;
+    font-size: var(--fs-md);
   }
   select,
   input {
-    font-size: 13px;
+    font-size: var(--fs-md);
     padding: 5px 8px;
   }
   .warn {
@@ -138,7 +138,7 @@
     border: 1px solid var(--warn);
     background: color-mix(in srgb, var(--warn) 10%, transparent);
     border-radius: 6px;
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: var(--fs-sm);
   }
 </style>

@@ -215,16 +215,16 @@
     flex: none;
     max-height: 40%;
     overflow: auto;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .summary {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-md);
     user-select: text;
   }
   .body {
@@ -237,9 +237,9 @@
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 2px 10px;
+    gap: 2px 8px;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   dt {
     color: var(--muted);
@@ -265,7 +265,7 @@
     gap: 4px;
   }
   .ref {
-    font-size: 11px;
+    font-size: var(--fs-xs);
     padding: 1px 6px;
     border-radius: 4px;
     border: 1px solid var(--accent);
@@ -276,7 +276,7 @@
     background: none;
     padding: 0 6px 0 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .link:hover {
     text-decoration: underline;
@@ -289,7 +289,7 @@
   }
   .small {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .ghost.small {
     padding: 2px 4px;
@@ -310,10 +310,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 10px;
+    padding: 4px 8px;
   }
   .label {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -321,7 +321,7 @@
     flex: 1;
     min-width: 0;
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .file-list {
     overflow: auto;
@@ -337,11 +337,11 @@
     align-items: center;
     gap: 6px;
     height: 24px;
-    padding: 0 10px;
+    padding: 0 8px;
     margin: 0 4px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
   .file:hover {
     background: var(--hover);
@@ -353,12 +353,12 @@
     flex: none;
     width: 12px;
     font-weight: 700;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .badge {
     flex: none;
     width: 30px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
   .fname {
@@ -371,7 +371,7 @@
     min-width: 0;
     flex: 0 1 auto;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -381,7 +381,7 @@
   }
   .counts {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .plus {
     color: var(--ok);
@@ -405,7 +405,7 @@
   }
   .bin {
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .diff {
     flex: 1;
@@ -417,7 +417,7 @@
     color: var(--muted);
   }
   .pad {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .error {
     color: var(--err);
