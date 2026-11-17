@@ -323,6 +323,7 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
      - A la derecha, el proyecto de destino real con los elementos que se van a crear en un estilo distinto. **Se arrastra cada elemento donde se quiera**: como colección nueva, como carpeta dentro de algo que ya existe o como peticiones sueltas. Se puede renombrar, mover y quitar. Los entornos van al proyecto o a global.
      - Debajo, las opciones y un resumen en vivo.
   3. **Informe:** lo creado, con enlaces, y los avisos.
+     - **«Abrir proyecto» da por terminada la importación:** despliega el proyecto en la barra lateral, cierra la pestaña del asistente y lo deja limpio para la próxima vez. Así no queda una pestaña con un informe ya leído. «Importar más» sigue volviendo al paso de origen sin cerrar la pestaña.
 - **Conversión:**
   - Auth heredada de petición, carpeta y colección: Bearer y API key → headers; Basic → header, o script si usa variables. OAuth2 y otros → aviso.
   - Bodies: raw (json o texto), urlencoded, formdata → form con aviso (los archivos no se admiten todavía) y GraphQL → json.

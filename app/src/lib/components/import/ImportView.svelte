@@ -106,6 +106,9 @@
     if (!importer.project) return;
     ws.setExpanded(importer.project, true);
     ws.reveal(importer.project);
+    // Accepting the report ends the import: close the wizard tab and leave it clean for next time.
+    importer.reset();
+    void ws.closeTab("import");
   }
 </script>
 
