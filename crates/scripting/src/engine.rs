@@ -32,7 +32,11 @@ const MAX_RANDOM_BYTES: usize = 65536;
 /// Wall-clock budget for one script (including timers and promise jobs).
 pub(crate) const TIMEOUT: Duration = Duration::from_secs(5);
 const MEMORY_LIMIT: usize = 64 * 1024 * 1024;
-const MAX_STACK: usize = 512 * 1024;
+/// JS stack limit. Scripts run on their own thread with [`WORKER_STACK`], so
+/// this doesn't depend on the caller's stack (1 MiB on Windows' main thread).
+const MAX_STACK: usize = 8 * 1024 * 1024;
+/// Native stack of the script thread: the JS limit plus room for Rust frames.
+const WORKER_STACK: usize = 16 * 1024 * 1024;
 const NO_DEADLINE: u64 = u64::MAX;
 
 pub(crate) const TIMEOUT_MESSAGE: &str = "script timed out";
@@ -287,5 +291,151 @@ pub(crate) fn with_engine(
             *slot = None;
         }
         run
+    })
+}
+
+// ---------------------------------------------------------------- worker thread
+
+/// To the script thread.
+enum ToWorker {
+    Run {
+        kind: String,
+        source: String,
+        input_json: String,
+        timeout: Duration,
+        has_http: bool,
+    },
+    HttpReply(Result<ResponseView, String>),
+}
+
+/// From the script thread.
+enum FromWorker {
+    /// A `pm.sendRequest`: the caller sends it (with its non-`Send` sender) and replies.
+    Http(SendRequestSpec),
+    Done(RawRun),
+}
+
+struct Worker {
+    tx: std::sync::mpsc::Sender<ToWorker>,
+    rx: std::sync::mpsc::Receiver<FromWorker>,
+}
+
+impl Worker {
+    fn spawn() -> Result<Self, String> {
+        let (tx, inbox) = std::sync::mpsc::channel::<ToWorker>();
+        let (out, rx) = std::sync::mpsc::channel::<FromWorker>();
+        std::thread::Builder::new()
+            .name("ilixpatch-script".into())
+            .stack_size(WORKER_STACK)
+            .spawn(move || worker_loop(&inbox, &out))
+            .map_err(|e| format!("failed to start the script thread: {e}"))?;
+        Ok(Self { tx, rx })
+    }
+}
+
+fn worker_loop(
+    inbox: &std::sync::mpsc::Receiver<ToWorker>,
+    out: &std::sync::mpsc::Sender<FromWorker>,
+) {
+    // Ends when the caller's thread (and its `Worker`) goes away.
+    while let Ok(msg) = inbox.recv() {
+        let ToWorker::Run {
+            kind,
+            source,
+            input_json,
+            timeout,
+            has_http,
+        } = msg
+        else {
+            continue;
+        };
+        let proxy = |spec: &SendRequestSpec| -> Result<ResponseView, String> {
+            out.send(FromWorker::Http(spec.clone()))
+                .map_err(|_| "pm.sendRequest: the caller went away".to_string())?;
+            match inbox.recv() {
+                Ok(ToWorker::HttpReply(r)) => r,
+                _ => Err("pm.sendRequest: internal error".into()),
+            }
+        };
+        let http = has_http.then_some(HttpSender(&proxy));
+        let raw = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_engine(&kind, &source, &input_json, timeout, http)
+        }))
+        .unwrap_or_else(|_| {
+            ENGINE.with(|cell| {
+                if let Ok(mut slot) = cell.try_borrow_mut() {
+                    *slot = None;
+                }
+            });
+            RawRun {
+                json: None,
+                fatal: Some("internal error in script engine".into()),
+            }
+        });
+        if out.send(FromWorker::Done(raw)).is_err() {
+            return;
+        }
+    }
+}
+
+thread_local! {
+    /// Each calling thread gets its own script thread (and so its own cached engine).
+    static WORKER: RefCell<Option<Worker>> = const { RefCell::new(None) };
+}
+
+/// Run a script on this thread's script thread; `pm.sendRequest` calls come
+/// back here to be sent with `http`.
+pub(crate) fn run_on_worker(
+    kind: &str,
+    source: &str,
+    input_json: &str,
+    timeout: Duration,
+    http: Option<HttpSender<'_>>,
+) -> RawRun {
+    let fatal = |m: String| RawRun {
+        json: None,
+        fatal: Some(m),
+    };
+    WORKER.with(|cell| {
+        let Ok(mut slot) = cell.try_borrow_mut() else {
+            return fatal("scripting engine is busy (re-entrant call)".into());
+        };
+        if slot.is_none() {
+            match Worker::spawn() {
+                Ok(w) => *slot = Some(w),
+                Err(e) => return fatal(e),
+            }
+        }
+        let worker = slot.as_ref().expect("worker started above");
+        let run = ToWorker::Run {
+            kind: kind.to_string(),
+            source: source.to_string(),
+            input_json: input_json.to_string(),
+            timeout,
+            has_http: http.is_some(),
+        };
+        if worker.tx.send(run).is_err() {
+            *slot = None;
+            return fatal("the script thread stopped; try again".into());
+        }
+        loop {
+            match worker.rx.recv() {
+                Ok(FromWorker::Http(spec)) => {
+                    let reply = match http {
+                        Some(HttpSender(send)) => send(&spec),
+                        None => Err("pm.sendRequest is not available here".into()),
+                    };
+                    if worker.tx.send(ToWorker::HttpReply(reply)).is_err() {
+                        *slot = None;
+                        return fatal("the script thread stopped; try again".into());
+                    }
+                }
+                Ok(FromWorker::Done(raw)) => return raw,
+                Err(_) => {
+                    *slot = None;
+                    return fatal("internal error in script engine".into());
+                }
+            }
+        }
     })
 }

@@ -383,11 +383,17 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
     no paga su coste.
   - También las globales de Postman `_`, `CryptoJS` y `xml2Json`, y `crypto.getRandomValues` / `crypto.randomUUID`
     con **aleatoriedad del sistema** (crate `getrandom`), no `Math.random`.
-- **QuickJS siempre optimizado** (`[profile.dev.package.rquickjs-sys] opt-level = 3`). Sin optimizar, MSVC genera
-  marcos de pila del intérprete tan grandes que, en los tests de Windows, un script normal llegaba al límite de
-  512 KB de pila de JS. No se sube el límite porque en Windows el hilo principal (donde la CLI ejecuta los scripts)
-  solo tiene 1 MB: con un límite mayor la pila se desbordaría de verdad en lugar de dar un error controlado. Un test
-  comprueba que una profundidad de llamadas realista cabe en todas las plataformas.
+- **Los scripts se ejecutan en un hilo propio con 16 MB de pila** (uno por cada hilo que los lanza, con su motor
+  en caché) y el límite de pila de JS es de 8 MB, igual en todas las plataformas.
+  - **Por qué:** en Windows los marcos de pila del intérprete son mucho más grandes. Con el límite anterior (512 KB,
+    en la pila del hilo que llamaba) una recursión de 200 niveles ya fallaba en Windows. Además, en Windows el hilo
+    principal, donde la CLI ejecuta los scripts, solo tiene 1 MB, así que no se podía subir el límite sin arriesgarse
+    a desbordar la pila de verdad.
+  - `pm.sendRequest` se sigue enviando desde el hilo que llama: el hilo del script le pasa la petición y espera la
+    respuesta. Así el emisor no necesita ser `Send`.
+  - QuickJS se compila optimizado también en depuración (`[profile.dev.package.rquickjs-sys] opt-level = 3`), para
+    que los tests midan lo mismo que la release.
+  - Un test comprueba que caben 2000 niveles de recursión y que una recursión infinita da un `RangeError` capturable.
 - **Por qué:** en colecciones reales es muy común pedir un token con `sendRequest` en el pre-request y usar
   crypto-js, lodash o moment. Sin ellos, la promesa de que "los scripts funcionan sin cambios" se rompe en cuanto
   alguien migra algo grande.

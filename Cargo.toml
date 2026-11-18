@@ -32,8 +32,8 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 
 # See https://tauri.app/concept/size/#cargo-configuration
 # QuickJS (C, built by rquickjs-sys) always optimized, also in debug builds and
-# tests: unoptimized MSVC builds have such large interpreter stack frames that
-# ordinary scripts hit the 512 KiB JS stack limit on Windows CI (D59).
+# tests, so tests measure what releases do (unoptimized MSVC builds have huge
+# interpreter stack frames) (D59).
 [profile.dev.package.rquickjs-sys]
 opt-level = 3
 
