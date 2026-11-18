@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compareMenu } from "$lib/stores/compare.svelte";
   import JsonView from "./json/JsonView.svelte";
   import { tryParse } from "$lib/json/model";
   import { exampleFromResponse } from "$lib/mock/examples";
@@ -129,6 +130,16 @@
       {#if result.network}<NetworkInfo network={result.network} />{/if}
       {#if ws.drafts[path]}
         <button class="ghost small save-example" title={t("examples.saveHint")} onclick={saveExample}>{t("examples.save")}</button>
+      {/if}
+      {#if result}
+        <button
+          class="ghost small"
+          title={t("compare.buttonHint")}
+          onclick={(e) => {
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            void compareMenu(path, r.left, r.bottom + 2);
+          }}>{t("compare.button")}</button
+        >
       {/if}
     {/if}
     {#if resp?.loading}

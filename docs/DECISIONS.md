@@ -351,6 +351,28 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D64 · Comparador de respuestas inteligente ✅
+- **Para qué:** saber si dos respuestas difieren **en los datos** o solo **en el orden o el formato** (claves en otro
+  orden, arrays reordenados, espacios), y ver las diferencias reales sin ruido.
+- **Desde dónde:** botón «Comparar…» en la respuesta: con un **ejemplo** guardado de la petición (D62), con una
+  **respuesta anterior** de esa petición (historial local) o con un **JSON pegado**. Se abre en una pestaña, solo en
+  memoria (no se restaura al reiniciar).
+- **Modos:**
+  - **Resumen** (por defecto): un veredicto («Idénticas», «Mismos datos: solo cambia el orden o el formato» o
+    «N diferencias de datos», con cuántas cambian, se añaden o se eliminan, y si además hay diferencias de orden) y la
+    lista de diferencias **agrupada por sección** del documento: ruta, valor de antes → valor de después, cambios de
+    tipo («número → texto»), diferencia numérica y cambios de longitud de los arrays. Un clic muestra los valores
+    completos.
+  - **Normalizado:** diff de texto de las dos respuestas normalizadas.
+  - **Tal cual:** diff de texto de las respuestas formateadas, sin normalizar.
+- **Normalización** (configurable): claves ordenadas, arrays en orden canónico, espacios limpiados y **rutas
+  ignoradas** con comodines (`*.updatedAt` a cualquier profundidad, `items[*].id`, `meta.requestId`), para quitar
+  marcas de tiempo, ids de petición y similares.
+- Las diferencias se calculan sobre la estructura (no sobre líneas de texto); los arrays se comparan por posición
+  (con «Ordenar arrays», tras ordenarlos). Si alguna de las dos no es JSON, se comparan como texto.
+- Lógica en `app/src/lib/json/model.ts` (con self-tests), compartida con el visor (D63); el diff de texto reutiliza
+  el de git.
+
 ## D63 · Visor enriquecido de JSON en las respuestas ✅
 - **Para qué:** con respuestas JSON grandes o anidadas, el texto no deja ver la estructura. La vista «Árbol» (por
   defecto en respuestas JSON; se recuerda la elección) se puede alternar con «Texto».

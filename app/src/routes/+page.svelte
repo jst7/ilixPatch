@@ -3,6 +3,7 @@
   import { vault } from "$lib/stores/vault.svelte";
   import VaultUnlock from "$lib/components/VaultUnlock.svelte";
   import MockView from "$lib/components/MockView.svelte";
+  import CompareView from "$lib/components/CompareView.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { t } from "$lib/i18n/index.svelte";
   import { draftOnlyKey, historyKey, scratchKey, ws } from "$lib/stores/workspace.svelte";
@@ -234,6 +235,8 @@
       {#key ws.activeTab.target}<RunnerView target={ws.activeTab.target} />{/key}
     {:else if ws.activeTab?.kind === "load"}
       {#key ws.activeTab.target}<LoadTestView target={ws.activeTab.target} />{/key}
+    {:else if ws.activeTab?.kind === "compare"}
+      {#key ws.activeTab.id}<CompareView id={ws.activeTab.id} />{/key}
     {:else if ws.activeTab?.kind === "mock"}
       {#key ws.activeTab.target}<MockView target={ws.activeTab.target} />{/key}
     {:else if ws.activeTab?.kind === "git"}

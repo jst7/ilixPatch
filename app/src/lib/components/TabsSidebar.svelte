@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compares } from "$lib/stores/compare.svelte";
   import { tabGroups, type TabGroup } from "$lib/stores/tabGroups.svelte";
   import { suppressTextSelection } from "$lib/dragSelect";
   import { t } from "$lib/i18n/index.svelte";
@@ -91,6 +92,10 @@
     }
     if (tab.kind === "import") {
       return { key, tab, title: t("tabs.import"), hint: "", method: null, dirty: false };
+    }
+    if (tab.kind === "compare") {
+      const s = compares.sessions[tab.id];
+      return { key, tab, title: t("tabs.compare"), hint: s ? `${s.left.label} ↔ ${s.right.label}` : "", method: null, dirty: false };
     }
     if (tab.kind === "container") {
       const name = node?.name ?? basename(tab.path);
@@ -269,6 +274,7 @@
       case "history":
         return inside(ws.historyTabs[tab.id]?.entry?.request_path);
       case "import":
+      case "compare":
       case "scratch":
         return null;
       default:
@@ -682,6 +688,10 @@
               >
             {:else if v.tab.kind === "runner"}
               <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4.5 3v10l8-5z" fill="currentColor" /></svg>
+            {:else if v.tab.kind === "compare"}
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"
+                ><path d="M5 2v12M11 2v12M2 5h6M8 11h6" /></svg
+              >
             {:else if v.tab.kind === "mock"}
               <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"
                 ><rect x="2.5" y="3" width="11" height="4" rx="1" /><rect x="2.5" y="9" width="11" height="4" rx="1" /><path d="M5 5h.01M5 11h.01" /></svg

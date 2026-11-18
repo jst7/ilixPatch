@@ -322,6 +322,8 @@ export type OpenTab =
   | { kind: "load"; target: string }
   /** Mock server of a project or collection (D62). */
   | { kind: "mock"; target: string }
+  /** Comparison of two responses (D64); in memory, not restored on restart. */
+  | { kind: "compare"; id: string }
   | { kind: "git"; repo: string }
   | { kind: "history"; id: number }
   /** Environments of a project, or the global ones (project = null) (D28). */
@@ -361,6 +363,7 @@ export function tabKey(tab: OpenTab): string {
   if (tab.kind === "git") return `git:${tab.repo}`;
   if (tab.kind === "merge") return `merge:${tab.path}`;
   if (tab.kind === "import") return "import";
+  if (tab.kind === "compare") return `compare:${tab.id}`;
   if (tab.kind === "container") return `container:${tab.path}`;
   return `${tab.kind}:${tab.target}`;
 }
@@ -372,6 +375,7 @@ export function tabPath(tab: OpenTab): string {
   if (tab.kind === "environments") return tab.project ?? "env:global";
   if (tab.kind === "merge") return tab.path;
   if (tab.kind === "import") return "import";
+  if (tab.kind === "compare") return `compare:${tab.id}`;
   if (tab.kind === "container") return tab.path;
   return tab.kind === "request" ? tab.path : tab.kind === "git" ? tab.repo : tab.target;
 }

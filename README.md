@@ -162,6 +162,8 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)**.
 - **GraphQL** bodies with schema-aware completion (introspection), sent as JSON.
 - **Rich JSON viewer**: collapsible tree with types and counts, search, table view of arrays, copy path/value and
   “save in variable” from any node.
+- **Smart response comparison**: compare with an example, an earlier response or pasted JSON; a summary tells
+  data changes from order/format-only ones (sorted keys and arrays, ignored paths like `*.updatedAt`).
 - **Mock server** from the requests' saved examples (or Postman/OpenAPI imports): build the frontend before the
   backend exists. In the app (right-click › Mock server…) or `ilixpatch mock ./my-project --port 4000`.
 - **Authorization** with every Postman type: Bearer, Basic, API key, Digest, OAuth 1.0, **OAuth 2.0** (authorization code,
