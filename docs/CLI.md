@@ -342,7 +342,7 @@ Asks GitHub for the latest published release and compares it with the installed 
 
 ```sh
 $ ilixpatch check-update
-ilixpatch 0.4.3 is available (you have 0.4.2): https://github.com/jst7/ilixPatch/releases/tag/v0.4.3
+ilixpatch 0.13.0 is available (you have 0.12.0): https://github.com/jst7/ilixPatch/releases/tag/v0.13.0
 ```
 
 - It downloads and installs nothing: it shows the link to the release.

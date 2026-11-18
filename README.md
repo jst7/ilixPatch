@@ -134,7 +134,7 @@ The CLI is a single binary. In GitHub Actions:
 ```yaml
 - name: Install ilixpatch
   run: |
-    V=v0.4.2   # pin the version you want
+    V=v0.12.0   # pin the version you want
     curl -sSL "https://github.com/jst7/ilixPatch/releases/download/$V/ilixpatch-$V-x86_64-unknown-linux-gnu.tar.gz" | tar xz
     echo "$PWD/ilixpatch-$V-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
 

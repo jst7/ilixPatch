@@ -2,3 +2,6 @@
 .DS_Store
 # Local secrets for environments are never committed
 *.secret.toml
+
+# JetBrains IDE settings (local)
+.idea/

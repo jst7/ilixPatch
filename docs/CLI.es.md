@@ -330,7 +330,7 @@ Pregunta a GitHub cuál es la última release publicada y la compara con la vers
 
 ```sh
 $ ilixpatch check-update
-ilixpatch 0.4.3 is available (you have 0.4.2): https://github.com/jst7/ilixPatch/releases/tag/v0.4.3
+ilixpatch 0.13.0 is available (you have 0.12.0): https://github.com/jst7/ilixPatch/releases/tag/v0.13.0
 ```
 
 - No descarga ni instala nada: muestra el enlace a la release.

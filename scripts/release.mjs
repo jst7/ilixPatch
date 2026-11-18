@@ -184,6 +184,13 @@ function writeVersion(next) {
   const out = toml.replace(/(^\[workspace\.package\][\s\S]*?^version\s*=\s*")[^"]+(")/m, `$1${next}$2`);
   if (out === toml) fail("could not update Cargo.toml");
   writeFileSync(FILES.cargo, out);
+  // The CI install example in the READMEs pins the release (V=vX.Y.Z): keep it current.
+  for (const readme of ["README.md", "README.es.md"]) {
+    const f = join(ROOT, readme);
+    const text = readFileSync(f, "utf8");
+    const updated = text.replace(/V=v\d+\.\d+\.\d+/g, `V=v${next}`);
+    if (updated !== text) writeFileSync(f, updated);
+  }
   // JSON files: keep their formatting (indent) and trailing newline.
   for (const f of [FILES.tauri, FILES.pkg]) {
     const text = readFileSync(f, "utf8");
@@ -225,7 +232,7 @@ async function main() {
   if (!(await confirm("Continue?", true))) fail("cancelled");
 
   if (!dryRun) writeVersion(next);
-  console.log(green(`✔ version ${next} in Cargo.toml, tauri.conf.json and package.json`));
+  console.log(green(`✔ version ${next} in Cargo.toml, tauri.conf.json, package.json and the READMEs (CI example)`));
   step("update package-lock.json", "npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"], { cwd: join(ROOT, "app") });
   step("update Cargo.lock", "cargo", ["update", "--workspace"]);
   step("regenerate THIRD_PARTY_LICENSES", "node", ["scripts/third-party-licenses.mjs"]);
