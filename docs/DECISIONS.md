@@ -383,6 +383,11 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
     no paga su coste.
   - También las globales de Postman `_`, `CryptoJS` y `xml2Json`, y `crypto.getRandomValues` / `crypto.randomUUID`
     con **aleatoriedad del sistema** (crate `getrandom`), no `Math.random`.
+- **QuickJS siempre optimizado** (`[profile.dev.package.rquickjs-sys] opt-level = 3`). Sin optimizar, MSVC genera
+  marcos de pila del intérprete tan grandes que, en los tests de Windows, un script normal llegaba al límite de
+  512 KB de pila de JS. No se sube el límite porque en Windows el hilo principal (donde la CLI ejecuta los scripts)
+  solo tiene 1 MB: con un límite mayor la pila se desbordaría de verdad en lugar de dar un error controlado. Un test
+  comprueba que una profundidad de llamadas realista cabe en todas las plataformas.
 - **Por qué:** en colecciones reales es muy común pedir un token con `sendRequest` en el pre-request y usar
   crypto-js, lodash o moment. Sin ellos, la promesa de que "los scripts funcionan sin cambios" se rompe en cuanto
   alguien migra algo grande.

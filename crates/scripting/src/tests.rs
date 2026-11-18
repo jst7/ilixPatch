@@ -1099,3 +1099,31 @@ fn local_variables_input_has_highest_precedence() {
         }]
     );
 }
+
+/// Ordinary nesting must fit in the JS stack limit on every platform (Windows
+/// has much larger native frames; see the rquickjs-sys profile in Cargo.toml).
+#[test]
+fn realistic_call_depth_fits_the_stack() {
+    let out = run_script(
+        ScriptKind::Test,
+        r#"
+        function depth(n) { return n === 0 ? 0 : 1 + depth(n - 1); }
+        function nested(n) { return n === 0 ? { leaf: [1, 2, 3] } : { child: nested(n - 1), n: n }; }
+        pm.test("recursion", () => pm.expect(depth(200)).to.equal(200));
+        pm.test("deep eql inside callbacks", (done) => {
+            setTimeout(() => {
+                require("xml2js").parseString("<a><b><c><d>x</d></c></b></a>", (err, res) => {
+                    pm.expect(res).to.eql({ a: { b: [{ c: [{ d: ["x"] }] }] } });
+                    pm.expect(nested(25)).to.eql(nested(25));
+                    done();
+                });
+            }, 0);
+        });
+        "#,
+        &ScriptInput::default(),
+    );
+    assert_eq!(out.error, None);
+    for t in &out.tests {
+        assert!(t.passed, "{t:?}");
+    }
+}
