@@ -138,7 +138,7 @@ pub struct ScriptOutput {
 ///
 /// Each script thread keeps one QuickJS runtime with chai and the `pm` prelude
 /// preloaded; a call only builds the per-run `pm` object. Scripts run on a
-/// dedicated thread per calling thread (16 MiB stack, 8 MiB of it for JS, the
+/// dedicated thread per calling thread (32 MiB stack, 16 MiB of it for JS, the
 /// same on every platform) and are limited to
 /// 64 MiB of heap and 5 s of wall-clock time (`"script timed out"`); the time
 /// spent waiting for `pm.sendRequest` responses doesn't count.

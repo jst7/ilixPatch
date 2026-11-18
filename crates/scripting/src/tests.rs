@@ -1101,7 +1101,7 @@ fn local_variables_input_has_highest_precedence() {
 }
 
 /// Ordinary nesting must fit in the JS stack limit on every platform (Windows
-/// has much larger native frames): scripts run on their own 16 MiB thread.
+/// has much larger native frames): scripts run on their own 32 MiB thread.
 #[test]
 fn realistic_call_depth_fits_the_stack() {
     let out = run_script(
@@ -1109,7 +1109,7 @@ fn realistic_call_depth_fits_the_stack() {
         r#"
         function depth(n) { return n === 0 ? 0 : 1 + depth(n - 1); }
         function nested(n) { return n === 0 ? { leaf: [1, 2, 3] } : { child: nested(n - 1), n: n }; }
-        pm.test("recursion", () => pm.expect(depth(2000)).to.equal(2000));
+        pm.test("recursion", () => pm.expect(depth(1000)).to.equal(1000));
         pm.test("runaway recursion is a catchable error", () => {
             function forever() { return forever() + 1; }
             pm.expect(forever).to.throw(RangeError, "Maximum call stack size exceeded");

@@ -34,9 +34,11 @@ pub(crate) const TIMEOUT: Duration = Duration::from_secs(5);
 const MEMORY_LIMIT: usize = 64 * 1024 * 1024;
 /// JS stack limit. Scripts run on their own thread with [`WORKER_STACK`], so
 /// this doesn't depend on the caller's stack (1 MiB on Windows' main thread).
-const MAX_STACK: usize = 8 * 1024 * 1024;
+const MAX_STACK: usize = 16 * 1024 * 1024;
 /// Native stack of the script thread: the JS limit plus room for Rust frames.
-const WORKER_STACK: usize = 16 * 1024 * 1024;
+/// Only reserved address space; pages are committed as they are used. On
+/// Windows a JS call takes ~4 KiB of native stack, so 16 MiB is ~4000 levels.
+const WORKER_STACK: usize = 32 * 1024 * 1024;
 const NO_DEADLINE: u64 = u64::MAX;
 
 pub(crate) const TIMEOUT_MESSAGE: &str = "script timed out";
