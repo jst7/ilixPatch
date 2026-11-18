@@ -351,6 +351,35 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D60 · Secretos cifrados con contraseña maestra ✅
+- **Qué se cifra (AES-256-GCM):** los `*.secret.toml` de los entornos de proyecto, las variables secretas de los
+  entornos globales y de los globals, y el almacén de tokens de OAuth 2.0. Lo demás (peticiones, entornos no secretos)
+  sigue en texto, para que git y los diffs funcionen igual.
+- **Clave de datos y contraseña maestra:** una **clave de datos aleatoria** cifra los secretos. Esa clave se guarda en
+  `<config de la app>/vault.toml`, cifrada con una clave derivada de la contraseña maestra (**Argon2id**, 19 MB,
+  2 pasadas). La contraseña nunca se guarda.
+  - **Por qué así:** cambiar la contraseña solo vuelve a cifrar la clave de datos. No hay que reescribir los secretos
+    de todos los proyectos (que pueden estar en sitios que la app no conoce).
+- **Contraseña por defecto `pass`:**
+  - Con ella la app **no la pide al abrir** y muestra un aviso fijo para cambiarla (Ajustes › Seguridad). Mientras
+    no se cambie, la protección real es la misma que antes: cualquiera que conozca la app puede descifrar los ficheros.
+  - Con una contraseña propia, la app arranca **bloqueada** y la pide antes de cargar los proyectos.
+- **Formato:** `ilxv1:<base64(nonce ‖ texto cifrado)>`. Un `.secret.toml` cifrado contiene solo
+  `encrypted = "ilxv1:…"`; en los entornos globales el valor de cada variable secreta va cifrado en su sitio.
+- **Migración:** los secretos en texto plano de versiones anteriores se leen igual y se reescriben cifrados la primera
+  vez que se leen con el baúl abierto.
+- **Olvidé la contraseña:** «Restablecer» crea una clave nueva con `pass`. Los secretos cifrados con la anterior
+  **se leen vacíos** (no rompen el entorno): hay que volver a escribirlos. Los tokens de OAuth se vuelven a pedir.
+- **CLI y CI:** la contraseña se da con `ILIXPATCH_PASSWORD`; sin ella se usa `pass`. Una contraseña incorrecta dada
+  explícitamente es un error inmediato. Si falta y los secretos la necesitan, el error dice cómo darla.
+- **Estado del proceso:** «sin configurar» (librerías y tests: texto plano, como antes), «bloqueado» (leer o escribir un
+  secreto es un error) o «abierto». La app y la CLI lo configuran al arrancar.
+- **Límite conocido:** como con cualquier gestor de contraseñas, un programa malicioso que se ejecute con tu usuario
+  mientras la app está abierta podría leer la clave de la memoria. Protege los ficheros fuera de la sesión: copias de
+  seguridad, carpetas sincronizadas (Dropbox, iCloud), un zip enviado o un commit accidental.
+- Crates `aes-gcm` y `argon2` (RustCrypto), en `crates/core/src/vault.rs`; Argon2 se compila optimizado también en
+  depuración (sin optimizar tarda segundos por derivación).
+
 ## D59 · CSP estricta, `pm.sendRequest` y módulos de `require` ✅
 - **CSP estricta** en `app/src-tauri/tauri.conf.json` (antes `"csp": null`):
   - **Por qué:** la app muestra respuestas de APIs ajenas y ejecuta scripts importados. Si algún día se colara HTML o

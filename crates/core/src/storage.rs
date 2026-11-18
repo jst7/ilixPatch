@@ -61,6 +61,8 @@ pub enum StorageError {
     Serialize(#[from] toml::ser::Error),
     #[error("{path}: {message}")]
     Edit { path: PathBuf, message: String },
+    #[error(transparent)]
+    Vault(#[from] crate::vault::VaultError),
 }
 
 pub type Result<T> = std::result::Result<T, StorageError>;
@@ -202,8 +204,8 @@ fn load_environments(dir: &Path) -> Result<Vec<Environment>> {
         env.name = stem.to_string();
         let secrets = dir.join(format!("{stem}{SECRET_SUFFIX}"));
         if secrets.is_file() {
-            let secret: Environment = parse(&secrets)?;
-            env.variables.extend(secret.variables);
+            let (values, _) = crate::environments::read_secret_file(&secrets)?;
+            env.variables.extend(values);
         }
         envs.push(env);
     }

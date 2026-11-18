@@ -37,6 +37,13 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 [profile.dev.package.rquickjs-sys]
 opt-level = 3
 
+# Argon2 (D60) unoptimized takes seconds per key derivation in debug builds.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3
+
 [profile.release]
 codegen-units = 1
 lto = true

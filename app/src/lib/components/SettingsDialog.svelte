@@ -6,8 +6,40 @@
   import { updates } from "$lib/stores/update.svelte";
   import { clearHistory, formatBytes } from "./historyUtil";
   import NetworkSettingsSection from "./NetworkSettingsSection.svelte";
+  import { ask } from "@tauri-apps/plugin-dialog";
+  import { vault } from "$lib/stores/vault.svelte";
 
-  type SectionId = "general" | "appearance" | "colors" | "history" | "https" | "proxy" | "requests";
+  // D60: master password.
+  let pwCurrent = $state("");
+  let pwNew = $state("");
+  let pwConfirm = $state("");
+  let pwMessage = $state<{ ok: boolean; text: string } | null>(null);
+  async function changePassword(e: SubmitEvent) {
+    e.preventDefault();
+    pwMessage = null;
+    if (pwNew !== pwConfirm) {
+      pwMessage = { ok: false, text: t("vault.mismatch") };
+      return;
+    }
+    const current = vault.defaultPassword ? "pass" : pwCurrent;
+    if (await vault.change(current, pwNew)) {
+      pwCurrent = pwNew = pwConfirm = "";
+      pwMessage = { ok: true, text: t("vault.changed") };
+    } else {
+      pwMessage = { ok: false, text: vault.error?.includes("wrong") ? t("vault.wrong") : (vault.error ?? "") };
+    }
+  }
+  async function resetVault() {
+    const ok = await ask(t("vault.resetConfirm"), {
+      title: t("vault.resetTitle"),
+      kind: "warning",
+      okLabel: t("vault.resetOk"),
+      cancelLabel: t("vault.cancel"),
+    });
+    if (ok) await vault.reset();
+  }
+
+  type SectionId = "general" | "appearance" | "colors" | "history" | "https" | "proxy" | "requests" | "security";
   let {
     open,
     onclose,
@@ -22,6 +54,7 @@
     { id: "history", label: "settings.history.title", icon: "M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8M3 3v5h5M12 7v5l4 2" },
     { id: "requests", label: "settings.section.requests", icon: "M4 12h13M13 6l6 6-6 6" },
     { id: "https", label: "settings.section.https", icon: "M6 11V8a6 6 0 0112 0v3M5 11h14v10H5zM12 15v2" },
+    { id: "security", label: "settings.section.security", icon: "M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6zM9.5 12l2 2 3.5-4" },
     { id: "proxy", label: "settings.section.proxy", icon: "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z" },
   ];
   const LS_SECTION = "ilixpatch.settingsSection";
@@ -402,6 +435,37 @@
         </fieldset>
       {/each}
     </section>
+    {:else if section === "security"}
+    <section>
+      <p class="hint">{t("vault.settingsHint")}</p>
+      <p class={vault.defaultPassword ? "warn-text" : "hint"}>
+        {vault.defaultPassword ? t("vault.usingDefault") : t("vault.usingCustom")}
+      </p>
+      <form class="pw" onsubmit={changePassword}>
+        {#if !vault.defaultPassword}
+          <label class="row">
+            <span>{t("vault.current")}</span>
+            <input type="password" autocomplete="current-password" bind:value={pwCurrent} />
+          </label>
+        {/if}
+        <label class="row">
+          <span>{t("vault.new")}</span>
+          <input type="password" autocomplete="new-password" bind:value={pwNew} />
+        </label>
+        <label class="row">
+          <span>{t("vault.confirm")}</span>
+          <input type="password" autocomplete="new-password" bind:value={pwConfirm} />
+        </label>
+        <p class="hint">{t("vault.forgetWarning")}</p>
+        {#if pwMessage}<p class={pwMessage.ok ? "ok-text" : "err-text"} role="status">{pwMessage.text}</p>{/if}
+        <div class="pw-actions">
+          <button class="primary" type="submit" disabled={!pwNew || vault.busy || (!vault.defaultPassword && !pwCurrent)}>
+            {t("vault.change")}
+          </button>
+          <button class="ghost danger" type="button" onclick={resetVault}>{t("vault.resetButton")}</button>
+        </div>
+      </form>
+    </section>
     {:else if section === "https" || section === "proxy" || section === "requests"}
     <NetworkSettingsSection part={section} />
     {/if}
@@ -410,6 +474,31 @@
 </dialog>
 
 <style>
+  .pw {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pw-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .warn-text {
+    color: var(--warn);
+    font-size: var(--fs-sm);
+  }
+  .ok-text {
+    color: var(--ok);
+    font-size: var(--fs-sm);
+  }
+  .err-text {
+    color: var(--err);
+    font-size: var(--fs-sm);
+  }
+  .danger {
+    color: var(--err);
+  }
   dialog {
     width: min(860px, calc(100vw - 32px));
     height: min(620px, calc(100vh - 64px));

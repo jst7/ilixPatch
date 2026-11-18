@@ -9,6 +9,7 @@ pub mod project;
 pub mod request_settings;
 pub mod storage;
 pub mod vars;
+pub mod vault;
 
 pub use auth::Auth;
 pub use extract::{Extract, ExtractFrom, ExtractScope};

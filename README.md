@@ -164,7 +164,7 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish)
 
 **Organisation**
 - **Project › Collection › Folder › Request**, each project usually a Git repository.
-- **Project environments** (shared via Git; secrets kept in a git-ignored `.secret.toml`) and **global environments** (per user),
+- **Project environments** (shared via Git; secrets kept in a git-ignored, **encrypted** `.secret.toml`) and **global environments** (per user),
   copyable both ways. Collection & environment variables with Postman precedence.
 - Open requests as tabs in a collapsible right sidebar; search the tree, the tabs and the history.
 - **Quick requests**: start a new request at any moment (`⌘/Ctrl+N` or the **+** in the tabs panel) without picking a
@@ -372,7 +372,7 @@ my-project/                  # usually a git repo
 │   ├── config.toml          # marks the project root
 │   └── environments/        # project environments, shared by every collection
 │       ├── dev.toml         # name + [[variables]]; secret ones keep only their key here
-│       └── dev.secret.toml  # git-ignored: the secret values (tokens, passwords)
+│       └── dev.secret.toml  # git-ignored: the secret values (tokens, passwords), encrypted
 ├── users-api/               # a collection = any subdirectory with collection.toml
 │   ├── collection.toml      # name, format version, collection variables, auth
 │   └── users/               # folders nest freely (folder.toml for folder auth)

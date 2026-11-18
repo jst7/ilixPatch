@@ -185,6 +185,12 @@ pub struct LoadArgs {
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
+    if !matches!(cli.command, Command::CheckUpdate)
+        && let Err(e) = open_vault()
+    {
+        eprintln!("error: {e:#}");
+        return ExitCode::from(2);
+    }
     let res = match cli.command {
         Command::Ls { path } => ls_cmd(&path),
         Command::CheckUpdate => check_update_cmd().await,
@@ -260,6 +266,32 @@ async fn check_update_cmd() -> Result<bool> {
         );
     }
     Ok(true)
+}
+
+/// D60: open the secrets vault (the app's, in its config dir) with
+/// `$ILIXPATCH_PASSWORD`, or the default password. A wrong password given
+/// explicitly is an error; without one, secrets that need it fail when read.
+fn open_vault() -> Result<()> {
+    use ilixpatch_core::vault;
+    let Some(dir) = app_config_dir() else {
+        return Ok(());
+    };
+    let password = std::env::var(vault::PASSWORD_ENV)
+        .ok()
+        .filter(|p| !p.is_empty());
+    match vault::install(&dir, password.as_deref()) {
+        Ok(true) => Ok(()),
+        Ok(false) if password.is_some() => bail!(
+            "{} is not the master password of {}",
+            vault::PASSWORD_ENV,
+            dir.display()
+        ),
+        Ok(false) => Ok(()),
+        Err(e) => {
+            eprintln!("warning: secrets vault: {e}");
+            Ok(())
+        }
+    }
 }
 
 /// The desktop app's config dir, shared with the CLI for global environments

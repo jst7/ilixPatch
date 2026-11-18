@@ -707,6 +707,15 @@ export interface ImportReport {
   warnings: ImportWarning[];
 }
 
+// ---------- Master password (D60) ----------
+
+export interface VaultStatus {
+  /** Secrets can be read and written. */
+  unlocked: boolean;
+  /** Unlocked with the default password ("pass"): recommend changing it. */
+  default_password: boolean;
+}
+
 // ---------- Exporter: Postman (D58) ----------
 
 export interface ExportWarning {
@@ -1219,6 +1228,14 @@ export const api = {
   importPreview: (paths: string[], urls: string[], options: ParseOptions) =>
     invoke<ImportPreview>("import_preview", { paths, urls, options }),
   importApply: (plan: ImportPlan) => invoke<ImportReport>("import_apply", { plan }),
+
+  // Master password (D60)
+  vaultStatus: () => invoke<VaultStatus>("vault_status"),
+  vaultUnlock: (password: string) => invoke<VaultStatus>("vault_unlock", { password }),
+  vaultChangePassword: (current: string, next: string) =>
+    invoke<VaultStatus>("vault_change_password", { current, new: next }),
+  /** Forgotten password: new key, default password; secrets saved with the old key read as empty. */
+  vaultReset: () => invoke<VaultStatus>("vault_reset"),
 
   // Exporter: Postman (D58)
   /** Every collection and the project environments as Postman v2.1 / environment files in `outDir`. */

@@ -2,7 +2,15 @@
 // that don't own a dialog can still ask for it.
 
 /** Settings sections other components may deep-link to (subset of SettingsDialog's SectionId). */
-export type SettingsSection = "general" | "appearance" | "colors" | "history" | "https" | "proxy" | "requests";
+export type SettingsSection =
+  | "general"
+  | "appearance"
+  | "colors"
+  | "history"
+  | "https"
+  | "proxy"
+  | "requests"
+  | "security";
 
 const LS_WRAP = "ilixpatch.response.wrap";
 

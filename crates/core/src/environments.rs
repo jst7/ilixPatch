@@ -166,32 +166,99 @@ struct SecretFile {
     variables: IndexMap<String, String>,
 }
 
-fn read_vars(vars: FileVars) -> Vec<EnvVariable> {
-    match vars {
+/// A `*.secret.toml` as stored: plain `[variables]` (before D60) or the whole
+/// table encrypted in `encrypted` (D60).
+#[derive(Debug, Default, Deserialize)]
+struct SecretFileIn {
+    #[serde(default)]
+    variables: IndexMap<String, String>,
+    #[serde(default)]
+    encrypted: Option<String>,
+}
+
+/// The values of a secret file, and whether they were stored in plain text.
+pub(crate) fn read_secret_file(path: &Path) -> Result<(IndexMap<String, String>, bool)> {
+    let file: SecretFileIn = parse(path)?;
+    match file.encrypted {
+        Some(enc) => {
+            let inner = crate::vault::open_value_or_empty(&enc)?;
+            if inner.is_empty() {
+                return Ok((IndexMap::new(), false));
+            }
+            let plain: SecretFile =
+                toml::from_str(&inner).map_err(|source| StorageError::Parse {
+                    path: path.into(),
+                    source: Box::new(source),
+                })?;
+            Ok((plain.variables, false))
+        }
+        None => {
+            let plain = !file.variables.is_empty();
+            Ok((file.variables, plain))
+        }
+    }
+}
+
+/// Contents of a secret file: encrypted unless no vault is configured.
+fn secret_file_contents(variables: IndexMap<String, String>) -> Result<String> {
+    let plain = toml::to_string_pretty(&SecretFile { variables })?;
+    if matches!(crate::vault::state(), crate::vault::State::NotConfigured) {
+        return Ok(plain);
+    }
+    let enc = crate::vault::seal_value(&plain)?;
+    Ok(format!(
+        "# Secret values, encrypted with your ilixPatch master password (D60).\nencrypted = \"{enc}\"\n"
+    ))
+}
+
+/// Variables as stored. Inline secrets may be encrypted (D60); the flag says
+/// whether some secret value is still in plain text.
+fn read_vars(vars: FileVars) -> Result<(Vec<EnvVariable>, bool)> {
+    let mut plain_secret = false;
+    let out = match vars {
         FileVars::List(list) => list
             .into_iter()
-            .map(|v| EnvVariable {
-                key: v.key,
-                value: v.value.unwrap_or_default(),
-                secret: v.secret,
-                enabled: v.enabled,
+            .map(|v| {
+                let stored = v.value.unwrap_or_default();
+                let value = if v.secret {
+                    plain_secret |= !stored.is_empty() && !crate::vault::is_encrypted(&stored);
+                    crate::vault::open_value_or_empty(&stored)?
+                } else {
+                    stored
+                };
+                Ok(EnvVariable {
+                    key: v.key,
+                    value,
+                    secret: v.secret,
+                    enabled: v.enabled,
+                })
             })
-            .collect(),
+            .collect::<Result<Vec<_>>>()?,
         FileVars::Map(map) => map
             .into_iter()
             .map(|(k, v)| EnvVariable::new(k, v))
             .collect(),
-    }
+    };
+    Ok((out, plain_secret))
 }
 
-/// `inline_secrets = false` writes secrets without their value.
-fn write_vars(vars: &[EnvVariable], inline_secrets: bool) -> Vec<FileVar> {
+/// `inline_secrets = false` writes secrets without their value; inline
+/// secret values are encrypted when a vault is configured (D60).
+fn write_vars(vars: &[EnvVariable], inline_secrets: bool) -> Result<Vec<FileVar>> {
     vars.iter()
-        .map(|v| FileVar {
-            key: v.key.clone(),
-            value: (!v.secret || inline_secrets).then(|| v.value.clone()),
-            secret: v.secret,
-            enabled: v.enabled,
+        .map(|v| {
+            let value = match (v.secret, inline_secrets) {
+                (false, _) => Some(v.value.clone()),
+                (true, false) => None,
+                (true, true) if v.value.is_empty() => Some(String::new()),
+                (true, true) => Some(crate::vault::seal_value(&v.value)?),
+            };
+            Ok(FileVar {
+                key: v.key.clone(),
+                value,
+                secret: v.secret,
+                enabled: v.enabled,
+            })
         })
         .collect()
 }
@@ -302,10 +369,12 @@ impl EnvStore {
 
     fn read(&self, stem: &str) -> Result<EnvironmentDoc> {
         let file: FileIn = parse(&self.main_path(stem))?;
-        let mut variables = read_vars(file.variables);
+        let (mut variables, plain_inline) = read_vars(file.variables)?;
+        let mut migrate = crate::vault::should_migrate(plain_inline);
         let secret_path = self.secret_path(stem);
         if self.kind == Kind::Project && secret_path.is_file() {
-            let mut secrets = parse::<SecretFile>(&secret_path)?.variables;
+            let (mut secrets, plain) = read_secret_file(&secret_path)?;
+            migrate |= crate::vault::should_migrate(plain);
             for v in &mut variables {
                 if let Some(val) = secrets.shift_remove(&v.key) {
                     v.value = val;
@@ -318,12 +387,17 @@ impl EnvStore {
                 ..EnvVariable::new(k, v)
             }));
         }
-        Ok(EnvironmentDoc {
+        let doc = EnvironmentDoc {
             name: file.name.unwrap_or_else(|| stem.to_string()),
             variables,
             color: file.color,
             icon: file.icon,
-        })
+        };
+        // D60: secrets still in plain text are rewritten encrypted.
+        if migrate {
+            self.write(stem, &doc)?;
+        }
+        Ok(doc)
     }
 
     fn stored(&self) -> Result<Vec<Stored>> {
@@ -385,7 +459,7 @@ impl EnvStore {
             name: &doc.name,
             color: doc.color.as_deref(),
             icon: doc.icon.as_deref(),
-            variables: write_vars(&doc.variables, inline),
+            variables: write_vars(&doc.variables, inline)?,
         };
         write_file(
             &self.main_path(stem),
@@ -404,8 +478,7 @@ impl EnvStore {
                 remove_if_exists(&secret_path)?;
             } else {
                 self.ensure_gitignore()?;
-                let file = SecretFile { variables: secrets };
-                write_file(&secret_path, &toml::to_string_pretty(&file)?, true)?;
+                write_file(&secret_path, &secret_file_contents(secrets)?, true)?;
             }
         }
         Ok(())
@@ -565,7 +638,11 @@ pub fn load_globals(config_dir: impl AsRef<Path>) -> Result<Vec<EnvVariable>> {
     if !path.is_file() {
         return Ok(Vec::new());
     }
-    Ok(read_vars(parse::<GlobalsIn>(&path)?.variables))
+    let (vars, plain) = read_vars(parse::<GlobalsIn>(&path)?.variables)?;
+    if crate::vault::should_migrate(plain) {
+        save_globals(&config_dir, &vars)?;
+    }
+    Ok(vars)
 }
 
 pub fn save_globals(config_dir: impl AsRef<Path>, variables: &[EnvVariable]) -> Result<()> {
@@ -576,7 +653,7 @@ pub fn save_globals(config_dir: impl AsRef<Path>, variables: &[EnvVariable]) -> 
         .cloned()
         .collect();
     let out = GlobalsOut {
-        variables: write_vars(&vars, true),
+        variables: write_vars(&vars, true)?,
     };
     write_file(&path, &toml::to_string_pretty(&out)?, true)
 }

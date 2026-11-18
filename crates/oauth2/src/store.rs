@@ -100,9 +100,31 @@ impl TokenStore {
     }
 
     fn read(&self) -> Result<FileData, String> {
+        use ilixpatch_core::vault;
         match fs::read(&self.path) {
             Ok(b) => {
-                serde_json::from_slice(&b).map_err(|e| format!("{}: {e}", self.path.display()))
+                let text = String::from_utf8_lossy(&b);
+                let parse = |json: &str| -> Result<FileData, String> {
+                    serde_json::from_str(json).map_err(|e| format!("{}: {e}", self.path.display()))
+                };
+                // D60: the whole file is encrypted. A file encrypted with another key
+                // (after a vault reset) reads as empty: the tokens are fetched again.
+                if vault::is_encrypted(text.trim()) {
+                    let json =
+                        vault::open_value_or_empty(text.trim()).map_err(|e| e.to_string())?;
+                    if json.is_empty() {
+                        return Ok(FileData {
+                            version: 1,
+                            ..Default::default()
+                        });
+                    }
+                    return parse(&json);
+                }
+                let data = parse(&text)?;
+                if vault::should_migrate(true) {
+                    self.write(&data)?;
+                }
+                Ok(data)
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(FileData {
                 version: 1,
@@ -118,7 +140,13 @@ impl TokenStore {
         let dir = self.path.parent().unwrap_or(Path::new("."));
         fs::create_dir_all(dir).map_err(err)?;
         let tmp = dir.join(format!(".{TOKENS_FILE}.{}.tmp", std::process::id()));
-        let json = serde_json::to_vec_pretty(data).map_err(|e| e.to_string())?;
+        let json = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
+        // D60: encrypted unless no vault is configured.
+        let json = match ilixpatch_core::vault::state() {
+            ilixpatch_core::vault::State::NotConfigured => json,
+            _ => ilixpatch_core::vault::seal_value(&json).map_err(|e| e.to_string())?,
+        }
+        .into_bytes();
         let res = (|| {
             let mut opts = fs::OpenOptions::new();
             opts.write(true).create(true).truncate(true);

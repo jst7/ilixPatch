@@ -352,6 +352,11 @@ local (pm.variables) > datos de iteración > entorno > colección > globales
 - `--env-var` sobrescribe valores del entorno elegido; `--global-var` se aplica encima de `globals.toml`.
 - En un proyecto con varias colecciones, `--env` se aplica a todas las que definen ese entorno.
 - Los ficheros `*.secret.toml` (ignorados por git) sobrescriben al entorno correspondiente.
+- **Secretos cifrados (D60).** Los valores secretos (los `*.secret.toml`, las variables secretas de entornos globales y
+  globals, y los tokens de OAuth 2.0) se guardan cifrados con la contraseña maestra de la app. La CLI la toma de
+  `ILIXPATCH_PASSWORD`; si no se da, usa la contraseña por defecto (`pass`). Si la contraseña de la app se cambió y no
+  se da, los secretos no se pueden leer y el comando falla con un error que lo dice. Una `ILIXPATCH_PASSWORD`
+  incorrecta es un error inmediato (código 2).
 
 **Compartido con la app de escritorio.** Los entornos globales y los globals viven en el directorio de configuración
 de la app:

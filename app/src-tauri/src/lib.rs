@@ -10,6 +10,7 @@ mod oauth2_commands;
 mod registry;
 mod response_commands;
 mod update_commands;
+mod vault_commands;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -509,6 +510,8 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_config_dir()?;
             app.manage(Registry::new(dir.join("projects.toml")));
+            // D60: before anything reads a secret.
+            vault_commands::init(app)?;
             history_commands::init(app)?;
             netlog_commands::init(app);
             network_commands::init(app)?;
@@ -571,6 +574,10 @@ pub fn run() {
             import_commands::import_apply,
             export_commands::export_postman_project,
             export_commands::export_postman_collection,
+            vault_commands::vault_status,
+            vault_commands::vault_unlock,
+            vault_commands::vault_change_password,
+            vault_commands::vault_reset,
             update_commands::update_check,
             oauth2_commands::oauth2_get_token,
             oauth2_commands::oauth2_cancel_flow,

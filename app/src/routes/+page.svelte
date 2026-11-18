@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { vault } from "$lib/stores/vault.svelte";
+  import VaultUnlock from "$lib/components/VaultUnlock.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { t } from "$lib/i18n/index.svelte";
   import { draftOnlyKey, historyKey, scratchKey, ws } from "$lib/stores/workspace.svelte";
@@ -122,8 +124,16 @@
     return () => clearTimeout(timer);
   });
 
-  onMount(() => {
+  // D60: load the workspace once the secrets are unlocked (at once with the default password).
+  let started = false;
+  $effect(() => {
+    if (started || !vault.status?.unlocked) return;
+    started = true;
     ws.init();
+  });
+
+  onMount(() => {
+    void vault.refresh();
     void netlog.init();
     // The backend records each send in the local history, then emits this event.
     const unlistenHistory = listen<number>("history://recorded", () => ws.refreshHistory());
@@ -210,6 +220,7 @@
   });
 </script>
 
+{#if vault.locked}<VaultUnlock />{/if}
 <div class="app" style:grid-template-columns={columns}>
   <div class="side"><Sidebar /></div>
 
