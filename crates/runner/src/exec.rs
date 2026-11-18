@@ -8,7 +8,8 @@ use std::time::Duration;
 use ilixpatch_core::Request;
 use ilixpatch_engine::{Engine, RequestError, Response, SendOptions};
 use ilixpatch_scripting::{
-    ResponseView, ScriptInput, ScriptKind, ScriptOutput, TestResult, VarUpdate, run_script,
+    HttpSender, ResponseView, ScriptInput, ScriptKind, ScriptOutput, SendRequestSpec, TestResult,
+    VarUpdate, run_script,
 };
 use indexmap::IndexMap;
 use serde_json::Value;
@@ -128,6 +129,7 @@ fn script_input<'a>(
     ctx: &ExecContext<'a>,
     request: &'a Request,
     response: Option<&'a ResponseView>,
+    http: HttpSender<'a>,
 ) -> ScriptInput<'a> {
     ScriptInput {
         request: Some(request),
@@ -141,6 +143,7 @@ fn script_input<'a>(
         iteration: ctx.iteration,
         iteration_count: ctx.iteration_count,
         request_name: Some(&request.name),
+        http: Some(http),
     }
 }
 
@@ -155,6 +158,8 @@ pub async fn execute_request(
 ) -> ExecResult {
     let mut res = ExecResult::default();
     let mut request = std::borrow::Cow::Borrowed(request);
+    // D59: `pm.sendRequest` goes out through the same engine and settings.
+    let send = |spec: &SendRequestSpec| crate::send_request::send_blocking(engine, ctx, spec);
 
     // 1. Pre-request script.
     if ctx.run_scripts
@@ -163,7 +168,7 @@ pub async fn execute_request(
         let out = run_script(
             ScriptKind::PreRequest,
             &src,
-            &script_input(store, ctx, &request, None),
+            &script_input(store, ctx, &request, None, HttpSender(&send)),
         );
         res.prerequest_executed = true;
         let skip = out.skip_request;
@@ -259,7 +264,7 @@ pub async fn execute_request(
         let out = run_script(
             ScriptKind::Test,
             src,
-            &script_input(store, ctx, &resolved, Some(&view)),
+            &script_input(store, ctx, &resolved, Some(&view), HttpSender(&send)),
         );
         res.test_executed = true;
         res.test_failed = res.absorb(out, store);

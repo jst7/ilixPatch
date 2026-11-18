@@ -5,6 +5,9 @@
 //   __pmRun(kind, source, inputJson)  -> undefined (state kept internally)
 //   __pmTick()                        -> bool (ran pending timers?)
 //   __pmFinish()                      -> JSON string with the results
+//   __pmTakeSends()                   -> JSON [[id, spec], …] of new pm.sendRequest calls
+//   __pmDeliver(id, resultJson)       -> runs that call's callback / settles its promise
+// Host functions (Rust): __pmModuleSource(name), __pmRandomBytes(n).
 (function (global) {
   'use strict';
 
@@ -766,6 +769,155 @@
     });
   }
 
+  // ------------------------------------------------------------ sendRequest
+
+  function urlString(u) {
+    if (u === undefined || u === null) return '';
+    if (typeof u === 'string') return u;
+    if (typeof u.raw === 'string') return u.raw;
+    if (u instanceof Url) return u.toString();
+    var s = u.protocol ? u.protocol + '://' : '';
+    s += [].concat(u.host || []).join('.');
+    if (u.port) s += ':' + u.port;
+    var path = [].concat(u.path || []).join('/');
+    if (path) s += '/' + path;
+    var q = (u.query || [])
+      .filter(function (x) {
+        return x && !x.disabled;
+      })
+      .map(function (x) {
+        return x.key + '=' + (x.value === undefined || x.value === null ? '' : x.value);
+      })
+      .join('&');
+    return q ? s + '?' + q : s;
+  }
+
+  // [[key, value]] from a header list, a {key: value} map, or "K: v" lines.
+  function pairList(h) {
+    if (!h) return [];
+    if (h instanceof KeyValueList) return h._pairs();
+    if (typeof h === 'string')
+      return h
+        .split(/\r?\n/)
+        .filter(function (l) {
+          return l.indexOf(':') > 0;
+        })
+        .map(function (l) {
+          var i = l.indexOf(':');
+          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
+        });
+    if (Array.isArray(h))
+      return h
+        .filter(function (x) {
+          return x && !x.disabled;
+        })
+        .map(function (x) {
+          return Array.isArray(x) ? [String(x[0]), toVarString(x[1])] : [String(x.key), toVarString(x.value)];
+        });
+    return Object.keys(h).map(function (k) {
+      return [k, toVarString(h[k])];
+    });
+  }
+
+  function hasHeader(headers, name) {
+    return headers.some(function (h) {
+      return lc(h[0]) === name;
+    });
+  }
+
+  // A Postman request definition (string URL, object, or pm.request) → spec for Rust.
+  function sendSpec(req, replace) {
+    if (typeof req === 'string' || req instanceof Url) req = { url: String(req) };
+    if (!req || typeof req !== 'object') throw new TypeError('pm.sendRequest: expected a URL or a request object');
+    if (isReq(req)) req = req._export();
+    var headers = pairList(req.header || req.headers).map(function (h) {
+      return [replace(h[0]), replace(h[1])];
+    });
+    var body = null;
+    var b = req.body;
+    if (typeof b === 'string') b = { mode: 'raw', raw: b };
+    if (b && typeof b === 'object' && !b.disabled) {
+      var mode = b.mode || (b.raw !== undefined ? 'raw' : b.urlencoded ? 'urlencoded' : undefined);
+      if (mode === 'raw') {
+        var raw = typeof b.raw === 'string' ? b.raw : JSON.stringify(b.raw);
+        body = { raw: replace(raw) };
+        var lang = (b.options && b.options.raw && b.options.raw.language) || b.language;
+        if (lang === 'json' && !hasHeader(headers, 'content-type')) headers.push(['Content-Type', 'application/json']);
+      } else if (mode === 'urlencoded' || mode === 'formdata') {
+        if (mode === 'formdata' && S) S.logs.push('[warn] pm.sendRequest: form-data is sent as x-www-form-urlencoded');
+        body = {
+          form: pairList(b[mode]).map(function (kv) {
+            return [replace(kv[0]), replace(kv[1])];
+          }),
+        };
+      } else if (mode === 'graphql') {
+        var g = b.graphql || {};
+        var vars = g.variables;
+        if (typeof vars === 'string') {
+          try {
+            vars = vars.trim() ? JSON.parse(vars) : undefined;
+          } catch (e) {
+            throw new Error('pm.sendRequest: GraphQL variables are not valid JSON');
+          }
+        }
+        body = { raw: replace(JSON.stringify({ query: g.query || '', variables: vars })) };
+        if (!hasHeader(headers, 'content-type')) headers.push(['Content-Type', 'application/json']);
+      } else if (mode) {
+        throw new Error("pm.sendRequest: body mode '" + mode + "' is not supported");
+      }
+    }
+    return {
+      method: String(req.method || 'GET').toUpperCase(),
+      url: replace(urlString(req.url)),
+      headers: headers,
+      body: body,
+    };
+  }
+
+  var sendSeq = 0;
+  function sendRequest(req, callback, replace) {
+    var spec = sendSpec(req, replace);
+    var id = ++sendSeq;
+    return new Promise(function (resolve, reject) {
+      if (!S) throw new Error('pm.sendRequest called outside of a script');
+      S.sends.push([id, spec]);
+      S.inflight[id] = { callback: typeof callback === 'function' ? callback : null, resolve: resolve, reject: reject };
+    });
+  }
+
+  global.__pmTakeSends = function () {
+    if (!S || S.error || S.sends.length === 0) return '[]';
+    var out = JSON.stringify(S.sends);
+    S.sends = [];
+    return out;
+  };
+
+  global.__pmDeliver = function (id, resultJson) {
+    if (!S) return;
+    var call = S.inflight[id];
+    delete S.inflight[id];
+    if (!call) return;
+    var result = JSON.parse(resultJson);
+    var err = null;
+    var resp = null;
+    if (result.error !== undefined) {
+      err = new Error(result.error);
+      err.name = 'RequestError';
+    } else {
+      resp = makeResponse(result.ok);
+    }
+    if (call.callback) {
+      // Callback style: errors go to the callback; the promise never rejects.
+      try {
+        call.callback(err, resp);
+      } catch (e) {
+        if (!S.error) S.error = fmtErr(e);
+      }
+      call.resolve(resp);
+    } else if (err) call.reject(err);
+    else call.resolve(resp);
+  };
+
   // ------------------------------------------------------------------- pm
 
   function buildPm(kind, input) {
@@ -931,8 +1083,8 @@
         location: [],
       },
       setNextRequest: setNextRequest,
-      sendRequest: function () {
-        throw new Error('pm.sendRequest is not supported yet');
+      sendRequest: function (req, callback) {
+        return sendRequest(req, callback, variables.replaceIn);
       },
       require: requireFn,
     };
@@ -1002,9 +1154,68 @@
 
   // ---------------------------------------------------------- global builtins
 
+  var MODULES = ['chai', 'crypto-js', 'lodash', 'moment', 'uuid', 'xml2js', 'atob', 'btoa'];
+  // Loaded once per runtime (the cache outlives a run, like Postman's sandbox).
+  var moduleCache = {};
   function requireFn(name) {
+    name = String(name);
     if (name === 'chai') return chai;
-    throw new Error("module '" + name + "' is not available yet");
+    if (name === 'atob') return atob;
+    if (name === 'btoa') return btoa;
+    if (hasOwn(moduleCache, name)) return moduleCache[name];
+    var src = global.__pmModuleSource(name);
+    if (src === undefined || src === null)
+      throw new Error("module '" + name + "' is not available (available: " + MODULES.join(', ') + ')');
+    var module = { exports: {} };
+    // Cached before it runs (CommonJS cycles): lodash reads `root._` while
+    // loading, which would otherwise load lodash again through the lazy global.
+    moduleCache[name] = module.exports;
+    try {
+      // UMD bundles look for CommonJS `module`/`exports`; no AMD `define`.
+      var fn = new Function('module', 'exports', 'require', 'define', src);
+      fn.call(module.exports, module, module.exports, requireFn, undefined);
+    } catch (e) {
+      delete moduleCache[name];
+      throw e;
+    }
+    moduleCache[name] = module.exports;
+    return module.exports;
+  }
+
+  // Web Crypto subset: OS randomness from Rust (uuid v4, CryptoJS random).
+  var cryptoObj = {
+    getRandomValues: function (arr) {
+      if (!arr || typeof arr.byteLength !== 'number' || !arr.buffer)
+        throw new TypeError('crypto.getRandomValues: expected an integer typed array');
+      if (arr.byteLength > 65536) throw new Error('crypto.getRandomValues: more than 65536 bytes requested');
+      var bytes = global.__pmRandomBytes(arr.byteLength);
+      new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength).set(bytes);
+      return arr;
+    },
+    randomUUID: function () {
+      return requireFn('uuid').v4();
+    },
+  };
+
+  function xml2Json(xml) {
+    var out = {};
+    requireFn('xml2js').parseString(xml, { explicitArray: false, trim: true, mergeAttrs: false }, function (err, res) {
+      if (err) throw err;
+      out = res;
+    });
+    return out;
+  }
+
+  // Postman sandbox globals, loaded on first use.
+  function lazyGlobal(name, get) {
+    Object.defineProperty(global, name, {
+      configurable: true,
+      enumerable: false,
+      get: get,
+      set: function (v) {
+        Object.defineProperty(global, name, { value: v, writable: true, configurable: true });
+      },
+    });
   }
 
   function log(level) {
@@ -1039,6 +1250,18 @@
   };
   global.atob = atob;
   global.btoa = btoa;
+  // Reinstalled after each run, in case a script replaced them.
+  function installSandboxGlobals() {
+    global.crypto = cryptoObj;
+    global.xml2Json = xml2Json;
+    lazyGlobal('_', function () {
+      return requireFn('lodash');
+    });
+    lazyGlobal('CryptoJS', function () {
+      return requireFn('crypto-js');
+    });
+  }
+  installSandboxGlobals();
   global.require = requireFn;
   global.setTimeout = setTimeoutFn;
   global.clearTimeout = clearTimeoutFn;
@@ -1078,6 +1301,8 @@
       timers: [],
       legacyTests: null,
       request: null,
+      sends: [],
+      inflight: {},
     };
     var input = JSON.parse(inputJson);
     var built = buildPm(kind, input);
@@ -1143,6 +1368,7 @@
   // Remove globals created by user scripts so runs don't leak into each other.
   function cleanupGlobals() {
     if (!baselineGlobals) return;
+    installSandboxGlobals();
     var names = Object.getOwnPropertyNames(global);
     for (var i = 0; i < names.length; i++) {
       if (!hasOwn(baselineGlobals, names[i])) {

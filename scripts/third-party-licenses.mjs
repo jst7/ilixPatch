@@ -11,7 +11,7 @@
 //     only and are not shipped).
 //   - npm packages reachable from app/package.json "dependencies", plus the Svelte runtime
 //     (a devDependency whose runtime is compiled into the bundle).
-//   - Code vendored or embedded in the binaries: chai, QuickJS, SQLite.
+//   - Code vendored or embedded in the binaries: chai, crypto-js, lodash, moment, uuid, QuickJS, SQLite.
 // Licence texts are taken from each package's own LICENSE/COPYING/NOTICE files. Identical texts
 // (e.g. the Apache-2.0 text shipped by hundreds of crates) are printed once with the list of users.
 
@@ -153,6 +153,22 @@ function vendoredComponents() {
     dir: null,
     extraFiles: [path.join(ROOT, "crates", "scripting", "vendor", "LICENSE-chai")],
   });
+  for (const [name, version, source, authors] of [
+    ["crypto-js", "4.2.0", "https://github.com/brix/crypto-js", ["Evan Vosberg"]],
+    ["lodash", "4.17.21", "https://github.com/lodash/lodash", ["John-David Dalton"]],
+    ["moment", "2.30.1", "https://github.com/moment/moment", ["Iskren Ivov Chernev"]],
+    ["uuid", "8.3.2", "https://github.com/uuidjs/uuid", ["Robert Kieffer"]],
+  ]) {
+    components.push({
+      name: `${name} (vendored in crates/scripting)`,
+      version,
+      license: "MIT",
+      source,
+      authors,
+      dir: null,
+      extraFiles: [path.join(ROOT, "crates", "scripting", "vendor", `LICENSE-${name}`)],
+    });
+  }
   if (components.some((c) => c.name === "libsqlite3-sys")) {
     components.push({
       name: "SQLite (embedded via libsqlite3-sys)",

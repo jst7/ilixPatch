@@ -3435,6 +3435,7 @@ dependencies = [
 name = "ilixpatch-scripting"
 version = "0.5.0"
 dependencies = [
+ "getrandom 0.4.3",
  "ilixpatch-core",
  "indexmap 2.14.2",
  "rquickjs",

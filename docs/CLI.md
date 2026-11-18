@@ -377,10 +377,15 @@ que los scripts existentes funcionan sin cambios:
   (`get`, `set`, `has`, `unset`, `toObject`, `replaceIn`).
 - **Información:** `pm.info.requestName`, `.iteration`, `.iterationCount`, `.eventName`; `pm.environment.name`.
 - **Flujo:** `postman.setNextRequest(nombre | null)` / `pm.execution.setNextRequest`, y `pm.execution.skipRequest()`.
+- **Peticiones desde scripts:** `pm.sendRequest(url | petición, (err, res) => …)` o `await pm.sendRequest(…)`, con
+  las mismas opciones de red que la petición (proxy, certificados, `-k`…).
+- **Módulos:** `require()` de `chai`, `crypto-js`, `lodash`, `moment`, `uuid`, `xml2js`, `atob` y `btoa`, y las
+  globales de Postman `_`, `CryptoJS` y `xml2Json`.
 - **Utilidades:** `console.log`/`warn`/`error` (aparecen en la salida del reporter `cli`), `atob`/`btoa`,
-  `setTimeout`, `require('chai')`.
+  `crypto.getRandomValues`, `setTimeout`.
 
-Limitaciones actuales: `pm.sendRequest` todavía no está soportado y `require()` solo ofrece `chai`.
+Limitaciones actuales: otros módulos (cheerio, tv4, ajv…) no están disponibles, y `pm.sendRequest` manda los
+cuerpos form-data como `x-www-form-urlencoded`.
 
 ## Autorización
 `run` y `load` aplican automáticamente la autorización de cada petición, **después** del script de pre-request y de

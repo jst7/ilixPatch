@@ -172,7 +172,8 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - La sintaxis antigua (`tests[...]`, `responseBody`…).
 - **Seguridad:** límite de memoria y de tiempo por script.
 - Los cambios de variables se devuelven como una lista de actualizaciones. Es quien llama quien decide aplicarlas: en memoria en el runner, como "valor actual" en la app o en el archivo de `--export-environment` en la CLI.
-- 🗓️ **Pendiente:** `pm.sendRequest`, librerías del sandbox (lodash, moment, crypto-js) y scripts a nivel de colección y carpeta.
+- `pm.sendRequest` y las librerías del sandbox (lodash, moment, crypto-js, uuid, xml2js): ver D59.
+- 🗓️ **Pendiente:** scripts a nivel de colección y carpeta.
 
 ## D18 · Runner de colecciones compatible con Newman ✅
 - Crate `crates/runner`. Toda petición pasa por el mismo flujo, ya sea en la app, la CLI o una prueba de carga: script pre-request → resolver variables → enviar → script de tests.
@@ -349,6 +350,42 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - **botones de acción**: desactivar SSL para esta petición, abrir los ajustes de HTTPS, certificados o proxy, subir el timeout, abrir los entornos…;
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
+
+## D59 · CSP estricta, `pm.sendRequest` y módulos de `require` ✅
+- **CSP estricta** en `app/src-tauri/tauri.conf.json` (antes `"csp": null`):
+  - **Por qué:** la app muestra respuestas de APIs ajenas y ejecuta scripts importados. Si algún día se colara HTML o
+    un XSS en un visor, sin CSP ese código tendría acceso directo a los comandos de Tauri (ficheros, git, red).
+  - Solo scripts propios (`script-src 'self'`; Tauri añade los hashes de los scripts en línea al compilar), sin
+    `eval`, sin conexiones fuera del puente de Tauri (`connect-src 'self' ipc: http://ipc.localhost`), sin
+    formularios ni marcos externos. Las vistas previas (D44) usan `blob:` para imágenes, audio, vídeo, PDF y HTML.
+  - `style-src 'unsafe-inline'` es necesario para los estilos en línea de Svelte y CodeMirror. Por eso Tauri no
+    añade *nonces* a `style-src` (`dangerousDisableAssetCspModification: ["style-src"]`): con un nonce, el navegador
+    ignoraría `'unsafe-inline'`.
+  - La vista previa HTML va en un iframe `sandbox` sin scripts y hereda la CSP: no carga imágenes ni recursos
+    externos (tampoco píxeles de seguimiento).
+  - `devCsp` es igual, más el websocket de Vite para la recarga en caliente.
+  - Se comprobó cargando la build con esa cabecera en Chrome headless: la interfaz se pinta y no hay violaciones.
+- **`pm.sendRequest`** con callback `(err, res)` o como promesa (`await pm.sendRequest(...)`):
+  - Acepta una URL o un objeto de petición de Postman: `url`, `method`, `header` y cuerpos `raw`, `urlencoded`,
+    `graphql` y `formdata` (este último se manda como urlencoded, con aviso). Las `{{variables}}` se resuelven.
+  - Sale por el **mismo motor de red** que la petición: proxy, certificados y TLS, la consola de red (D46) y el timeout.
+  - **Cómo encaja con un motor síncrono:** el script guarda las llamadas y el bucle de eventos (en Rust) las pasa a
+    `ScriptInput.http`, que las envía y bloquea hasta la respuesta. Después se ejecuta el callback o se resuelve la
+    promesa. La espera **no cuenta** para el límite de 5 s del script.
+  - En el runner (`crates/runner/src/send_request.rs`), en un runtime multihilo (app, CLI) se usa `block_in_place`.
+    En otro caso, la petición va en un hilo auxiliar con su propio runtime y un motor nuevo con la misma configuración,
+    porque el pool de conexiones está atado al runtime que creó las conexiones.
+- **`require()`** de `crypto-js` 4.2.0, `lodash` 4.17.21, `moment` 2.30.1 y `uuid` 8.3.2 (MIT, copiados en
+  `crates/scripting/vendor/` con sus licencias), además de `chai`, `atob`, `btoa` y `xml2js`.
+  - `xml2js` necesita *streams* de Node, así que se escribió un parser propio (`crates/scripting/src/xml2js.js`)
+    con la misma forma de salida y las opciones habituales.
+  - Se cargan **la primera vez que se usan** y quedan en caché en el runtime del hilo. Así, un script que no usa nada
+    no paga su coste.
+  - También las globales de Postman `_`, `CryptoJS` y `xml2Json`, y `crypto.getRandomValues` / `crypto.randomUUID`
+    con **aleatoriedad del sistema** (crate `getrandom`), no `Math.random`.
+- **Por qué:** en colecciones reales es muy común pedir un token con `sendRequest` en el pre-request y usar
+  crypto-js, lodash o moment. Sin ellos, la promesa de que "los scripts funcionan sin cambios" se rompe en cuanto
+  alguien migra algo grande.
 
 ## D58 · Exportar a Postman ✅
 - **Qué:** un proyecto (todas sus colecciones y sus entornos) o una sola colección se exportan a ficheros que Postman importa

@@ -48,6 +48,37 @@ pub struct ResponseView {
     pub size_bytes: usize,
 }
 
+/// A request made by a script with `pm.sendRequest` ({{variables}} already resolved).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SendRequestSpec {
+    pub method: String,
+    pub url: String,
+    #[serde(default)]
+    pub headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub body: Option<SendBody>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SendBody {
+    /// Raw text (JSON, XML, text…); the script sets the Content-Type header.
+    Raw(String),
+    /// `application/x-www-form-urlencoded` fields.
+    Form(Vec<(String, String)>),
+}
+
+/// Performs `pm.sendRequest` calls for the script (blocking). The caller
+/// decides how: the runner sends them with the app's network engine.
+#[derive(Clone, Copy)]
+pub struct HttpSender<'a>(pub &'a (dyn Fn(&SendRequestSpec) -> Result<ResponseView, String> + 'a));
+
+impl std::fmt::Debug for HttpSender<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("HttpSender")
+    }
+}
+
 /// Everything a script can read. Variable maps are the CURRENT values of each scope.
 #[derive(Debug, Clone, Default)]
 pub struct ScriptInput<'a> {
@@ -69,6 +100,9 @@ pub struct ScriptInput<'a> {
     pub iteration_count: usize,
     /// `pm.info.requestName`
     pub request_name: Option<&'a str>,
+    /// Sends `pm.sendRequest` calls. `None`: they fail with an error passed to
+    /// the callback (or a rejected promise).
+    pub http: Option<HttpSender<'a>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,7 +138,11 @@ pub struct ScriptOutput {
 ///
 /// Each thread keeps one QuickJS runtime with chai and the `pm` prelude
 /// preloaded; a call only builds the per-run `pm` object. Scripts are limited to
-/// 64 MiB of heap and 5 s of wall-clock time (`"script timed out"`).
+/// 64 MiB of heap and 5 s of wall-clock time (`"script timed out"`); the time
+/// spent waiting for `pm.sendRequest` responses doesn't count.
+///
+/// `require()` offers chai, crypto-js, lodash, moment, uuid, xml2js, atob and
+/// btoa (D59); they are evaluated on first use and cached per runtime.
 pub fn run_script(kind: ScriptKind, source: &str, input: &ScriptInput) -> ScriptOutput {
     run_script_with_timeout(kind, source, input, engine::TIMEOUT)
 }
@@ -136,7 +174,7 @@ fn run_inner(
         ScriptKind::Test => "test",
     };
     let input_json = bridge::input_json(input);
-    let raw = engine::with_engine(kind_str, source, &input_json, timeout);
+    let raw = engine::with_engine(kind_str, source, &input_json, timeout, input.http);
     let mut out = match raw
         .json
         .as_deref()

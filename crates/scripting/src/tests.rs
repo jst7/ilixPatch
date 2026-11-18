@@ -727,23 +727,188 @@ fn memory_limit() {
 }
 
 #[test]
-fn unsupported_features() {
+fn unknown_module_and_no_sender() {
     let out = run_script(
         ScriptKind::Test,
         r#"
-        pm.test("sendRequest", function () { pm.sendRequest("http://x", function () {}); });
-        pm.test("lodash", function () { require("lodash"); });
+        pm.test("no sender", function (done) {
+            pm.sendRequest("http://x", function (err, res) {
+                pm.expect(err.message).to.equal("pm.sendRequest is not available here");
+                pm.expect(res).to.equal(null);
+                done();
+            });
+        });
+        pm.test("unknown module", function () { require("left-pad"); });
         "#,
         &ScriptInput::default(),
     );
-    assert_eq!(
-        out.tests[0].error.as_deref(),
-        Some("Error: pm.sendRequest is not supported yet")
+    assert!(out.tests[0].passed, "{:?}", out.tests[0]);
+    assert!(
+        out.tests[1]
+            .error
+            .as_deref()
+            .unwrap()
+            .starts_with("Error: module 'left-pad' is not available (available: chai, crypto-js"),
+        "{:?}",
+        out.tests[1]
     );
-    assert_eq!(
-        out.tests[1].error.as_deref(),
-        Some("Error: module 'lodash' is not available yet")
+}
+
+#[test]
+fn bundled_modules() {
+    let out = run_script(
+        ScriptKind::Test,
+        r#"
+        const CryptoJS = require("crypto-js");
+        pm.test("crypto-js", () => {
+            pm.expect(CryptoJS.SHA256("abc").toString())
+                .to.equal("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+            pm.expect(CryptoJS.HmacSHA256("data", "key").toString(CryptoJS.enc.Base64))
+                .to.equal("UDH+PZicbRU3oBP6bnOdojRj/a7DtwE32Cjjas4iG9A=");
+            pm.expect(CryptoJS.lib.WordArray.random(16).sigBytes).to.equal(16);
+        });
+        pm.test("globals CryptoJS and _", () => {
+            pm.expect(CryptoJS.MD5("a").toString()).to.equal(globalThis.CryptoJS.MD5("a").toString());
+            pm.expect(_.chunk([1, 2, 3], 2)).to.eql([[1, 2], [3]]);
+        });
+        pm.test("lodash", () => pm.expect(require("lodash").get({ a: { b: [5] } }, "a.b[0]")).to.equal(5));
+        pm.test("moment", () => {
+            const m = require("moment");
+            pm.expect(m.utc("2024-02-29T10:00:00Z").add(1, "day").format("YYYY-MM-DD")).to.equal("2024-03-01");
+        });
+        pm.test("uuid", () => {
+            const { v4 } = require("uuid");
+            const a = v4(), b = v4();
+            pm.expect(a).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+            pm.expect(a).to.not.equal(b);
+            pm.expect(crypto.randomUUID()).to.have.length(36);
+        });
+        pm.test("xml2js", (done) => {
+            require("xml2js").parseString(
+                '<?xml version="1.0"?><r id="1"><item>a</item><item>b &amp; c</item><e/><t lang="en">hi</t></r>',
+                (err, res) => {
+                    pm.expect(err).to.equal(null);
+                    pm.expect(res).to.eql({
+                        r: { $: { id: "1" }, item: ["a", "b & c"], e: [""], t: [{ _: "hi", $: { lang: "en" } }] },
+                    });
+                    done();
+                }
+            );
+        });
+        pm.test("xml2Json", () => {
+            pm.expect(xml2Json("<a><b>1</b><b>2</b><c>x</c></a>")).to.eql({ a: { b: ["1", "2"], c: "x" } });
+        });
+        pm.test("atob", () => pm.expect(require("btoa")("hi")).to.equal("aGk="));
+        "#,
+        &ScriptInput::default(),
     );
+    assert_eq!(out.error, None);
+    for t in &out.tests {
+        assert!(t.passed, "{t:?}");
+    }
+    assert_eq!(out.tests.len(), 8);
+}
+
+#[test]
+fn send_request_callback_and_promise() {
+    use std::sync::Mutex;
+    let seen: Mutex<Vec<SendRequestSpec>> = Mutex::new(Vec::new());
+    let sender = |spec: &SendRequestSpec| -> Result<ResponseView, String> {
+        seen.lock().unwrap().push(spec.clone());
+        if spec.url.contains("fail") {
+            return Err("connection refused".into());
+        }
+        Ok(response(200, r#"{"access_token":"t0k"}"#))
+    };
+    let env = map(&[("base", "https://auth.example.com")]);
+    let input = ScriptInput {
+        environment: Some(&env),
+        http: Some(HttpSender(&sender)),
+        ..Default::default()
+    };
+    let out = run_script(
+        ScriptKind::PreRequest,
+        r#"
+        pm.sendRequest({
+            url: "{{base}}/token",
+            method: "post",
+            header: [{ key: "X-A", value: "1" }, { key: "X-Off", value: "0", disabled: true }],
+            body: { mode: "raw", raw: JSON.stringify({ u: 1 }), options: { raw: { language: "json" } } },
+        }, function (err, res) {
+            pm.environment.set("token", res.json().access_token);
+            console.log("status", res.code);
+        });
+        pm.sendRequest({ url: "https://x/form", method: "POST",
+                         body: { mode: "urlencoded", urlencoded: [{ key: "grant_type", value: "client_credentials" }] } });
+        pm.sendRequest("https://x/fail", (err, res) => console.log("err", err.message, res));
+        (async () => {
+            try { await pm.sendRequest("https://x/fail"); } catch (e) { console.log("rejected", e.name); }
+            const r = await pm.sendRequest("https://x/second");
+            pm.variables.set("second", r.code);
+        })();
+        "#,
+        &input,
+    );
+    assert_eq!(out.error, None);
+    assert!(out.variable_updates.contains(&VarUpdate {
+        scope: VarScope::Environment,
+        key: "token".into(),
+        value: Some("t0k".into()),
+    }));
+    assert!(out.variable_updates.contains(&VarUpdate {
+        scope: VarScope::Local,
+        key: "second".into(),
+        value: Some("200".into()),
+    }));
+    assert_eq!(
+        out.logs,
+        [
+            "status 200",
+            "err connection refused null",
+            "rejected RequestError"
+        ]
+    );
+    let seen = seen.into_inner().unwrap();
+    assert_eq!(seen.len(), 5);
+    assert_eq!(seen[0].method, "POST");
+    assert_eq!(seen[0].url, "https://auth.example.com/token");
+    assert_eq!(
+        seen[0].headers,
+        [
+            ("X-A".to_string(), "1".to_string()),
+            ("Content-Type".to_string(), "application/json".to_string())
+        ]
+    );
+    assert_eq!(seen[0].body, Some(SendBody::Raw(r#"{"u":1}"#.into())));
+    assert_eq!(
+        seen[1].body,
+        Some(SendBody::Form(vec![(
+            "grant_type".into(),
+            "client_credentials".into()
+        )]))
+    );
+    assert_eq!(seen[2].method, "GET");
+    assert_eq!(seen[4].url, "https://x/second");
+}
+
+#[test]
+fn send_request_wait_does_not_count_against_the_timeout() {
+    let sender = |_: &SendRequestSpec| -> Result<ResponseView, String> {
+        std::thread::sleep(Duration::from_millis(300));
+        Ok(response(204, ""))
+    };
+    let input = ScriptInput {
+        http: Some(HttpSender(&sender)),
+        ..Default::default()
+    };
+    let out = run_script_with_timeout(
+        ScriptKind::Test,
+        r#"pm.sendRequest("https://x", () => pm.sendRequest("https://y", () => pm.test("done", () => {})));"#,
+        &input,
+        Duration::from_millis(200),
+    );
+    assert_eq!(out.error, None);
+    assert_eq!(out.tests.len(), 1);
 }
 
 // ------------------------------------------------------------------- legacy

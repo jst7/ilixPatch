@@ -47,16 +47,7 @@ pub(crate) fn input_json(input: &ScriptInput) -> String {
             "body": body_json(r.body.as_ref()),
         })
     });
-    let response = input.response.map(|r| {
-        json!({
-            "code": r.status,
-            "status": r.status_text,
-            "headers": r.headers.iter().map(|(k, v)| json!([k, v])).collect::<Vec<_>>(),
-            "body": r.body,
-            "time": r.elapsed_ms,
-            "size": r.size_bytes,
-        })
-    });
+    let response = input.response.map(crate::engine::response_json);
     json!({
         "request": request,
         "response": response,

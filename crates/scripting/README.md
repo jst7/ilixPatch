@@ -39,7 +39,9 @@ so existing Postman collections keep working unchanged.
 | Info and flow | `pm.info.eventName/iteration/iterationCount/requestName`, `pm.execution.skipRequest()` (pre-request only), `pm.execution.setNextRequest`, `pm.setNextRequest`, `postman.setNextRequest(name \| null)` |
 | Console | `console.log/info/warn/error/debug` → `logs`. Every level except `log` gets a prefix such as `[warn] `, and objects are written as JSON |
 | Legacy (Newman) | `tests["name"] = bool`, `responseBody`, `responseCode.code`, `responseTime`, `responseHeaders`, `environment`, `globals`, `data`, `iteration`, `request`, `postman.set/get/clearEnvironmentVariable`, `postman.set/get/clearGlobalVariable`, `postman.getResponseHeader` |
-| Utilities | `JSON`, `atob`, `btoa`, `setTimeout/clearTimeout/setImmediate`, `require("chai")` |
+| Requests from scripts | `pm.sendRequest(urlOrRequest[, callback])`: a URL string or a Postman request object (`url` string or object, `method`, `header` list/object, `body` modes `raw`, `urlencoded`, `formdata` (sent as urlencoded), `graphql`). `{{variables}}` are resolved. The callback gets `(err, res)` with a `pm.response`-like `res`; without a callback it returns a promise (`await pm.sendRequest(...)`). The caller performs the request through `ScriptInput.http`; waiting doesn't count against the timeout |
+| Modules (`require`) | `chai`, `crypto-js` 4.2.0, `lodash` 4.17.21, `moment` 2.30.1, `uuid` 8.3.2, `xml2js` (own parser with the same output and main options; no `Builder`), `atob`, `btoa`. Loaded on first use and cached per thread |
+| Utilities | `JSON`, `atob`, `btoa`, `crypto.getRandomValues/randomUUID` (OS randomness), `setTimeout/clearTimeout/setImmediate`; Postman globals `_` (lodash), `CryptoJS`, `xml2Json` |
 
 Variable values are strings, as `VarUpdate` requires. Objects passed to `set`
 are stored as JSON, `null` and `undefined` are stored as `""`, and everything
@@ -53,10 +55,11 @@ and `query` is cleared. Changes made in test scripts are ignored.
 
 ## Known gaps
 
-- `pm.sendRequest`: throws `"pm.sendRequest is not supported yet"`.
-- `require()` only knows `chai`. Every other module (lodash, moment,
-  crypto-js, cheerio, tv4/ajv, uuid, xml2js, …) throws `module 'x' is not available yet`.
-  The legacy `_`, `CryptoJS`, `xml2Json` and `tv4` globals are missing.
+- `require()` knows the modules listed above; others (cheerio, tv4/ajv,
+  csv-parse, postman-collection…) throw `module 'x' is not available`. The
+  legacy `tv4` and `cheerio` globals are missing.
+- `pm.sendRequest` sends `formdata` bodies as `x-www-form-urlencoded` (files
+  are not supported) and doesn't apply the collection's auth.
 - `pm.response.to.have.jsonSchema` throws "not supported yet". `pm.cookies`,
   `pm.vault`, `pm.visualizer` and `pm.response.to.have.responseTime` are missing.
 - The `pm.request.auth` and `pm.request.body` modes `formdata`, `file` and

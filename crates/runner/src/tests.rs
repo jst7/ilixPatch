@@ -606,3 +606,53 @@ tests = "pm.test('path', () => pm.expect(pm.response.json().path).to.eql('/use/t
     assert_eq!(res.tests.len(), 1);
     assert!(res.tests[0].passed, "{:?}", res.tests);
 }
+
+/// D59: a pre-request script gets a token with `pm.sendRequest`; the request uses it.
+async fn send_request_token_flow(base: String) {
+    let mut store = VarStore {
+        environment: [("base".to_string(), base.clone())].into_iter().collect(),
+        ..Default::default()
+    };
+    let req: ilixpatch_core::Request = toml::from_str(
+        r#"
+name = "x"
+url = "{{base}}/use/{{token}}"
+[scripts]
+pre_request = """
+pm.sendRequest({ url: "{{base}}/token/abc", method: "POST", body: { mode: "raw", raw: "{}" } }, (err, res) => {
+    pm.environment.set("token", res.json().path.split("/").pop());
+});
+"""
+tests = """
+pm.sendRequest(pm.environment.get("base") + "/status/404").then((r) => pm.test("second", () => pm.expect(r.code).to.equal(404)));
+pm.test("main", () => pm.expect(pm.response.json().path).to.equal("/use/abc"));
+"""
+"#,
+    )
+    .unwrap();
+    let res = execute_request(&Engine::new(), &req, &mut store, &ExecContext::default()).await;
+    assert_eq!(res.script_error, None, "{:?}", res.logs);
+    assert_eq!(res.response.unwrap().status, 200);
+    assert_eq!(res.tests.len(), 2);
+    assert!(res.tests.iter().all(|t| t.passed), "{:?}", res.tests);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn send_request_on_a_multi_thread_runtime() {
+    let base = server().await;
+    send_request_token_flow(base).await;
+}
+
+#[tokio::test]
+async fn send_request_on_a_current_thread_runtime() {
+    // The server runs on its own runtime: this thread is blocked while a script waits.
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tx.send(server().await).unwrap();
+            std::future::pending::<()>().await;
+        });
+    });
+    send_request_token_flow(rx.recv().unwrap()).await;
+}

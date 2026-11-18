@@ -12,6 +12,7 @@ pub mod extract;
 pub mod load;
 pub mod report;
 pub mod run;
+mod send_request;
 pub mod target;
 pub mod vars;
 
