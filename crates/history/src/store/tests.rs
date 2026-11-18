@@ -13,6 +13,7 @@ fn request(name: &str, url: &str) -> Request {
         settings: Default::default(),
         auth: Default::default(),
         extract: Default::default(),
+        examples: Vec::new(),
     }
 }
 

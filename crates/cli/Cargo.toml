@@ -17,6 +17,7 @@ ilixpatch-engine.workspace = true
 ilixpatch-runner.workspace = true
 ilixpatch-importer.workspace = true
 ilixpatch-oauth2.workspace = true
+ilixpatch-mock.workspace = true
 serde_json.workspace = true
 indexmap.workspace = true
 tokio = { workspace = true, features = ["signal"] }

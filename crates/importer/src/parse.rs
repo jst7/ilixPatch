@@ -26,6 +26,10 @@ pub(crate) struct ParentScript {
     pub tests: Option<String>,
 }
 
+/// Postman-shaped saved responses (`item.response`) carried inside the request
+/// value from parsing to conversion (D62); OpenAPI fills it from `responses`.
+pub(crate) const EXAMPLES_KEY: &str = "__ilixpatch_examples";
+
 #[derive(Debug, Clone)]
 pub(crate) struct SrcNode {
     pub id: String,
@@ -228,6 +232,13 @@ fn parse_item(item: &Value, ctx: &Ctx<'_>, path: &str) -> SrcNode {
             (item.get("protocolProfileBehavior"), &mut request)
         {
             r.insert("protocolProfileBehavior".into(), b.clone());
+        }
+        // D62: saved responses become examples; keep them with the request for `convert`.
+        if let (Some(resp @ Value::Array(list)), Value::Object(r)) =
+            (item.get("response"), &mut request)
+            && !list.is_empty()
+        {
+            r.insert(EXAMPLES_KEY.into(), resp.clone());
         }
         let own_auth = auth.or_else(|| auth_of(&request));
         let effective_auth = match &own_auth {

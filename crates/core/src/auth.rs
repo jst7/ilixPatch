@@ -414,6 +414,7 @@ mod tests {
                 settings: Default::default(),
                 auth,
                 extract: Default::default(),
+                examples: Default::default(),
             },
         };
         let bearer = |t: &str| Auth::Bearer(BearerAuth { token: t.into() });

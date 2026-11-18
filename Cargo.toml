@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/auth", "crates/core", "crates/engine", "crates/bodystore", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "crates/oauth2", "app/src-tauri"]
+members = ["crates/auth", "crates/core", "crates/engine", "crates/bodystore", "crates/scripting", "crates/runner", "crates/cli", "crates/git", "crates/history", "crates/importer", "crates/oauth2", "crates/mock", "app/src-tauri"]
 
 [workspace.package]
 version = "0.8.1"
@@ -22,6 +22,7 @@ ilixpatch-git = { path = "crates/git" }
 ilixpatch-importer = { path = "crates/importer" }
 ilixpatch-history = { path = "crates/history" }
 ilixpatch-oauth2 = { path = "crates/oauth2" }
+ilixpatch-mock = { path = "crates/mock" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 indexmap = { version = "2", features = ["serde"] }

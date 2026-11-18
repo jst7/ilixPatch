@@ -14,7 +14,8 @@ pub mod vault;
 pub use auth::Auth;
 pub use extract::{Extract, ExtractFrom, ExtractScope};
 pub use model::{
-    Body, Collection, Environment, Folder, HttpMethod, Project, Request, RequestFile, Scripts,
+    Body, Collection, Environment, Example, Folder, HttpMethod, Project, Request, RequestFile,
+    Scripts,
 };
 pub use request_settings::{HttpVersionPref, RequestSettings};
 pub use vars::{Scope, VarError};

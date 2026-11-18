@@ -4,6 +4,7 @@ mod export_commands;
 mod git_commands;
 mod history_commands;
 mod import_commands;
+mod mock_commands;
 mod netlog_commands;
 mod network_commands;
 mod oauth2_commands;
@@ -507,6 +508,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Jobs::default())
         .manage(InFlight::default())
+        .manage(mock_commands::Mocks::default())
         .setup(|app| {
             let dir = app.path().app_config_dir()?;
             app.manage(Registry::new(dir.join("projects.toml")));
@@ -578,6 +580,9 @@ pub fn run() {
             vault_commands::vault_unlock,
             vault_commands::vault_change_password,
             vault_commands::vault_reset,
+            mock_commands::mock_start,
+            mock_commands::mock_stop,
+            mock_commands::mock_list,
             update_commands::update_check,
             oauth2_commands::oauth2_get_token,
             oauth2_commands::oauth2_cancel_flow,

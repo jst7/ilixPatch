@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exampleFromResponse } from "$lib/mock/examples";
   import type { SendResult } from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
@@ -36,6 +37,14 @@
   const loc = $derived(ws.index.get(path) ?? null);
 
   let tab = $state<"body" | "headers" | "tests" | "console">("body");
+
+  // D62: keep this response as an example of the request (served by the mock server).
+  async function saveExample() {
+    const draft = ws.drafts[path];
+    if (!result || !draft) return;
+    draft.examples = [...draft.examples, await exampleFromResponse(result)];
+    ws.notify(t("examples.saved"));
+  }
 
   const tests = $derived(result?.tests ?? []);
   const logs = $derived(result?.logs ?? []);
@@ -114,6 +123,9 @@
       <span class="meta">{t("response.time", { ms: Math.round(result.elapsed_ms) })}</span>
       <span class="meta">{formatSize(result.size_bytes)}</span>
       {#if result.network}<NetworkInfo network={result.network} />{/if}
+      {#if ws.drafts[path]}
+        <button class="ghost small save-example" title={t("examples.saveHint")} onclick={saveExample}>{t("examples.save")}</button>
+      {/if}
     {/if}
     {#if resp?.loading}
       <span class="meta sending">

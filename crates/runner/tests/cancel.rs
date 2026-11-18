@@ -40,6 +40,7 @@ async fn cancelling_a_hung_request_returns_immediately_and_closes_the_connection
         settings: Default::default(),
         auth: Default::default(),
         extract: Default::default(),
+        examples: Vec::new(),
     };
     let engine = Engine::new();
     let mut store = VarStore::default();

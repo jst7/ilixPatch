@@ -375,9 +375,53 @@ fn request_item(r: &Request, path: &str, ctx: &mut Ctx<'_>) -> Value {
         );
     }
 
+    let original = Value::Object(req.clone());
     item.insert("request".into(), Value::Object(req));
-    item.insert("response".into(), json!([]));
+    // D62: examples are Postman saved responses.
+    item.insert(
+        "response".into(),
+        r.examples
+            .iter()
+            .map(|e| {
+                let json_body = serde_json::from_str::<Value>(&e.body).is_ok();
+                json!({
+                    "name": e.name,
+                    "originalRequest": original,
+                    "status": reason(e.status),
+                    "code": e.status,
+                    "_postman_previewlanguage": if json_body { "json" } else { "text" },
+                    "header": e.headers.iter().map(|(k, v)| json!({ "key": k, "value": v })).collect::<Vec<_>>(),
+                    "cookie": [],
+                    "body": e.body,
+                })
+            })
+            .collect(),
+    );
     Value::Object(item)
+}
+
+/// Reason phrase of the common statuses (Postman shows it next to the code).
+fn reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        201 => "Created",
+        202 => "Accepted",
+        204 => "No Content",
+        301 => "Moved Permanently",
+        302 => "Found",
+        304 => "Not Modified",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        409 => "Conflict",
+        422 => "Unprocessable Entity",
+        429 => "Too Many Requests",
+        500 => "Internal Server Error",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
+        _ => "",
+    }
 }
 
 fn body_json(body: Option<&Body>) -> Option<Value> {

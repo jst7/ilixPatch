@@ -339,3 +339,76 @@ fn unsupported_and_invalid_documents() {
     assert!(preview.errors.is_empty(), "{:?}", preview.errors);
     assert_eq!(names(&preview.collections), ["Zoo API"]);
 }
+
+/// D62: documented responses become examples for the mock server.
+#[test]
+fn responses_become_examples() {
+    let t = tempfile::tempdir().unwrap();
+    let spec = t.path().join("api.json");
+    fs::write(
+        &spec,
+        r#"{
+  "openapi": "3.0.3",
+  "info": { "title": "Users", "version": "1" },
+  "servers": [{ "url": "https://api.example.com" }],
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "summary": "Get user",
+        "responses": {
+          "404": { "description": "Not found", "content": { "application/json": { "example": { "error": "nope" } } } },
+          "200": {
+            "description": "The user",
+            "content": { "application/json": { "schema": {
+              "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string", "example": "Ann" } }
+            } } }
+          },
+          "204": { "description": "Nothing" }
+        }
+      }
+    }
+  }
+}"#,
+    )
+    .unwrap();
+    let (_t, root) = new_project();
+    import(&parse_paths(&[&spec]), &root);
+    let col = fs::read_dir(&root)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .find(|p| p.join("collection.toml").is_file())
+        .unwrap();
+    let file = walk(&col)
+        .into_iter()
+        .find(|p| {
+            p.extension().is_some_and(|e| e == "toml")
+                && fs::read_to_string(p).unwrap().contains("Get user")
+        })
+        .unwrap();
+    let r = req(&file);
+    let statuses: Vec<u16> = r.examples.iter().map(|e| e.status).collect();
+    assert_eq!(statuses, [200, 204, 404], "successful first: {statuses:?}");
+    assert_eq!(r.examples[0].name, "The user");
+    let body: serde_json::Value = serde_json::from_str(&r.examples[0].body).unwrap();
+    assert_eq!(body["name"], "Ann", "generated from the schema");
+    assert_eq!(r.examples[0].headers["Content-Type"], "application/json");
+    assert!(r.examples[1].body.is_empty() && r.examples[1].headers.is_empty());
+    assert!(
+        r.examples[2].body.contains("nope"),
+        "the spec's own example"
+    );
+}
+
+fn walk(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for e in fs::read_dir(dir).unwrap().flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            out.extend(walk(&p));
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}

@@ -242,6 +242,7 @@ pub fn create_request(folder: impl AsRef<Path>, name: &str) -> Result<RequestFil
         settings: Default::default(),
         auth: Default::default(),
         extract: Default::default(),
+        examples: Default::default(),
     };
     storage::save_request(&path, &request)?;
     Ok(RequestFile { path, request })

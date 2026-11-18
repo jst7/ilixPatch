@@ -92,6 +92,7 @@
           { label: t("tree.newCollection"), action: () => ws.startCreate("collection", path, projectPath) },
           { label: t("tree.importPostman"), action: () => importer.open(projectPath) },
           { label: t("tree.exportPostman"), action: () => exportProjectToPostman(projectPath) },
+          { label: t("tree.mock"), action: () => ws.openTab({ kind: "mock", target: path }) },
           gitItem(),
         );
       }
@@ -107,7 +108,10 @@
       { label: t("tree.run"), action: () => ws.openTab({ kind: "runner", target: path }) },
       { label: t("tree.loadTest"), action: () => ws.openTab({ kind: "load", target: path }) },
       ...(props.kind === "collection"
-        ? [{ label: t("tree.exportPostman"), action: () => exportCollectionToPostman(path, name) }]
+        ? [
+            { label: t("tree.exportPostman"), action: () => exportCollectionToPostman(path, name) },
+            { label: t("tree.mock"), action: () => ws.openTab({ kind: "mock", target: path }) },
+          ]
         : []),
       gitItem(),
       { label: t("tree.delete"), danger: true, action: () => confirmDelete(path, name, projectPath) },

@@ -32,6 +32,18 @@ export interface Request {
   auth?: Auth;
   /** Variables taken from the response after each send (D48). Omitted when empty. */
   extract?: Extract[];
+  /** Saved example responses (D62), served by the mock server. Omitted when empty. */
+  examples?: Example[];
+}
+
+/** D62: a saved response of a request (`[[examples]]`). */
+export interface Example {
+  name: string;
+  status: number;
+  headers?: Record<string, string>;
+  body?: string;
+  /** Extra latency when served by the mock server. */
+  delay_ms?: number | null;
 }
 
 /** D48: save a value of the response in a variable (`[[extract]]` in the request file). */
@@ -709,6 +721,37 @@ export interface ImportReport {
   warnings: ImportWarning[];
 }
 
+// ---------- Mock server (D62) ----------
+
+export interface MockRoute {
+  method: string;
+  /** e.g. "/users/:id". */
+  pattern: string;
+  /** "collection/folder/Request". */
+  name: string;
+  /** "200 OK", "404 Not found"… */
+  examples: string[];
+}
+
+export interface MockStatus {
+  /** The served project / collection directory (also the server's id). */
+  target: string;
+  url: string;
+  port: number;
+  routes: MockRoute[];
+}
+
+export interface MockLogEntry {
+  /** Unix milliseconds. */
+  time: number;
+  method: string;
+  path: string;
+  status: number;
+  route: string | null;
+  example: string | null;
+  elapsed_ms: number;
+}
+
 // ---------- Master password (D60) ----------
 
 export interface VaultStatus {
@@ -1230,6 +1273,12 @@ export const api = {
   importPreview: (paths: string[], urls: string[], options: ParseOptions) =>
     invoke<ImportPreview>("import_preview", { paths, urls, options }),
   importApply: (plan: ImportPlan) => invoke<ImportReport>("import_apply", { plan }),
+
+  // Mock server (D62)
+  mockStart: (target: string, port: number, delayMs: number) =>
+    invoke<MockStatus>("mock_start", { target, port, delayMs }),
+  mockStop: (target: string) => invoke<void>("mock_stop", { target }),
+  mockList: () => invoke<MockStatus[]>("mock_list"),
 
   // Master password (D60)
   vaultStatus: () => invoke<VaultStatus>("vault_status"),

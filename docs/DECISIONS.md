@@ -351,6 +351,28 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D62 · Servidor mock a partir de ejemplos ✅
+- **Para qué:** que el front pueda desarrollarse contra la API antes de que el back exista, con las mismas colecciones.
+- **Ejemplos:** cada petición puede tener `[[examples]]` en su `.toml` (nombre, estado, cabeceras, cuerpo y
+  `delay_ms` opcional). Van en el fichero, así que se versionan y se comparten con git.
+  - Se crean a mano (pestaña «Ejemplos») o con un clic desde una respuesta real («Guardar como ejemplo»).
+  - **Al importar:** las respuestas guardadas de Postman (`item.response`) y, de OpenAPI, una por código de respuesta
+    con el ejemplo de la especificación o uno **generado del esquema**. Importar una especificación da un mock al
+    instante. Se exportan a Postman como respuestas guardadas (ida y vuelta sin pérdida).
+- **Emparejamiento:** por método y ruta, ignorando la base (`{{base_url}}` o `https://host`) y la query. `:id`, `{id}`
+  y `{{id}}` aceptan cualquier valor; gana la ruta con más segmentos literales. HEAD usa la ruta GET.
+- **Qué ejemplo:** el primero 2xx (o el primero), u otro con `X-Mock-Example: <nombre|estado>` o
+  `?__example=<nombre|estado>`, para probar los casos de error del front sin tocar nada.
+- **Pensado para el navegador:** CORS abierto (`*`) y preflight `OPTIONS` respondido con lo que pide. Si nada coincide,
+  un 404 en JSON con la lista de rutas, para ver enseguida qué falta.
+- **Recarga al vuelo:** las colecciones se releen como mucho una vez por segundo; un fichero roto mientras se edita
+  mantiene las rutas anteriores.
+- **Dónde:** en la app (clic derecho en un proyecto o colección › «Servidor mock…»: puerto, retardo, iniciar/parar,
+  rutas y registro de peticiones en vivo) y en la CLI (`ilixpatch mock <dir> --port 4000`), también útil en CI para los
+  tests del front.
+- **Sin plantillas** de momento: el cuerpo se sirve tal cual (no sustituye parámetros de la ruta ni `{{$guid}}`).
+- Crate `crates/mock` (hyper 1, que ya venía con reqwest); escucha en `127.0.0.1` por defecto.
+
 ## D61 · Body GraphQL con autocompletado por introspección ✅
 - **Modelo:** un tipo de body nuevo, `graphql`, con `query` y `variables` (texto JSON con un objeto; se omite si
   está vacío). En el fichero de la petición:

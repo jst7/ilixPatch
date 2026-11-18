@@ -14,6 +14,7 @@ Commands:
   load          Load test with virtual users
   import        Import from other tools (Postman, OpenAPI / Swagger)
   export        Export to other tools (Postman)
+  mock          Serve the saved example responses (mock server)
   ls            List the requests and environments of a collection or project
   check-update  Check GitHub for a newer published release
 ```
@@ -28,6 +29,7 @@ Commands:
 - [`ilixpatch import postman`](#ilixpatch-import-postman)
 - [`ilixpatch import openapi`](#ilixpatch-import-openapi)
 - [`ilixpatch export postman`](#ilixpatch-export-postman)
+- [`ilixpatch mock`](#ilixpatch-mock)
 - [`ilixpatch ls`](#ilixpatch-ls)
 - [`ilixpatch check-update`](#ilixpatch-check-update)
 - [Network options (TLS, mTLS, proxy)](#network-options-tls-mtls-proxy)
@@ -272,6 +274,46 @@ What you get:
   have no Postman equivalent: there is a warning.
 
 What is exported imports back with `ilixpatch import postman` without losing anything.
+
+## `ilixpatch mock`
+Serves the saved **example responses** of a project or collection, so a frontend can be developed before the backend
+exists (D62).
+
+```sh
+ilixpatch mock ./my-project --port 4000
+ilixpatch mock ./my-project/shop-api --port 4000 --delay 300
+```
+
+| Argument / flag | Description |
+|---|---|
+| `<dir>` | A project (all its collections) or a collection |
+| `-p, --port <n>` | Port (default `4000`) |
+| `--host <addr>` | Address to listen on (default `127.0.0.1`; `0.0.0.0` accepts other machines) |
+| `--delay <ms>` | Latency added to every response (an example's own `delay_ms` wins) |
+
+- **Examples** are `[[examples]]` in a request file (name, status, headers, body, optional `delay_ms`). They are
+  created in the app (Examples tab, or “Save as example” on a real response) and when importing: Postman saved
+  responses, and OpenAPI responses (the spec's example, or one generated from the schema).
+- **Matching:** by method and path, ignoring the base (`{{base_url}}` or `https://host`). `:id`, `{id}` and
+  `{{id}}` segments match any value, and the most specific route wins (`/users/me` before `/users/:id`).
+- **Which example:** the first 2xx one; another with the `X-Mock-Example: <name|status>` header or
+  `?__example=<name|status>`.
+- **For browsers:** CORS is open and preflights are answered. No match is a JSON 404 listing the routes.
+- Edits to the collections are served at once (they are re-read at most once per second).
+- It prints the routes and one line per request; `Ctrl-C` stops it.
+
+```toml
+[[examples]]
+name = "OK"
+status = 200
+body = """{ "id": 1, "name": "Ann" }"""
+
+[[examples]]
+name = "Not found"
+status = 404
+headers = { "Content-Type" = "application/json" }
+body = """{ "error": "not found" }"""
+```
 
 ## `ilixpatch ls`
 Lists the contents of a project or collection without running anything:

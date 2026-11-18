@@ -1,6 +1,7 @@
 // Central UI state: registered projects, tree expansion, selection, per-request drafts and responses.
 import {
   api,
+  type Example,
   type Extract,
   type Collection,
   type Folder,
@@ -87,6 +88,8 @@ export interface Draft {
   auth: Auth;
   /** Variables from the response (D48). */
   extract: Extract[];
+  /** Saved example responses (D62). */
+  examples: Example[];
 }
 
 export interface DraftSettings {
@@ -146,6 +149,7 @@ export function draftFromRequest(r: Request): Draft {
     settings: draftSettings(r.settings),
     auth: r.auth ? (JSON.parse(JSON.stringify(r.auth)) as Auth) : { type: "inherit" },
     extract: (r.extract ?? []).map((e) => ({ ...e, path: e.path ?? "", enabled: e.enabled ?? true })),
+    examples: (r.examples ?? []).map((e) => ({ ...e, headers: { ...(e.headers ?? {}) }, body: e.body ?? "" })),
   };
 }
 
@@ -166,7 +170,22 @@ export function requestFromDraft(d: Draft): Request {
     ...(requestSettings(d.settings) ? { settings: requestSettings(d.settings) } : {}),
     ...(d.auth && d.auth.type !== "inherit" ? { auth: cleanAuth(d.auth) } : {}),
     ...(cleanExtract(d.extract).length ? { extract: cleanExtract(d.extract) } : {}),
+    ...(d.examples.length ? { examples: cleanExamples(d.examples) } : {}),
   };
+}
+
+/** Examples as saved: empty headers/body/delay omitted (like the backend). */
+function cleanExamples(list: Example[]): Example[] {
+  return list.map((e) => {
+    const headers = Object.fromEntries(Object.entries(e.headers ?? {}).filter(([k]) => k.trim()));
+    return {
+      name: e.name.trim() || `${e.status}`,
+      status: Number(e.status) || 200,
+      ...(Object.keys(headers).length ? { headers } : {}),
+      ...(e.body ? { body: e.body } : {}),
+      ...(e.delay_ms ? { delay_ms: Number(e.delay_ms) } : {}),
+    };
+  });
 }
 
 /** Empty scripts are omitted entirely (matches the backend, which skips empty values). */
@@ -205,6 +224,7 @@ function canonical(r: Request): string {
     Object.entries(requestSettings(r.settings) ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
     canonicalAuth(r.auth),
     cleanExtract(r.extract ?? []).map((e) => [e.var, e.from, e.path, e.scope, e.enabled]),
+    cleanExamples(r.examples ?? []).map((e) => [e.name, e.status, sortRec(e.headers), e.body ?? "", e.delay_ms ?? 0]),
   ]);
 }
 
@@ -300,6 +320,8 @@ export type OpenTab =
   | { kind: "request"; path: string }
   | { kind: "runner"; target: string }
   | { kind: "load"; target: string }
+  /** Mock server of a project or collection (D62). */
+  | { kind: "mock"; target: string }
   | { kind: "git"; repo: string }
   | { kind: "history"; id: number }
   /** Environments of a project, or the global ones (project = null) (D28). */
@@ -482,6 +504,11 @@ class Workspace {
     this.notice = String(e);
     clearTimeout(this.noticeTimer);
     this.noticeTimer = setTimeout(() => (this.notice = null), 8000);
+  }
+
+  /** A short informational notice (same place as errors). */
+  notify(message: string) {
+    this.fail(message);
   }
 
   // ----- expansion -----
@@ -1051,7 +1078,7 @@ class Workspace {
         (t) =>
           t &&
           ((t.kind === "request" && typeof t.path === "string") ||
-            ((t.kind === "runner" || t.kind === "load") && typeof t.target === "string") ||
+            ((t.kind === "runner" || t.kind === "load" || t.kind === "mock") && typeof t.target === "string") ||
             (t.kind === "container" && typeof t.path === "string") ||
             (t.kind === "git" && typeof t.repo === "string") ||
             (t.kind === "merge" && typeof t.repo === "string" && typeof t.path === "string") ||

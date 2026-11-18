@@ -14,6 +14,7 @@ Comandos:
   load          Prueba de carga con usuarios virtuales
   import        Importa desde otras herramientas (Postman, OpenAPI / Swagger)
   export        Exporta a otras herramientas (Postman)
+  mock          Sirve las respuestas de ejemplo guardadas (servidor mock)
   ls            Lista las peticiones y entornos de una colección o proyecto
   check-update  Comprueba en GitHub si hay una versión nueva publicada
 ```
@@ -28,6 +29,7 @@ Comandos:
 - [`ilixpatch import postman`](#ilixpatch-import-postman)
 - [`ilixpatch import openapi`](#ilixpatch-import-openapi)
 - [`ilixpatch export postman`](#ilixpatch-export-postman)
+- [`ilixpatch mock`](#ilixpatch-mock)
 - [`ilixpatch ls`](#ilixpatch-ls)
 - [`ilixpatch check-update`](#ilixpatch-check-update)
 - [Opciones de red (TLS, mTLS, proxy)](#opciones-de-red-tls-mtls-proxy)
@@ -273,6 +275,33 @@ Qué se obtiene:
   versión HTTP no tienen equivalente en Postman: se avisa.
 
 Lo exportado se puede volver a importar con `ilixpatch import postman` sin perder nada.
+
+## `ilixpatch mock`
+Sirve las **respuestas de ejemplo** guardadas de un proyecto o una colección, para poder desarrollar el front antes de
+que exista el back (D62).
+
+```sh
+ilixpatch mock ./my-project --port 4000
+ilixpatch mock ./my-project/shop-api --port 4000 --delay 300
+```
+
+| Argumento / flag | Descripción |
+|---|---|
+| `<dir>` | Un proyecto (todas sus colecciones) o una colección |
+| `-p, --port <n>` | Puerto (por defecto `4000`) |
+| `--host <dir>` | Dirección en la que escucha (por defecto `127.0.0.1`; `0.0.0.0` acepta otras máquinas) |
+| `--delay <ms>` | Latencia añadida a cada respuesta (el `delay_ms` propio de un ejemplo tiene prioridad) |
+
+- Los **ejemplos** son `[[examples]]` en el fichero de la petición (nombre, estado, cabeceras, cuerpo y `delay_ms`
+  opcional). Se crean en la app (pestaña «Ejemplos», o «Guardar como ejemplo» en una respuesta real) y al importar: las
+  respuestas guardadas de Postman y las respuestas de OpenAPI (el ejemplo de la especificación o uno generado del esquema).
+- **Emparejamiento:** por método y ruta, ignorando la base (`{{base_url}}` o `https://host`). Los segmentos `:id`,
+  `{id}` y `{{id}}` aceptan cualquier valor, y gana la ruta más específica (`/users/me` antes que `/users/:id`).
+- **Qué ejemplo:** el primero 2xx; otro con la cabecera `X-Mock-Example: <nombre|estado>` o con
+  `?__example=<nombre|estado>`.
+- **Para navegadores:** CORS abierto y peticiones preflight respondidas. Si nada coincide, un 404 en JSON con las rutas.
+- Los cambios en las colecciones se sirven al momento (se releen como mucho una vez por segundo).
+- Imprime las rutas y una línea por petición; `Ctrl-C` lo para.
 
 ## `ilixpatch ls`
 Lista el contenido de un proyecto o colección sin ejecutar nada:

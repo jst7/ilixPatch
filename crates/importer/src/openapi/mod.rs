@@ -482,7 +482,97 @@ fn operation(
     if let Some(b) = body {
         req["body"] = b;
     }
+    let examples = response_examples(ctx, op);
+    if !examples.is_empty() {
+        req[crate::parse::EXAMPLES_KEY] = Value::Array(examples);
+    }
     req
+}
+
+/// D62: one example per documented response (Postman saved-response shape),
+/// with the spec's example or one generated from the schema.
+fn response_examples(ctx: &Ctx<'_>, op: &Node) -> Vec<Value> {
+    let root = ctx.root;
+    let Some(responses) = op.get("responses") else {
+        return Vec::new();
+    };
+    let produces = op
+        .get("produces")
+        .or_else(|| root.get("produces"))
+        .map(|p| p.arr())
+        .unwrap_or_default()
+        .first()
+        .and_then(|m| m.str())
+        .map(str::to_string);
+    let mut out = Vec::new();
+    for (code, resp) in responses.entries() {
+        // `200`, `2XX` → 200; `default` → 500 (only documents errors).
+        let status: u16 = match code.as_str() {
+            "default" => 500,
+            c if c.len() == 3 && c.ends_with("XX") => {
+                c[..1].parse::<u16>().map(|d| d * 100).unwrap_or(200)
+            }
+            c => match c.parse() {
+                Ok(n) => n,
+                Err(_) => continue,
+            },
+        };
+        let Ok(resp) = deref(root, resp) else {
+            continue;
+        };
+        let (media, example) = match ctx.version {
+            Version::OpenApi3 => match resp.get("content").and_then(Node::obj).and_then(pick_media)
+            {
+                Some((m, holder)) => (Some(m.clone()), example::of_holder(root, holder)),
+                None => (None, None),
+            },
+            Version::Swagger2 => {
+                let given = resp
+                    .get("examples")
+                    .into_iter()
+                    .flat_map(Node::entries)
+                    .next()
+                    .map(|(m, v)| (m.clone(), v.clone()));
+                match given {
+                    Some((m, v)) => (Some(m), Some(v)),
+                    None => (
+                        produces.clone().filter(|_| resp.get("schema").is_some()),
+                        resp.get("schema")
+                            .and_then(|_| example::of_holder(root, resp)),
+                    ),
+                }
+            }
+        };
+        let body = match &example {
+            Some(Node::Str(s)) if !media.as_deref().is_some_and(is_json) => s.clone(),
+            Some(e) => e.to_pretty_json(),
+            None => String::new(),
+        };
+        let name = resp
+            .text("description")
+            .map(|d| {
+                d.lines()
+                    .next()
+                    .unwrap_or(d)
+                    .trim()
+                    .chars()
+                    .take(60)
+                    .collect::<String>()
+            })
+            .filter(|d| !d.is_empty())
+            .unwrap_or_else(|| code.clone());
+        let mut header = Vec::new();
+        if let Some(m) = media.filter(|_| !body.is_empty()) {
+            header.push(json!({ "key": "Content-Type", "value": m }));
+        }
+        out.push(json!({ "name": name, "code": status, "header": header, "body": body }));
+    }
+    // Successful responses first: the mock answers with the first 2xx one.
+    out.sort_by_key(|e| {
+        let c = e["code"].as_u64().unwrap_or(0);
+        !(200..300).contains(&c)
+    });
+    out
 }
 
 /// `Accept` from the first successful response's media type.

@@ -1,0 +1,25 @@
+[package]
+name = "ilixpatch-mock"
+description = "Mock server for ilixPatch: serves the saved example responses of a project or collection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+ilixpatch-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+tokio = { workspace = true, features = ["net", "time", "sync"] }
+tokio-util = "0.7"
+# HTTP/1.1 server (already in the tree through reqwest).
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["net", "time", "sync", "macros", "rt-multi-thread", "io-util"] }
+reqwest.workspace = true

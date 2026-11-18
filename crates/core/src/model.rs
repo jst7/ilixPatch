@@ -98,6 +98,28 @@ pub struct Request {
     /// Variables taken from the response after each send (D48), `[[extract]]`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extract: Vec<crate::Extract>,
+    /// Example responses (D62), `[[examples]]`: served by the mock server.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub examples: Vec<Example>,
+}
+
+/// A saved response of a request (D62). The mock server answers with it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Example {
+    pub name: String,
+    #[serde(default = "ok_status")]
+    pub status: u16,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub headers: IndexMap<String, String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub body: String,
+    /// Extra latency when served by the mock server.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delay_ms: Option<u64>,
+}
+
+fn ok_status() -> u16 {
+    200
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

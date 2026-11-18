@@ -103,6 +103,7 @@ impl Scope {
             auth: self.resolve_auth(&req.auth)?,
             // Variable names and paths are not templated.
             extract: req.extract.clone(),
+            examples: req.examples.clone(),
         })
     }
 

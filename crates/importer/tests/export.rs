@@ -46,6 +46,7 @@ fn request(name: &str) -> Request {
         settings: RequestSettings::default(),
         auth: Auth::Inherit,
         extract: Vec::new(),
+        examples: Vec::new(),
     }
 }
 
@@ -102,6 +103,15 @@ fn source_project(t: &tempfile::TempDir) -> PathBuf {
         timeout_ms: Some(5000),
         http_version: None,
     };
+    login.examples = vec![ilixpatch_core::Example {
+        name: "Logged in".into(),
+        status: 201,
+        headers: [("X-Trace".to_string(), "1".to_string())]
+            .into_iter()
+            .collect(),
+        body: r#"{"token":"t"}"#.into(),
+        delay_ms: None,
+    }];
     save_request(col.join("login.toml"), &login).unwrap();
 
     let users = project::create_folder(&col, "Users").unwrap();
@@ -215,6 +225,10 @@ fn exports_a_postman_v21_collection_and_environments() {
     assert_eq!(login["request"]["url"]["host"][0], "{{base_url}}");
     assert_eq!(login["request"]["url"]["path"][1], "login");
     assert!(login["request"].get("auth").is_none(), "inherit is omitted");
+    assert_eq!(login["response"][0]["name"], "Logged in");
+    assert_eq!(login["response"][0]["code"], 201);
+    assert_eq!(login["response"][0]["status"], "Created");
+    assert_eq!(login["response"][0]["_postman_previewlanguage"], "json");
     assert_eq!(login["protocolProfileBehavior"]["followRedirects"], false);
     assert_eq!(login["protocolProfileBehavior"]["strictSSL"], false);
     let events = login["event"].as_array().unwrap();
@@ -333,6 +347,7 @@ fn round_trips_through_the_importer() {
         assert_eq!(y.body, x.body, "{name}");
         assert_eq!(y.auth, x.auth, "{name}");
         assert_eq!(y.scripts.pre_request, x.scripts.pre_request, "{name}");
+        assert_eq!(y.examples, x.examples, "{name}: examples round-trip");
     }
     // Inline query parameters are split out by the importer.
     assert_eq!(a["List users"].url, "http://localhost:8080/users");

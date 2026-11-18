@@ -113,7 +113,12 @@
     return {
       key,
       tab,
-      title: tab.kind === "runner" ? t("tabs.run", { name }) : t("tabs.load", { name }),
+      title:
+        tab.kind === "runner"
+          ? t("tabs.run", { name })
+          : tab.kind === "mock"
+            ? t("tabs.mock", { name })
+            : t("tabs.load", { name }),
       hint: node?.hint ?? "",
       method: null,
       dirty: false,
@@ -677,6 +682,10 @@
               >
             {:else if v.tab.kind === "runner"}
               <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4.5 3v10l8-5z" fill="currentColor" /></svg>
+            {:else if v.tab.kind === "mock"}
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4"
+                ><rect x="2.5" y="3" width="11" height="4" rx="1" /><rect x="2.5" y="9" width="11" height="4" rx="1" /><path d="M5 5h.01M5 11h.01" /></svg
+              >
             {:else}
               <svg viewBox="0 0 16 16" width="13" height="13"><path d="M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z" fill="currentColor" /></svg>
             {/if}

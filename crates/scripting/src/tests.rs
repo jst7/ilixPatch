@@ -43,6 +43,7 @@ fn request() -> Request {
         settings: Default::default(),
         auth: Default::default(),
         extract: Default::default(),
+        examples: Vec::new(),
     }
 }
 

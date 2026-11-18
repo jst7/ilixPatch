@@ -326,6 +326,45 @@ fn settings_of(req: &Value) -> RequestSettings {
     }
 }
 
+/// Saved responses (Postman `item.response`, or generated from OpenAPI
+/// `responses`) → examples (D62).
+fn examples_of(req: &Value) -> Vec<ilixpatch_core::Example> {
+    let Some(Value::Array(list)) = req.get(crate::parse::EXAMPLES_KEY) else {
+        return Vec::new();
+    };
+    list.iter()
+        .enumerate()
+        .map(|(i, r)| {
+            let status = r
+                .get("code")
+                .and_then(Value::as_u64)
+                .and_then(|c| u16::try_from(c).ok())
+                .unwrap_or(200);
+            let headers = kv_list(r.get("header"))
+                .into_iter()
+                .filter(|(k, _, enabled)| {
+                    let k = k.to_ascii_lowercase();
+                    *enabled
+                        && !matches!(
+                            k.as_str(),
+                            "content-length" | "transfer-encoding" | "connection" | "date"
+                        )
+                })
+                .map(|(k, v, _)| (k, v))
+                .collect();
+            ilixpatch_core::Example {
+                name: str_at(r, "name")
+                    .filter(|n| !n.trim().is_empty())
+                    .unwrap_or_else(|| format!("Example {}", i + 1)),
+                status,
+                headers,
+                body: str_at(r, "body").unwrap_or_default(),
+                delay_ms: None,
+            }
+        })
+        .collect()
+}
+
 /// Convert one request node. Warnings are appended to `out`.
 /// `use_effective`: give the request its inherited Postman auth (when it is
 /// placed without the ancestors it inherited from) instead of its own.
@@ -436,5 +475,6 @@ pub(crate) fn convert(
         settings: settings_of(req),
         auth,
         extract: Default::default(),
+        examples: examples_of(req),
     }
 }

@@ -3,6 +3,7 @@ mod fmt;
 mod hints;
 mod import_cmd;
 mod load_cmd;
+mod mock_cmd;
 mod net_args;
 mod oauth2_cli;
 mod run_cmd;
@@ -33,6 +34,8 @@ enum Command {
         #[command(subcommand)]
         cmd: import_cmd::ImportCmd,
     },
+    /// Serve the saved example responses of a project or collection (mock server)
+    Mock(mock_cmd::MockArgs),
     /// Export to other tools (Postman)
     Export {
         #[command(subcommand)]
@@ -196,6 +199,7 @@ async fn main() -> ExitCode {
         Command::CheckUpdate => check_update_cmd().await,
         Command::Import { cmd } => import_cmd::run(cmd).await,
         Command::Export { cmd } => export_cmd::run(cmd),
+        Command::Mock(args) => mock_cmd::run(args).await,
         Command::Run(args) => run_cmd::run(args).await,
         Command::Load(args) => load_cmd::run(args).await,
     };

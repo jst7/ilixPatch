@@ -18,6 +18,7 @@
   import { envStore } from "$lib/stores/environments.svelte";
   import UrlInput from "./UrlInput.svelte";
   import ExtractPanel from "./ExtractPanel.svelte";
+  import ExamplesPanel from "./ExamplesPanel.svelte";
   import { gqlSchemas } from "$lib/graphql/schema.svelte";
 
   interface Props {
@@ -46,7 +47,7 @@
     else ws.send(path);
   }
 
-  let tab = $state<"auth" | "params" | "headers" | "body" | "scripts" | "extract" | "settings">("params");
+  let tab = $state<"auth" | "params" | "headers" | "body" | "scripts" | "extract" | "examples" | "settings">("params");
 
   /** What this request gets from its folders/collection when set to "inherit" (D39). */
   const inheritedAuth = $derived(draft?.auth?.type === "inherit" ? ws.effectiveAuthFor(path) : null);
@@ -348,6 +349,9 @@
             >{draft.extract.filter((e) => e.enabled && e.var.trim()).length}</span
           >{/if}
       </button>
+      <button class:active={tab === "examples"} onclick={() => (tab = "examples")} title={t("examples.tabHint")}>
+        {t("request.tab.examples")}{#if draft.examples.length}<span class="count">{draft.examples.length}</span>{/if}
+      </button>
       <button class:active={tab === "settings"} onclick={() => (tab = "settings")}>
         {t("request.tab.settings")}{#if draft.settings.verify_ssl === false}<span
             class="ssl-off"
@@ -435,6 +439,8 @@
         <RequestSettingsPanel {draft} />
       {:else if tab === "extract"}
         <ExtractPanel {draft} {path} />
+      {:else if tab === "examples"}
+        <ExamplesPanel {draft} {path} />
       {:else if tab === "scripts"}
         <ScriptsPanel
           {draft}

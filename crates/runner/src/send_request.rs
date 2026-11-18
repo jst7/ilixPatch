@@ -58,6 +58,7 @@ pub(crate) fn to_request(spec: &SendRequestSpec) -> Result<Request, String> {
         settings: Default::default(),
         auth: Default::default(),
         extract: Vec::new(),
+        examples: Vec::new(),
     })
 }
 
