@@ -21,7 +21,7 @@
   <a href="https://github.com/jst7/ilixPatch/releases"><b>Descargar</b></a> ·
   <a href="#inicio-rápido">Inicio rápido</a> ·
   <a href="#cómo-funciona">Cómo funciona</a> ·
-  <a href="docs/CLI.md">Documentación de la CLI</a> ·
+  <a href="docs/CLI.es.md">Documentación de la CLI</a> ·
   <a href="README.md">Read in English</a>
 </p>
 
@@ -143,7 +143,7 @@ La CLI es un único binario. En GitHub Actions:
   run: ilixpatch load ./users-api --env staging --vus 20 --duration 1m --max-p95 300 --max-error-rate 0.01
 ```
 
-Todos los comandos y flags están en **[docs/CLI.md](docs/CLI.md)**.
+Todos los comandos y flags están en **[docs/CLI.es.md](docs/CLI.es.md)**.
 
 ## Funcionalidades
 **Peticiones y editor**
@@ -248,7 +248,7 @@ ilixpatch import postman coleccion.json --project ./mi-proyecto
 ilixpatch import openapi https://petstore3.swagger.io/api/v3/openapi.json --project ./mi-proyecto
 ilixpatch export postman ./mi-proyecto --out ./exportacion-postman
 ```
-Todos los comandos, flags (compatibles con Newman) y capacidades están explicados en **[docs/CLI.md](docs/CLI.md)**.
+Todos los comandos, flags (compatibles con Newman) y capacidades están explicados en **[docs/CLI.es.md](docs/CLI.es.md)**.
 
 ## Atajos de teclado
 | Atajo (macOS / Windows·Linux) | Acción |

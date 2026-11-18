@@ -147,7 +147,7 @@ The CLI is a single binary. In GitHub Actions:
   run: ilixpatch load ./users-api --env staging --vus 20 --duration 1m --max-p95 300 --max-error-rate 0.01
 ```
 
-Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish).
+Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)**.
 
 ## Features
 **Requests & editor**
@@ -256,7 +256,7 @@ Or import your own work with **+ › Import (Postman, OpenAPI)…**.
 ## CLI (Newman-compatible runner and load testing)
 `ilixpatch run` runs a project, collection, folder or single request `.toml`,
 including pre-request and test scripts (`pm.*` API, like Postman/Newman).
-Full reference (in Spanish): [docs/CLI.md](docs/CLI.md).
+Full reference: [docs/CLI.md](docs/CLI.md).
 
 ```sh
 ilixpatch run examples/demo-project --env dev
