@@ -817,3 +817,48 @@ async fn network_console_timings() {
         seen[0].elapsed_ms
     );
 }
+
+/// D61: a GraphQL body goes out as JSON `{query, variables}` with a JSON content type.
+#[tokio::test]
+async fn graphql_body_is_sent_as_json() {
+    let base = http_server().await;
+    let seen: Arc<std::sync::Mutex<Vec<NetExchange>>> = Arc::default();
+    let sink = seen.clone();
+    let engine = Engine::new().with_observer(Arc::new(move |ex| sink.lock().unwrap().push(ex)));
+    let mut r = req(&format!("{base}/x"));
+    r.method = HttpMethod::Post;
+    r.body = Some(Body::Graphql {
+        query: "query($id: ID!) { user(id: $id) { name } }".into(),
+        variables: "{\"id\": 7}".into(),
+    });
+    let opts = SendOptions {
+        trace: Some(Trace::new("gql")),
+        ..Default::default()
+    };
+    engine.send_opts(&r, opts, None).await.unwrap();
+    {
+        let seen = seen.lock().unwrap();
+        let ex = seen.last().unwrap();
+        let ct = ex
+            .request_headers
+            .iter()
+            .find(|(k, _)| k == "content-type")
+            .map(|(_, v)| v.as_str());
+        assert_eq!(ct, Some("application/json"));
+        let body: serde_json::Value =
+            serde_json::from_str(&ex.request_body.as_ref().unwrap().text).unwrap();
+        assert_eq!(body["variables"]["id"], 7);
+        assert!(body["query"].as_str().unwrap().starts_with("query($id"));
+    }
+
+    // Invalid variables are a clear error, before anything is sent.
+    r.body = Some(Body::Graphql {
+        query: "{ a }".into(),
+        variables: "{oops".into(),
+    });
+    let err = engine.send(&r).await.unwrap_err().to_string();
+    assert!(
+        err.contains("GraphQL variables are not valid JSON"),
+        "{err}"
+    );
+}

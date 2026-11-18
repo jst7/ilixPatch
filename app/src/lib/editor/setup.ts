@@ -31,11 +31,13 @@ import {
   type CompletionResult,
 } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
+import { graphql } from "cm6-graphql";
+import type { GraphQLSchema } from "graphql";
 import { javascript, javascriptLanguage } from "@codemirror/lang-javascript";
 import { tags as t } from "@lezer/highlight";
 import { t as tr, type MessageKey } from "$lib/i18n/index.svelte";
 
-export type EditorLanguage = "json" | "text" | "javascript";
+export type EditorLanguage = "json" | "text" | "javascript" | "graphql";
 
 // ---------- Syntax colours (all from theme CSS vars) ----------
 
@@ -325,9 +327,11 @@ export function themeExtension(): Extension {
   return [chrome, findPanelTheme, syntaxHighlighting(highlight)];
 }
 
-export function languageExtension(lang: EditorLanguage): Extension {
+/** `schema`: GraphQL schema for completion and validation (D61), when known. */
+export function languageExtension(lang: EditorLanguage, schema?: GraphQLSchema | null): Extension {
   if (lang === "json") return json();
   if (lang === "javascript") return jsExtensions;
+  if (lang === "graphql") return graphql(schema ?? undefined);
   return [];
 }
 

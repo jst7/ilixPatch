@@ -16,6 +16,7 @@
   import { openFind } from "$lib/editor/searchPanel";
   import { blameExtension, setBlame } from "$lib/editor/blame";
   import type { BlameInfo } from "$lib/api";
+  import type { GraphQLSchema } from "graphql";
 
   interface Props {
     value: string;
@@ -33,6 +34,8 @@
     onview?: (view: EditorView | null) => void;
     /** Wrap long lines instead of scrolling horizontally. */
     wrap?: boolean;
+    /** GraphQL schema for the "graphql" language (completion, validation). */
+    schema?: GraphQLSchema | null;
   }
 
   let {
@@ -46,6 +49,7 @@
     extensions = [],
     onview,
     wrap = false,
+    schema = null,
   }: Props = $props();
 
   let host: HTMLDivElement;
@@ -92,7 +96,7 @@
           staticExtensions(),
           themeExtension(),
           phrasesC.of(phrasesExtension()),
-          langC.of(languageExtension(language)),
+          langC.of(languageExtension(language, schema)),
           modeC.of(modeExtension(readonly)),
           placeholderC.of(placeholderExtension(placeholder)),
           blameC.of(annotations ? blameExt(annotations) : []),
@@ -137,11 +141,14 @@
     view.dispatch({ effects: phrasesC.reconfigure(phrasesExtension()) });
   });
 
+  let appliedSchema: GraphQLSchema | null = null;
   $effect(() => {
     const l = language;
-    if (!view || l === appliedLanguage) return;
+    const sc = schema;
+    if (!view || (l === appliedLanguage && sc === appliedSchema)) return;
     appliedLanguage = l;
-    view.dispatch({ effects: langC.reconfigure(languageExtension(l)) });
+    appliedSchema = sc;
+    view.dispatch({ effects: langC.reconfigure(languageExtension(l, sc)) });
   });
 
   $effect(() => {

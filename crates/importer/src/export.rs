@@ -389,6 +389,9 @@ fn body_json(body: Option<&Body>) -> Option<Value> {
             "mode": "raw", "raw": content, "options": { "raw": { "language": "text" } },
         }),
         Body::Form { fields } => json!({ "mode": "urlencoded", "urlencoded": kv(fields) }),
+        Body::Graphql { query, variables } => json!({
+            "mode": "graphql", "graphql": { "query": query, "variables": variables },
+        }),
     })
 }
 

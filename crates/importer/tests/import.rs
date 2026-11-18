@@ -132,12 +132,13 @@ fn preview_tree_ids_and_warnings() {
         "body_file",
         "oauth2_token_not_imported",
         "auth_unsupported",
-        "body_graphql",
         "disabled_param",
     ] {
         assert!(codes.contains(&code), "missing {code}: {codes:?}");
     }
     assert!(!codes.contains(&"parent_script"));
+    // D61: GraphQL bodies are imported natively, with no warning.
+    assert!(!codes.contains(&"body_graphql"));
 }
 
 #[test]
@@ -258,10 +259,12 @@ fn applies_whole_collection_with_conversions() {
 
     let gql = req(&col.join("graphql.toml"));
     match &gql.body {
-        Some(Body::Json { content }) => {
-            let v: serde_json::Value = serde_json::from_str(content).unwrap();
-            assert_eq!(v["variables"]["id"], 1);
-            assert!(v["query"].as_str().unwrap().contains("user(id: $id)"));
+        Some(Body::Graphql { query, variables }) => {
+            assert!(query.contains("user(id: $id)"));
+            assert_eq!(variables, r#"{"id": 1}"#);
+            let payload: serde_json::Value =
+                serde_json::from_str(&Body::graphql_payload(query, variables).unwrap()).unwrap();
+            assert_eq!(payload["variables"]["id"], 1);
         }
         b => panic!("{b:?}"),
     }

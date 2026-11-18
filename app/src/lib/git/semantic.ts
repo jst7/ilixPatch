@@ -74,8 +74,11 @@ function bodyType(r: Request): string {
 }
 
 function bodyContent(r: Request): string {
-  const b = r.body as { content?: unknown } | null | undefined;
-  return b && typeof b === "object" ? str(b.content) : "";
+  const b = r.body as { content?: unknown; query?: unknown; variables?: unknown } | null | undefined;
+  if (!b || typeof b !== "object") return "";
+  // D61: GraphQL bodies compare their query (and variables).
+  if (b.query !== undefined) return [str(b.query), str(b.variables)].filter(Boolean).join("\n");
+  return str(b.content);
 }
 
 function bodyFields(r: Request): unknown {

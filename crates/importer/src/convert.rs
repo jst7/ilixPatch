@@ -276,23 +276,15 @@ fn convert_body(
         }
         "graphql" => {
             let g = body.get("graphql").cloned().unwrap_or(Value::Null);
+            // D61: a native GraphQL body; variables kept as (pretty) JSON text.
             let variables = match g.get("variables") {
-                Some(Value::String(s)) if !s.trim().is_empty() => {
-                    serde_json::from_str(s).unwrap_or_else(|_| Value::String(s.clone()))
-                }
-                Some(v @ Value::Object(_)) => v.clone(),
-                _ => Value::Object(Default::default()),
+                Some(Value::String(s)) => s.trim().to_string(),
+                Some(v @ Value::Object(_)) => serde_json::to_string_pretty(v).unwrap_or_default(),
+                _ => String::new(),
             };
-            let doc = serde_json::json!({
-                "query": str_at(&g, "query").unwrap_or_default(),
-                "variables": variables,
-            });
-            warn.push(
-                "body_graphql",
-                "GraphQL body was converted to a JSON body ({query, variables})",
-            );
-            Some(Body::Json {
-                content: serde_json::to_string_pretty(&doc).unwrap_or_default(),
+            Some(Body::Graphql {
+                query: str_at(&g, "query").unwrap_or_default(),
+                variables,
             })
         }
         "file" => {

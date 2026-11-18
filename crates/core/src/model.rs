@@ -38,9 +38,39 @@ impl HttpMethod {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Body {
-    Json { content: String },
-    Text { content: String },
-    Form { fields: IndexMap<String, String> },
+    Json {
+        content: String,
+    },
+    Text {
+        content: String,
+    },
+    Form {
+        fields: IndexMap<String, String>,
+    },
+    /// D61: a GraphQL operation, sent as JSON `{"query", "variables"}`.
+    /// `variables` is JSON text (an object), empty when there are none.
+    Graphql {
+        query: String,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        variables: String,
+    },
+}
+
+impl Body {
+    /// The JSON payload of a GraphQL body (`variables` omitted when empty).
+    pub fn graphql_payload(query: &str, variables: &str) -> Result<String, String> {
+        let mut obj = serde_json::Map::new();
+        obj.insert("query".into(), serde_json::Value::String(query.to_string()));
+        if !variables.trim().is_empty() {
+            let vars: serde_json::Value = serde_json::from_str(variables)
+                .map_err(|e| format!("the GraphQL variables are not valid JSON: {e}"))?;
+            if !vars.is_object() && !vars.is_null() {
+                return Err("the GraphQL variables must be a JSON object".into());
+            }
+            obj.insert("variables".into(), vars);
+        }
+        Ok(serde_json::Value::Object(obj).to_string())
+    }
 }
 
 /// A single HTTP request. Stored as one `.toml` file per request.

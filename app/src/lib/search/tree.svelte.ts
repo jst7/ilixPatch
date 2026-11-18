@@ -62,7 +62,13 @@ function contentOf(file: RequestFile): string {
   let c = contentCache.get(file);
   if (c === undefined) {
     const r = file.request;
-    const body = r.body ? (r.body.type === "form" ? Object.entries(r.body.fields).flat().join("\n") : r.body.content) : "";
+    const body = !r.body
+      ? ""
+      : r.body.type === "form"
+        ? Object.entries(r.body.fields).flat().join("\n")
+        : r.body.type === "graphql"
+          ? `${r.body.query}\n${r.body.variables ?? ""}`
+          : r.body.content;
     c = normalize(
       [
         ...Object.entries(r.headers ?? {}).flat(),

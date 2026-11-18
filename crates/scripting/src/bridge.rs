@@ -34,6 +34,12 @@ fn body_json(body: Option<&Body>) -> Value {
         Some(Body::Form { fields }) => {
             json!({"mode": "urlencoded", "urlencoded": pairs(Some(fields))})
         }
+        // D61: scripts see the JSON payload that is sent.
+        Some(Body::Graphql { query, variables }) => json!({
+            "mode": "raw",
+            "raw": Body::graphql_payload(query, variables).unwrap_or_default(),
+            "language": "json",
+        }),
     }
 }
 
@@ -148,16 +154,21 @@ fn apply_request(orig: &Request, js: JsRequest) -> Request {
             }),
             Some("raw") => {
                 let content = b.raw.unwrap_or_default();
+                // An untouched GraphQL payload stays a GraphQL body.
+                let untouched_graphql = matches!(&orig.body, Some(Body::Graphql { query, variables })
+                    if Body::graphql_payload(query, variables).ok().as_deref() == Some(content.as_str()));
                 let is_json = match (&orig.body, b.language.as_deref()) {
                     (Some(Body::Json { .. }), _) | (_, Some("json")) => true,
                     (Some(Body::Text { .. }), _) | (_, Some(_)) => false,
                     _ => serde_json::from_str::<Value>(&content).is_ok(),
                 };
-                Some(if is_json {
-                    Body::Json { content }
+                if untouched_graphql {
+                    orig.body.clone()
+                } else if is_json {
+                    Some(Body::Json { content })
                 } else {
-                    Body::Text { content }
-                })
+                    Some(Body::Text { content })
+                }
             }
             _ => orig.body.clone(),
         },

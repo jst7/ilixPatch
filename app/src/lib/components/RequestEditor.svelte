@@ -18,6 +18,7 @@
   import { envStore } from "$lib/stores/environments.svelte";
   import UrlInput from "./UrlInput.svelte";
   import ExtractPanel from "./ExtractPanel.svelte";
+  import { gqlSchemas } from "$lib/graphql/schema.svelte";
 
   interface Props {
     /** The request file being edited. Optional: history tabs edit an in-memory draft instead. */
@@ -203,7 +204,17 @@
     { mode: "json", label: () => "JSON" },
     { mode: "text", label: () => t("request.body.text") },
     { mode: "form", label: () => t("request.body.form") },
+    { mode: "graphql", label: () => "GraphQL" },
   ];
+
+  // D61: schema of the endpoint (introspection), for completion and validation of the query.
+  const gql = $derived(draft ? gqlSchemas.get(draft.url) : null);
+  function loadSchema() {
+    if (!draft) return;
+    const request = requestFromDraft(draft);
+    request.auth = cleanAuth(ws.effectiveAuthFor(path).auth);
+    void gqlSchemas.load(request, ws.sendVariablesFor(collection ?? null));
+  }
 
 </script>
 
@@ -453,6 +464,45 @@
               />
             {/key}
           </div>
+        {:else if draft.bodyMode === "graphql"}
+          <div class="gql">
+            <div class="gql-bar">
+              <button class="ghost small" onclick={loadSchema} disabled={!draft.url.trim() || gql?.loading}>
+                {gql?.schema ? t("request.gql.reload") : t("request.gql.load")}
+              </button>
+              {#if gql?.loading}
+                <span class="hint">{t("request.gql.loading")}</span>
+              {:else if gql?.error}
+                <span class="hint err" title={gql.error}>{t("request.gql.error", { error: gql.error })}</span>
+              {:else if gql?.schema}
+                <span class="hint">{t("request.gql.loaded", { count: gql.types })}</span>
+              {:else}
+                <span class="hint">{t("request.gql.hint")}</span>
+              {/if}
+            </div>
+            <div class="code gql-query">
+              {#key path}
+                <CodeEditor
+                  value={draft.gqlQuery}
+                  onchange={(v) => (draft.gqlQuery = v)}
+                  language="graphql"
+                  schema={gql?.schema ?? null}
+                  placeholder={"query {\n  …\n}"}
+                />
+              {/key}
+            </div>
+            <div class="gql-label">{t("request.gql.variables")}</div>
+            <div class="code gql-vars">
+              {#key path}
+                <CodeEditor
+                  value={draft.gqlVariables}
+                  onchange={(v) => (draft.gqlVariables = v)}
+                  language="json"
+                  placeholder={'{ "id": 1 }'}
+                />
+              {/key}
+            </div>
+          </div>
         {:else if draft.bodyMode === "form"}
           <div class="scroll">
             <KeyValueTable bind:rows={draft.formFields} />
@@ -467,6 +517,41 @@
 {/if}
 
 <style>
+  .gql {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .gql-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .gql-bar .hint {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .gql-bar .err {
+    color: var(--err);
+  }
+  .gql-query {
+    flex: 3;
+  }
+  .gql-label {
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .gql-vars {
+    flex: 1;
+    min-height: 60px;
+  }
   .editor {
     display: flex;
     flex-direction: column;

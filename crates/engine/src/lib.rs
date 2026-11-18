@@ -787,6 +787,16 @@ impl Engine {
                 }
                 Some(Body::Text { content }) => builder.body(content.clone()),
                 Some(Body::Form { fields }) => builder.form(fields),
+                Some(Body::Graphql { query, variables }) => {
+                    let payload =
+                        Body::graphql_payload(query, variables).map_err(EngineError::Config)?;
+                    let b = builder.body(payload);
+                    if has_content_type {
+                        b
+                    } else {
+                        b.header("content-type", "application/json")
+                    }
+                }
             };
             let request = builder.build().map_err(map_err)?;
             let observed = self.observer_for(&opts);

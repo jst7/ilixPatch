@@ -159,6 +159,7 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)** (Spanish)
   (DNS, connection refused, timeout, TLS issuer/expiry/hostname, mTLS, proxy…) with one-click fixes.
 - Response viewer: status, time, size, headers, tests, console, HTTP version, redirect chain and TLS certificate;
   folding, search and line wrapping for long values.
+- **GraphQL** bodies with schema-aware completion (introspection), sent as JSON.
 - **Authorization** with every Postman type: Bearer, Basic, API key, Digest, OAuth 1.0, **OAuth 2.0** (authorization code,
   PKCE, client credentials, password, implicit — tokens stay on your machine), AWS Signature v4, Hawk, NTLM, Akamai, JWT, ASAP.
 

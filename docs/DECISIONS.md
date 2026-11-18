@@ -351,6 +351,29 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D61 · Body GraphQL con autocompletado por introspección ✅
+- **Modelo:** un tipo de body nuevo, `graphql`, con `query` y `variables` (texto JSON con un objeto; se omite si
+  está vacío). En el fichero de la petición:
+  ```toml
+  [body]
+  type = "graphql"
+  query = """query($id: ID!) { user(id: $id) { name } }"""
+  variables = '{ "id": 1 }'
+  ```
+- **Envío:** como JSON `{"query", "variables"}` con `Content-Type: application/json` (si no se puso otro). Las
+  `{{variables}}` se resuelven en la consulta y en las variables; la autorización (incluidas las firmas que miran el
+  cuerpo, como AWS o Hawk) ve el mismo JSON. Unas variables que no son JSON válido son un error claro antes de enviar.
+- **Editor:** modo «GraphQL» con dos editores (consulta y variables). La consulta tiene resaltado y, con el esquema
+  cargado, **autocompletado y validación** (paquete `cm6-graphql`, el oficial de GraphQL para CodeMirror 6).
+  - **«Cargar esquema»** hace una consulta de introspección al endpoint con las mismas cabeceras, autorización y
+    variables de la petición, sin scripts ni historial. El esquema se guarda en memoria por URL; no va al fichero.
+  - Si el servidor tiene la introspección desactivada, se dice y el editor sigue funcionando sin autocompletado.
+- **Postman:** se importa y se exporta como `mode: "graphql"` nativo (antes se convertía en un body JSON con aviso).
+- **Scripts:** `pm.request.body` ve el JSON que se envía. Si el script no lo cambia, el body sigue siendo GraphQL.
+- **cURL:** se copia como `--data-raw` con el JSON.
+- **Coste:** `graphql` y `cm6-graphql` añaden unos 245 KB (69 KB comprimidos) al bundle de la app.
+- WebSocket y gRPC quedan fuera: son protocolos distintos, no un tipo de body.
+
 ## D60 · Secretos cifrados con contraseña maestra ✅
 - **Qué se cifra (AES-256-GCM):** los `*.secret.toml` de los entornos de proyecto, las variables secretas de los
   entornos globales y de los globals, y el almacén de tokens de OAuth 2.0. Lo demás (peticiones, entornos no secretos)

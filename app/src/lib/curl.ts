@@ -519,8 +519,9 @@ export function toCurl(req: Request, opts: CurlExportOptions = {}): string {
     for (const [k, v] of Object.entries(body.fields)) parts.push(`--data-urlencode ${shellQuote(`${k}=${v}`)}`);
   } else if (body) {
     const hasType = headers.some(([k]) => k.toLowerCase() === "content-type");
-    if (body.type === "json" && !hasType) parts.push(`-H ${shellQuote("Content-Type: application/json")}`);
-    parts.push(`--data-raw ${shellQuote(body.content)}`);
+    const isJson = body.type === "json" || body.type === "graphql";
+    if (isJson && !hasType) parts.push(`-H ${shellQuote("Content-Type: application/json")}`);
+    parts.push(`--data-raw ${shellQuote(body.type === "graphql" ? graphqlPayload(body.query, body.variables) : body.content)}`);
   }
   const s = req.settings ?? {};
   if (s.verify_ssl === false) parts.push("--insecure");
@@ -567,15 +568,32 @@ export function interpolate(text: string, vars: Record<string, string>): string 
 export function resolveRequest(req: Request, vars: Record<string, string>): Request {
   const map = (o?: Record<string, string>) =>
     Object.fromEntries(Object.entries(o ?? {}).map(([k, v]) => [interpolate(k, vars), interpolate(v, vars)]));
-  const body: Body | null | undefined = req.body
-    ? req.body.type === "form"
-      ? { type: "form", fields: map(req.body.fields) }
-      : { type: req.body.type, content: interpolate(req.body.content, vars) }
-    : req.body;
+  const b = req.body;
+  const body: Body | null | undefined = !b
+    ? b
+    : b.type === "form"
+      ? { type: "form", fields: map(b.fields) }
+      : b.type === "graphql"
+        ? { type: "graphql", query: interpolate(b.query, vars), variables: interpolate(b.variables ?? "", vars) }
+        : { type: b.type, content: interpolate(b.content, vars) };
   const auth = req.auth
     ? (Object.fromEntries(
         Object.entries(req.auth).map(([k, v]) => [k, typeof v === "string" && k !== "type" ? interpolate(v, vars) : v]),
       ) as unknown as Auth)
     : req.auth;
   return { ...req, url: interpolate(req.url, vars), headers: map(req.headers), query: map(req.query), body, auth };
+}
+
+/** D61: the JSON a GraphQL body is sent as (same as the Rust engine); invalid variables are sent as text. */
+export function graphqlPayload(query: string, variables?: string): string {
+  const out: { query: string; variables?: unknown } = { query };
+  const v = (variables ?? "").trim();
+  if (v) {
+    try {
+      out.variables = JSON.parse(v);
+    } catch {
+      out.variables = v;
+    }
+  }
+  return JSON.stringify(out);
 }

@@ -12,6 +12,7 @@ serde.workspace = true
 indexmap.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+serde_json.workspace = true
 # Edit collection.toml / folder.toml in place, keeping comments and formatting (D39).
 toml_edit = "0.25"
 # D60: secrets encrypted with a key wrapped by the master password.

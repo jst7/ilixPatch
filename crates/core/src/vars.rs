@@ -92,6 +92,10 @@ impl Scope {
                 Some(Body::Form { fields }) => Some(Body::Form {
                     fields: map(fields)?,
                 }),
+                Some(Body::Graphql { query, variables }) => Some(Body::Graphql {
+                    query: self.interpolate(query)?,
+                    variables: self.interpolate(variables)?,
+                }),
             },
             // Scripts are code, never interpolated.
             scripts: req.scripts.clone(),

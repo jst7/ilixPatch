@@ -10,7 +10,9 @@ export const HTTP_METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELET
 export type Body =
   | { type: "json"; content: string }
   | { type: "text"; content: string }
-  | { type: "form"; fields: Record<string, string> };
+  | { type: "form"; fields: Record<string, string> }
+  /** D61: sent as JSON {query, variables}; `variables` is JSON text (an object), omitted when empty. */
+  | { type: "graphql"; query: string; variables?: string };
 
 export interface Request {
   name: string;

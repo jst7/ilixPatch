@@ -60,7 +60,7 @@ export interface KV {
   value: string;
 }
 
-export type BodyMode = "none" | "json" | "text" | "form";
+export type BodyMode = "none" | "json" | "text" | "form" | "graphql";
 
 /** Editable form of a Request. Key/value lists always end with one empty row. */
 export interface Draft {
@@ -75,6 +75,9 @@ export interface Draft {
   /** Preserved for "form" bodies, which the UI does not edit. */
   /** URL-encoded form fields, as editable rows (always ending with an empty one). */
   formFields: KV[];
+  /** D61: GraphQL query and variables (JSON text); kept when switching modes. */
+  gqlQuery: string;
+  gqlVariables: string;
   /** Pre-request / tests JavaScript ("" = none). */
   preRequest: string;
   tests: string;
@@ -134,8 +137,10 @@ export function draftFromRequest(r: Request): Draft {
     query: toRows(r.query),
     headers: toRows(r.headers),
     bodyMode: body ? body.type : "none",
-    bodyContent: body && body.type !== "form" ? body.content : "",
+    bodyContent: body && (body.type === "json" || body.type === "text") ? body.content : "",
     formFields: toRows(body && body.type === "form" ? body.fields : undefined),
+    gqlQuery: body && body.type === "graphql" ? body.query : "",
+    gqlVariables: body && body.type === "graphql" ? (body.variables ?? "") : "",
     preRequest: r.scripts?.pre_request ?? "",
     tests: r.scripts?.tests ?? "",
     settings: draftSettings(r.settings),
@@ -148,6 +153,8 @@ export function requestFromDraft(d: Draft): Request {
   let body: Request["body"] = null;
   if (d.bodyMode === "json" || d.bodyMode === "text") body = { type: d.bodyMode, content: d.bodyContent };
   else if (d.bodyMode === "form") body = { type: "form", fields: fromRows(d.formFields) };
+  else if (d.bodyMode === "graphql")
+    body = { type: "graphql", query: d.gqlQuery, ...(d.gqlVariables.trim() ? { variables: d.gqlVariables } : {}) };
   return {
     name: d.name,
     method: d.method,
@@ -186,7 +193,13 @@ function canonical(r: Request): string {
     r.url,
     sortRec(r.headers),
     sortRec(r.query),
-    b === null ? null : b.type === "form" ? ["form", sortRec(b.fields)] : [b.type, b.content],
+    b === null
+      ? null
+      : b.type === "form"
+        ? ["form", sortRec(b.fields)]
+        : b.type === "graphql"
+          ? ["graphql", b.query, b.variables?.trim() ? b.variables : ""]
+          : [b.type, b.content],
     r.scripts?.pre_request?.trim() ? r.scripts.pre_request : null,
     r.scripts?.tests?.trim() ? r.scripts.tests : null,
     Object.entries(requestSettings(r.settings) ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),

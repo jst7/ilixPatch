@@ -160,7 +160,9 @@ pub async fn apply_auth(
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
             // The engine adds this one for JSON bodies; signers must see it.
-            if matches!(req.body, Some(Body::Json { .. })) && !has_header(&req, "content-type") {
+            if matches!(req.body, Some(Body::Json { .. } | Body::Graphql { .. }))
+                && !has_header(&req, "content-type")
+            {
                 headers.push(("Content-Type".into(), "application/json".into()));
             }
             let parts = HttpParts {

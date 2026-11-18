@@ -42,6 +42,9 @@ pub fn body_bytes(req: &Request) -> Vec<u8> {
     match &req.body {
         None => Vec::new(),
         Some(Body::Json { content }) | Some(Body::Text { content }) => content.as_bytes().to_vec(),
+        Some(Body::Graphql { query, variables }) => Body::graphql_payload(query, variables)
+            .unwrap_or_default()
+            .into_bytes(),
         Some(Body::Form { fields }) => {
             let mut u = reqwest::Url::parse("http://x/").expect("static URL");
             u.query_pairs_mut()
