@@ -13,6 +13,15 @@ export type SettingsSection =
   | "security";
 
 const LS_WRAP = "ilixpatch.response.wrap";
+const LS_JSON_VIEW = "ilixpatch.response.jsonView";
+
+function readJsonView(): "tree" | "text" {
+  try {
+    return localStorage.getItem(LS_JSON_VIEW) === "text" ? "text" : "tree";
+  } catch {
+    return "tree";
+  }
+}
 
 function readWrap(): boolean {
   try {
@@ -30,6 +39,18 @@ class UiStore {
     this.wrapResponse = on;
     try {
       localStorage.setItem(LS_WRAP, String(on));
+    } catch {
+      // ignore
+    }
+  }
+
+  /** D63: JSON responses as a rich tree or as text (remembered). */
+  jsonView = $state<"tree" | "text">(readJsonView());
+
+  setJsonView(v: "tree" | "text") {
+    this.jsonView = v;
+    try {
+      localStorage.setItem(LS_JSON_VIEW, v);
     } catch {
       // ignore
     }

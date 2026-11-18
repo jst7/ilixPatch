@@ -351,6 +351,22 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D63 · Visor enriquecido de JSON en las respuestas ✅
+- **Para qué:** con respuestas JSON grandes o anidadas, el texto no deja ver la estructura. La vista «Árbol» (por
+  defecto en respuestas JSON; se recuerda la elección) se puede alternar con «Texto».
+- **Árbol:** nodos plegables con el tipo en color, el recuento de cada array u objeto (`[25]`, `{7}`) y una vista previa
+  cuando está plegado. Al abrir se despliegan los dos primeros niveles (uno si es muy grande). Los hijos solo se pintan
+  al desplegar y los arrays muestran de 100 en 100, para que una respuesta de miles de nodos no bloquee la interfaz.
+- **Búsqueda** por clave o valor: contador, navegación con Intro / Mayús+Intro y despliegue automático hasta cada
+  resultado (también pagina el array donde está).
+- **Niveles:** desplegar hasta el nivel 1, 2, 3 o todo (salvo documentos enormes), y plegar.
+- **Nodo seleccionado:** su ruta (`data.items[3].id`, la misma sintaxis que las variables de la respuesta, D48),
+  **copiar ruta**, **copiar valor** y **«Guardar en variable»**, que añade directamente la regla en «Variables».
+- **Tabla:** un array de objetos se puede ver como tabla (columnas = todas las claves), ordenable por columna; un clic
+  en una celda vuelve al árbol con ese nodo seleccionado.
+- Las respuestas grandes (D41) siguen usando el visor por fragmentos: el árbol es para lo que cabe en memoria.
+- Lógica en `app/src/lib/json/` (con self-tests), compartida con el comparador (D64).
+
 ## D62 · Servidor mock a partir de ejemplos ✅
 - **Para qué:** que el front pueda desarrollarse contra la API antes de que el back exista, con las mismas colecciones.
 - **Ejemplos:** cada petición puede tener `[[examples]]` en su `.toml` (nombre, estado, cabeceras, cuerpo y

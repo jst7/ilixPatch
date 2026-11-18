@@ -1,4 +1,6 @@
 <script lang="ts">
+  import JsonView from "./json/JsonView.svelte";
+  import { tryParse } from "$lib/json/model";
   import { exampleFromResponse } from "$lib/mock/examples";
   import type { SendResult } from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
@@ -81,6 +83,8 @@
   const body = $derived(
     result ? (bodyMode === "editor" ? pretty(result) : { text: "", language: "text" as const }) : null,
   );
+  // D63: the parsed JSON body for the rich view (only inline bodies; big ones use the large viewer).
+  const jsonValue = $derived(body?.language === "json" && result ? tryParse(result.body) : undefined);
 
   // D44: rendered preview (image, PDF, audio, video, HTML) besides the binary/text view.
   let sniffed = $state<PreviewType | null>(null);
@@ -177,7 +181,13 @@
           </button>
         </div>
       {/if}
-      {#if tab === "body" && bodyMode === "editor" && !showPreview}
+      {#if tab === "body" && bodyMode === "editor" && !showPreview && jsonValue !== undefined}
+        <div class="viewtoggle" role="group" aria-label={t("preview.view")}>
+          <button class:active={ui.jsonView === "tree"} onclick={() => ui.setJsonView("tree")}>{t("json.tree")}</button>
+          <button class:active={ui.jsonView === "text"} onclick={() => ui.setJsonView("text")}>{t("json.text")}</button>
+        </div>
+      {/if}
+      {#if tab === "body" && bodyMode === "editor" && !showPreview && !(jsonValue !== undefined && ui.jsonView === "tree")}
         <div class="tools">
           {#if body.language === "json"}
             <button class="ghost small" onclick={() => editor?.foldAll()}>{t("response.collapseAll")}</button>
@@ -201,6 +211,8 @@
         {#key handle.id}<LargeBodyViewer {handle} />{/key}
       {:else if tab === "body" && handle && bodyMode === "binary"}
         {#key handle.id}<BinaryBodyView {handle} />{/key}
+      {:else if tab === "body" && jsonValue !== undefined && ui.jsonView === "tree"}
+        {#key result}<JsonView value={jsonValue} draftKey={ws.drafts[path] ? path : null} />{/key}
       {:else if tab === "body"}
         <div class="code">
           <CodeEditor
