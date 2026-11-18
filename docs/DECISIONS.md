@@ -410,6 +410,10 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   tests del front.
 - **Sin plantillas** de momento: el cuerpo se sirve tal cual (no sustituye parámetros de la ruta ni `{{$guid}}`).
 - Crate `crates/mock` (hyper 1, que ya venía con reqwest); escucha en `127.0.0.1` por defecto.
+- **Corrección (0.11.1):** la pestaña «Servidor mock» creaba su configuración dentro de un `$derived`, algo que Svelte 5
+  prohíbe (`state_unsafe_mutation`): la vista fallaba al abrirse y la app se quedaba en la página de error 500. Ahora se
+  crea al montar la vista. Además, el área de trabajo va dentro de un `<svelte:boundary>`: si una vista falla, el error
+  se muestra en su pestaña (con «Reintentar» y «Cerrar pestaña») y el resto de la app sigue funcionando.
 
 ## D61 · Body GraphQL con autocompletado por introspección ✅
 - **Modelo:** un tipo de body nuevo, `graphql`, con `query` y `variables` (texto JSON con un objeto; se omite si

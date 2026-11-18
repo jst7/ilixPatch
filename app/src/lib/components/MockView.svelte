@@ -14,7 +14,11 @@
   onMount(() => void mocks.init());
 
   const status = $derived(mocks.running[target] ?? null);
-  const config = $derived(mocks.configOf(target));
+  // Created here, at init: writing state inside $derived is not allowed (it crashed the view).
+  // The view is keyed by target in +page.svelte, so the initial value is the only one.
+  // svelte-ignore state_referenced_locally
+  mocks.ensure(target);
+  const config = $derived(mocks.config[target]);
   const log = $derived(mocks.logs[target] ?? []);
   const name = $derived(ws.nodes.get(target)?.name ?? target.split(/[\\/]/).filter(Boolean).pop() ?? target);
   const time = (ms: number) => new Date(ms).toLocaleTimeString();

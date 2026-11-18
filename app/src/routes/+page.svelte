@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { vault } from "$lib/stores/vault.svelte";
   import VaultUnlock from "$lib/components/VaultUnlock.svelte";
   import MockView from "$lib/components/MockView.svelte";
@@ -126,6 +126,17 @@
     return () => clearTimeout(timer);
   });
 
+  // A view that failed is reset when another tab is opened (the boundary is re-created only then).
+  let viewFailed = $state(false);
+  let viewEpoch = $state(0);
+  $effect(() => {
+    void ws.activeKey;
+    if (untrack(() => viewFailed)) {
+      viewFailed = false;
+      viewEpoch++;
+    }
+  });
+
   // D60: load the workspace once the secrets are unlocked (at once with the default password).
   let started = false;
   $effect(() => {
@@ -231,6 +242,19 @@
 
   <main>
     <div class="workarea" bind:this={mainEl}>
+    <!-- A view that throws shows its error here instead of taking the whole app to an error page. -->
+    {#key viewEpoch}
+    <svelte:boundary onerror={(e) => ((viewFailed = true), console.error(e))}>
+    {#snippet failed(error, reset)}
+      <div class="view-error" role="alert">
+        <h2>{t("main.viewError")}</h2>
+        <pre>{error instanceof Error ? error.message : String(error)}</pre>
+        <p>
+          <button onclick={reset}>{t("main.viewRetry")}</button>
+          <button onclick={() => ws.closeTab()}>{t("main.viewClose")}</button>
+        </p>
+      </div>
+    {/snippet}
     {#if ws.activeTab?.kind === "runner"}
       {#key ws.activeTab.target}<RunnerView target={ws.activeTab.target} />{/key}
     {:else if ws.activeTab?.kind === "load"}
@@ -339,6 +363,8 @@
         <p class="keys">{t("main.shortcutsSearch")}</p>
       </div>
     {/if}
+    </svelte:boundary>
+    {/key}
     </div>
     {#if netlog.open}<NetConsole />{/if}
   </main>
@@ -360,6 +386,26 @@
 {/if}
 
 <style>
+  .view-error {
+    padding: 24px;
+    max-width: 720px;
+  }
+  .view-error h2 {
+    font-size: var(--fs-lg);
+    margin: 0 0 8px;
+  }
+  .view-error pre {
+    white-space: pre-wrap;
+    color: var(--err);
+    font-size: var(--fs-sm);
+    background: var(--hover);
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .view-error p {
+    display: flex;
+    gap: 8px;
+  }
   .app {
     display: grid;
     height: 100vh;

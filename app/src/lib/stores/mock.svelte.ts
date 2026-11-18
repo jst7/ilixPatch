@@ -31,13 +31,14 @@ class MockStore {
     }
   }
 
-  configOf(target: string): MockConfig {
+  /** Create the settings of `target` if missing. Call it outside derived/template code (it writes state). */
+  ensure(target: string): MockConfig {
     if (!this.config[target]) this.config[target] = { port: 4000, delay_ms: 0 };
     return this.config[target];
   }
 
   async start(target: string) {
-    const c = this.configOf(target);
+    const c = this.ensure(target);
     this.busy[target] = true;
     this.error[target] = null;
     try {
