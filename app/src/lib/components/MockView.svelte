@@ -4,6 +4,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
   import { mocks } from "$lib/stores/mock.svelte";
+  import { toasts } from "$lib/stores/toasts.svelte";
   import { methodColor } from "./methods";
 
   interface Props {
@@ -38,7 +39,7 @@
       <span class="url">
         <span class="dot"></span>
         <code>{status.url}</code>
-        <button class="ghost small" onclick={() => navigator.clipboard.writeText(status.url).catch(() => {})}>{t("mock.copy")}</button>
+        <button class="ghost small" onclick={() => navigator.clipboard.writeText(status.url).then(() => toasts.success(t("toast.copied")), () => {})}>{t("mock.copy")}</button>
       </span>
     {:else}
       <button class="primary" disabled={mocks.busy[target]} onclick={() => mocks.start(target)}>{t("mock.start")}</button>

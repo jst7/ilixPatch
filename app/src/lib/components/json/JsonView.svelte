@@ -118,11 +118,13 @@
 
 <style>
   .jview {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
   }
+  /* D65: toolbars stay on one line; the least important bits hide when there is no room. */
   .bar,
   .selbar,
   .tablehead {
@@ -132,7 +134,21 @@
     padding: 4px 6px;
     border-bottom: 1px solid var(--border);
     font-size: var(--fs-sm);
-    flex-wrap: wrap;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .bar > *,
+  .selbar > *:not(.path) {
+    flex: none;
+  }
+  @container (max-width: 640px) {
+    .stats,
+    .label {
+      display: none;
+    }
+    .search {
+      width: 140px;
+    }
   }
   .selbar {
     background: color-mix(in srgb, var(--accent) 6%, transparent);

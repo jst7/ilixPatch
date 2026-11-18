@@ -33,6 +33,15 @@
     if (isSelected) row?.scrollIntoView({ block: "nearest" });
   });
 
+  /** Collapsed preview: the keys of an object, the first items of an array (the count is in the badge). */
+  function preview(v: Json): string {
+    if (Array.isArray(v)) {
+      const items = v.slice(0, 3).map((x) => summary(x, 24));
+      return items.length ? `${items.join(", ")}${v.length > 3 ? ", …" : ""}` : "";
+    }
+    return summary(v);
+  }
+
   function select() {
     view.selected = path;
   }
@@ -62,7 +71,7 @@
     {/if}
     {#if container}
       <span class="badge">{kind === "array" ? `[${total}]` : `{${total}}`}</span>
-      {#if !open}<span class="preview">{summary(value)}</span>{/if}
+      {#if !open}<span class="preview">{preview(value)}</span>{/if}
       {#if tabular && ontable}
         <button class="table-btn" title={t("json.asTable")} onclick={(e) => (e.stopPropagation(), ontable(path))}>⊞</button>
       {/if}

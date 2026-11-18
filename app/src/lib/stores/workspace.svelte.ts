@@ -27,6 +27,7 @@ import { runtimeVars } from "./runtimeVars.svelte";
 import { tabGroups } from "./tabGroups.svelte";
 import { toRequestError } from "$lib/requestError";
 import { history } from "./history.svelte";
+import { toasts } from "./toasts.svelte";
 import { dropEnvSession, envSession, envStore, type EnvChoice, type ResolvedEnv } from "./environments.svelte";
 import { canonicalAuth, cleanAuth, effectiveAuth, type EffectiveAuth } from "$lib/auth";
 import { containerSession, dropContainerSession } from "./containerSettings.svelte";
@@ -354,6 +355,10 @@ export function draftOnlyKey(tab: OpenTab): string | null {
   return null;
 }
 
+function basenameOf(p: string): string {
+  return p.split(/[\\/]/).filter(Boolean).pop() ?? p;
+}
+
 /** Stable identity of a tab (a request/target can only be open once per kind). */
 export function tabKey(tab: OpenTab): string {
   if (tab.kind === "request") return `request:${tab.path}`;
@@ -489,7 +494,6 @@ class Workspace {
   envByCollection = $state<Record<string, string>>(lsGet(LS_ENVS, {}));
   pendingCreate = $state<PendingCreate | null>(null);
   menu = $state.raw<MenuState | null>(null);
-  notice = $state<string | null>(null);
   saving = $state(false);
 
   index = $derived(buildIndex(this.entries));
@@ -502,17 +506,16 @@ class Workspace {
   selected =$derived(this.selectedPath ? (this.index.get(this.selectedPath) ?? null) : null);
 
   // ----- notices -----
-  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /** An error notification (D65: stays until dismissed). */
   fail(e: unknown) {
-    this.notice = String(e);
-    clearTimeout(this.noticeTimer);
-    this.noticeTimer = setTimeout(() => (this.notice = null), 8000);
+    const msg = e instanceof Error ? e.message : typeof e === "string" ? e : String(e);
+    toasts.error(msg);
   }
 
-  /** A short informational notice (same place as errors). */
-  notify(message: string) {
-    this.fail(message);
+  /** What just happened, as a short notification (D65). */
+  notify(message: string, kind: "success" | "info" | "warn" = "success") {
+    toasts.push(kind, message);
   }
 
   // ----- expansion -----
@@ -1220,6 +1223,7 @@ class Workspace {
     try {
       await api.saveRequest(path, requestFromDraft(draft));
       await this.reload(loc.projectPath);
+      toasts.success(translate("toast.saved", { name: draft.name || basenameOf(path) }));
     } catch (e) {
       this.fail(e);
     } finally {

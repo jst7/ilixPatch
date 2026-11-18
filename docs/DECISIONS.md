@@ -351,6 +351,27 @@ Como cada proyecto es un repositorio, integrar git es una ventaja diferencial.
   - el detalle técnico en un desplegable con botón de copiar.
 - **Runner y CLI:** cada fallo lleva su tipo (`error_kind`). La CLI muestra una línea de pista en inglés.
 
+## D65 · Interfaz más clara: avisos, barra de estado, paleta de comandos y diseño estable ✅
+- **Método:** antes de cambiar nada se capturó la interfaz real con datos de ejemplo (Chrome headless con el puente de
+  Tauri simulado) y se buscaron problemas concretos: aviso flotante que tapaba la barra lateral, cabecera de la respuesta
+  que se partía en varias líneas en ventanas estrechas, pestañas cortadas sin forma de llegar a «Ajustes» o «cURL»,
+  acciones que parecían texto y un recuento repetido en el árbol JSON. Después se volvió a capturar para comprobarlo.
+- **Avisos (toasts):** apilados abajo a la derecha, con icono y color por tipo. Éxitos e info se cierran solos; los
+  errores se quedan hasta cerrarlos. Se avisa de lo que antes pasaba en silencio: petición guardada, copiado, servidor
+  mock iniciado/parado, ejemplo guardado, regla de variable añadida. El mismo mensaje no se apila dos veces.
+- **Barra de estado** (una línea, abajo): entorno activo con su color, rama de git con cambios pendientes y commits por
+  subir/bajar, servidores mock en marcha, aviso de contraseña por defecto (sustituye al aviso flotante), buscador ⌘K y
+  consola de red. Cada elemento abre donde se gestiona. Solo muestra lo que aplica.
+- **Paleta de comandos (⌘K / Ctrl+K):** busca cualquier petición (por nombre, colección, carpeta o método) y cualquier
+  acción (nueva petición, enviar, guardar, importar, añadir proyecto, entornos, servidor mock, exportar, runner, prueba
+  de carga, consola de red, ajustes, contraseña). Muestra los atajos junto a las acciones para que se aprendan.
+- **Diseño que no se deforma:**
+  - La cabecera de la respuesta va siempre en una línea: el estado es una píldora de color (con su significado al
+    pasar el ratón) y las acciones son botones con icono que pierden el texto cuando falta sitio (container queries).
+  - Las barras de pestañas (globales) se desplazan en horizontal en vez de partirse o cortarse.
+  - Las barras del visor JSON ocultan lo secundario (estadísticas) en anchos pequeños en vez de saltar de línea.
+- **Detalles:** el árbol JSON muestra los primeros elementos de un array plegado en vez de repetir el recuento.
+
 ## D64 · Comparador de respuestas inteligente ✅
 - **Para qué:** saber si dos respuestas difieren **en los datos** o solo **en el orden o el formato** (claves en otro
   orden, arrays reordenados, espacios), y ver las diferencias reales sin ruido.

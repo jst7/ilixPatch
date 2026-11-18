@@ -1,6 +1,8 @@
 // Mock servers (D62): running servers, their settings and the log of served requests, per target.
 import { listen } from "@tauri-apps/api/event";
 import { api, type MockLogEntry, type MockStatus } from "$lib/api";
+import { toasts } from "./toasts.svelte";
+import { t } from "$lib/i18n/index.svelte";
 
 const MAX_LOG = 500;
 
@@ -44,6 +46,8 @@ class MockStore {
     try {
       this.running[target] = await api.mockStart(target, Number(c.port) || 0, Number(c.delay_ms) || 0);
       this.config[target].port = this.running[target].port;
+      const s = this.running[target];
+      toasts.success(t("mock.started", { url: s.url, count: s.routes.length }));
     } catch (e) {
       this.error[target] = String(e);
     } finally {
@@ -54,6 +58,7 @@ class MockStore {
   async stop(target: string) {
     try {
       await api.mockStop(target);
+      toasts.info(t("mock.stopped"));
     } finally {
       delete this.running[target];
     }

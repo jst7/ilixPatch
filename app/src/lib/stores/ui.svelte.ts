@@ -44,6 +44,9 @@ class UiStore {
     }
   }
 
+  /** D65: command palette (⌘K). */
+  paletteOpen = $state(false);
+
   /** D63: JSON responses as a rich tree or as text (remembered). */
   jsonView = $state<"tree" | "text">(readJsonView());
 

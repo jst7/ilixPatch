@@ -160,6 +160,8 @@ Every command and flag is documented in **[docs/CLI.md](docs/CLI.md)**.
 - Response viewer: status, time, size, headers, tests, console, HTTP version, redirect chain and TLS certificate;
   folding, search and line wrapping for long values.
 - **GraphQL** bodies with schema-aware completion (introspection), sent as JSON.
+- **Command palette (⌘K)** to jump to any request or action, a status bar (environment, branch, running mocks) and
+  clear notifications of what just happened.
 - **Rich JSON viewer**: collapsible tree with types and counts, search, table view of arrays, copy path/value and
   “save in variable” from any node.
 - **Smart response comparison**: compare with an example, an earlier response or pasted JSON; a summary tells

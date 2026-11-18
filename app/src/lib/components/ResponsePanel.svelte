@@ -41,6 +41,15 @@
 
   let tab = $state<"body" | "headers" | "tests" | "console">("body");
 
+  /** Short meaning of a status code (tooltip). */
+  function statusHint(s: number): string {
+    if (s < 200) return t("response.status.info");
+    if (s < 300) return t("response.status.ok");
+    if (s < 400) return t("response.status.redirect");
+    if (s < 500) return t("response.status.client");
+    return t("response.status.server");
+  }
+
   // D62: keep this response as an example of the request (served by the mock server).
   async function saveExample() {
     const draft = ws.drafts[path];
@@ -124,23 +133,15 @@
   <div class="head">
     <span class="title">{t("response.title")}</span>
     {#if result}
-      <span class="status" class:ok={result.status < 400}>{result.status} {result.status_text}</span>
-      <span class="meta">{t("response.time", { ms: Math.round(result.elapsed_ms) })}</span>
-      <span class="meta">{formatSize(result.size_bytes)}</span>
+      <span
+        class="status"
+        class:ok={result.status < 300}
+        class:redirect={result.status >= 300 && result.status < 400}
+        title={statusHint(result.status)}>{result.status} {result.status_text}</span
+      >
+      <span class="meta" title={t("response.timeHint")}>{t("response.time", { ms: Math.round(result.elapsed_ms) })}</span>
+      <span class="meta" title={t("response.sizeHint")}>{formatSize(result.size_bytes)}</span>
       {#if result.network}<NetworkInfo network={result.network} />{/if}
-      {#if ws.drafts[path]}
-        <button class="ghost small save-example" title={t("examples.saveHint")} onclick={saveExample}>{t("examples.save")}</button>
-      {/if}
-      {#if result}
-        <button
-          class="ghost small"
-          title={t("compare.buttonHint")}
-          onclick={(e) => {
-            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            void compareMenu(path, r.left, r.bottom + 2);
-          }}>{t("compare.button")}</button
-        >
-      {/if}
     {/if}
     {#if resp?.loading}
       <span class="meta sending">
@@ -152,11 +153,30 @@
     {:else if resp?.cancelled}
       <span class="meta">{t("response.cancelled")}</span>
     {/if}
-    {#if loc}
-      <div class="head-right">
+    <div class="head-right">
+      {#if result && ws.drafts[path]}
+        <button class="ghost small act" title={t("examples.saveHint")} onclick={saveExample}>
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5zM8 3v6h8V3M8 21v-7h8v7" /></svg>
+          <span class="label">{t("examples.save")}</span>
+        </button>
+      {/if}
+      {#if result}
+        <button
+          class="ghost small act"
+          title={t("compare.buttonHint")}
+          onclick={(e) => {
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            void compareMenu(path, r.left, r.bottom + 2);
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v18M16 3v18M3 8h5M16 16h5" /></svg>
+          <span class="label">{t("compare.button")}</span>
+        </button>
+      {/if}
+      {#if loc}
         <RuntimeVariables collection={loc.collection} envName={ws.envFor(loc.collection) || null} />
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 
   {#if result?.script_error}
@@ -301,11 +321,31 @@
     min-height: 0;
     padding: 8px 10px 10px;
   }
+  .response {
+    container-type: inline-size;
+  }
+  /* D65: one line whatever the width (no wrapping): actions lose their text before anything wraps. */
   .head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 10px;
-    padding: 4px 0 6px;
+    min-height: 30px;
+    padding: 2px 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .head > * {
+    flex: none;
+  }
+  .head .act {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  @container (max-width: 720px) {
+    .head .act .label {
+      display: none;
+    }
   }
   .title {
     font-weight: 600;
@@ -317,9 +357,17 @@
   .status {
     font-weight: 700;
     color: var(--err);
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--err) 14%, transparent);
   }
   .status.ok {
     color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 14%, transparent);
+  }
+  .status.redirect {
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 14%, transparent);
   }
   .meta {
     color: var(--muted);
@@ -382,7 +430,9 @@
   }
   .head-right {
     margin-left: auto;
-    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
   .script-error {
     color: var(--err);

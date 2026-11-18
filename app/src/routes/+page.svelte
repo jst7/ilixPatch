@@ -1,9 +1,13 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { vault } from "$lib/stores/vault.svelte";
+  import { ui } from "$lib/stores/ui.svelte";
   import VaultUnlock from "$lib/components/VaultUnlock.svelte";
   import MockView from "$lib/components/MockView.svelte";
   import CompareView from "$lib/components/CompareView.svelte";
+  import Toasts from "$lib/components/Toasts.svelte";
+  import CommandPalette from "$lib/components/CommandPalette.svelte";
+  import StatusBar from "$lib/components/StatusBar.svelte";
   import { listen } from "@tauri-apps/api/event";
   import { t } from "$lib/i18n/index.svelte";
   import { draftOnlyKey, historyKey, scratchKey, ws } from "$lib/stores/workspace.svelte";
@@ -186,6 +190,11 @@
         // D55: a new request that belongs to no project yet; it is saved to a collection with Cmd/Ctrl+S.
         stop();
         ws.newScratch();
+      } else if ((e.key === "k" || e.key === "K") && !e.shiftKey && !e.altKey) {
+        // D65: command palette.
+        e.preventDefault();
+        e.stopPropagation();
+        ui.paletteOpen = !ui.paletteOpen;
       } else if (e.key === "p" || e.key === "P") {
         // Quick find: focus the visible sidebar search (project tree or history).
         stop();
@@ -367,6 +376,7 @@
     {/key}
     </div>
     {#if netlog.open}<NetConsole />{/if}
+    <StatusBar />
   </main>
 
   {#if !tabsCollapsed}
@@ -376,14 +386,8 @@
   <div class="side right" class:rail={tabsCollapsed}><TabsSidebar collapsed={tabsCollapsed} ontoggle={toggleTabs} /></div>
 </div>
 
-{#if ws.notice}
-  <div class="notice" role="alert">
-    <span>{ws.notice}</span>
-    <button class="ghost" aria-label={t("common.dismiss")} title={t("common.dismiss")} onclick={() => (ws.notice = null)}
-      >×</button
-    >
-  </div>
-{/if}
+<Toasts />
+{#if ui.paletteOpen}<CommandPalette onclose={() => (ui.paletteOpen = false)} />{/if}
 
 <style>
   .view-error {
@@ -512,26 +516,5 @@
   .keys {
     font-family: var(--mono);
     font-size: var(--fs-sm);
-  }
-  .notice {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    max-width: min(480px, calc(100vw - 32px));
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    background: var(--surface);
-    color: var(--err);
-    border: 1px solid var(--err);
-    border-radius: 8px;
-    padding: 8px 8px 8px 10px;
-    box-shadow: var(--shadow);
-    z-index: 60;
-    word-break: break-word;
-    font-size: var(--fs-md);
-  }
-  .notice button {
-    padding: 0 6px;
   }
 </style>

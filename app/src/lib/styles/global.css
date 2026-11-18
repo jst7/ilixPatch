@@ -82,8 +82,17 @@ button.ghost:hover:not(:disabled) {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--border);
+  /* D65: tabs never wrap or get cut off: they scroll sideways when there is no room. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .tabs > button {
+  flex: none;
+  white-space: nowrap;
   border: none;
   border-radius: 0;
   background: none;
